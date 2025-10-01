@@ -1,6 +1,6 @@
 import CardItem from "@/components/CardItem";
-import { Link } from "expo-router";
-import { Button, FlatList, Image, StyleSheet, Text, View } from "react-native";
+import { Link, useRouter } from "expo-router";
+import { Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -9,19 +9,31 @@ export default function HomeScreen() {
     { id: "2", cardNumber: "**** **** **** 5678", cardHolder: "Jane Smith", expiry: "08/24", cardName: "Dummy Card 2" },
   ];
 
+  const router = useRouter();
+
+  const user = {
+    name: "John Doe",
+    avatar: "https://i.pravatar.cc/150?img=12",
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {/* Profile Section */}
-      <View style={styles.profileContainer}>
-        <Image
-          source={{ uri: "https://i.pravatar.cc/150?img=3" }} // placeholder avatar
-          style={styles.avatar}
-        />
-        <View style={styles.profileText}>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>John Doe</Text>
+        <View style={styles.profileContainer}>
+        <Pressable
+            style={styles.profileContainer}
+            onPress={() => router.push("/profile")}
+          >
+          <Image
+            source={{ uri: user.avatar }} // placeholder avatar
+            style={styles.avatar}
+          />
+          </Pressable>
+          <View style={styles.profileText}>
+            <Text style={styles.greeting}>Hello,</Text>
+            <Text style={styles.name}>{user.name}</Text>
+          </View>
         </View>
-      </View>
 
       <Text style={styles.title}>Your Cards</Text>
 
