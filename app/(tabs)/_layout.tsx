@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const router = useRouter();
 
   return (
     <Tabs
@@ -26,8 +27,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="add-card"
         options={{
-          title: 'Add Card',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="creditcard" color={color} />,
+          title: "Add Card",
+          tabBarIcon: ({ color }) => <IconSymbol name="creditcard" color={color} size={28} />,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault(); // Prevent the default tab navigation
+            router.push("/add-card"); // Push the stack screen instead
+          },
         }}
       />
     </Tabs>
