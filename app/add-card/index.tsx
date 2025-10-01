@@ -1,5 +1,5 @@
 import { useNavigation, useRouter } from "expo-router";
-import { useLayoutEffect, } from "react";
+import { useLayoutEffect } from "react";
 import { StyleSheet, Text, View, } from "react-native";
 import CardForm from "./components/CardForm";
 import ScanButton from "./components/ScanButton";
