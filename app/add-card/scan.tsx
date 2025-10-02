@@ -1,7 +1,8 @@
 // app/add-card/scan.tsx
+import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -10,7 +11,7 @@ const SCREEN_BUFFER = 20;
 
 export default function ScanScreen() {
   const router = useRouter();
-  const { frontUri } = useLocalSearchParams<{ frontUri?: string }>(); // optional
+  const { frontUri } = useLocalSearchParams<{ frontUri?: string }>();
   const [side] = useState<"front" | "back">(frontUri ? "back" : "front");
 
   const navigation = useNavigation();
@@ -21,6 +22,7 @@ export default function ScanScreen() {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const cameraRef = useRef<React.ComponentRef<typeof CameraView>>(null);
   const [facing] = useState<CameraType>("back");
+  const [captureDisabled, setCaptureDisabled] = useState(false);
 
   // Guide calculations — fixed to screen
   const guideWidth = SCREEN_WIDTH - SCREEN_BUFFER * 2;
@@ -28,32 +30,60 @@ export default function ScanScreen() {
   const guideX = SCREEN_BUFFER;
   const guideY = (SCREEN_HEIGHT - guideHeight) / 2;
 
+  // Ask permission once
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
+      const { status } = await Camera.getCameraPermissionsAsync();
+      if (status !== "granted") {
+        const { status: reqStatus } = await Camera.requestCameraPermissionsAsync();
+        setHasPermission(reqStatus === "granted");
+      } else {
+        setHasPermission(true);
+      }
     })();
   }, []);
 
-  // Capture and navigate to crop screen with side param
+  // Resume/pause camera with screen focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log("ScanScreen focused, resuming camera");
+      cameraRef.current?.resumePreview?.();
+
+      return () => {
+        console.log("ScanScreen lost focus, pausing camera");
+        cameraRef.current?.pausePreview?.();
+      };
+    }, [])
+  );
+
+  // Capture and navigate
   const handleCapture = async () => {
     if (!cameraRef.current) return;
-  
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9, skipProcessing: true });
-  
-      router.push({
-        pathname: "/add-card/crop",
-        params: {
-          uri: photo.uri, // raw photo URI
-          cropX: Math.round(guideX),
-          cropY: Math.round(guideY),
-          cropWidth: Math.round(guideWidth),
-          cropHeight: Math.round(guideHeight),
-          side,
-          ...(frontUri ? { frontUri } : {}), // optional frontUri
-        },
+      console.log("Taking picture...");
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.9,
+        skipProcessing: true,
       });
+      console.log("Photo taken:", photo.uri);
+
+      setCaptureDisabled(true);
+
+      // Navigate without unmounting camera
+      setTimeout(() => {
+        router.push({
+          pathname: "/add-card/crop",
+          params: {
+            uri: photo.uri,
+            cropX: Math.round(guideX),
+            cropY: Math.round(guideY),
+            cropWidth: Math.round(guideWidth),
+            cropHeight: Math.round(guideHeight),
+            side,
+            ...(frontUri ? { frontUri } : {}),
+          },
+        });
+      }, 0);
     } catch (err) {
       console.error("Capture error:", err);
     }
@@ -69,7 +99,7 @@ export default function ScanScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Use Camera component from expo-camera */}
+      {/* Always keep camera mounted */}
       <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
 
       {/* Fixed rectangle guide */}
@@ -87,8 +117,14 @@ export default function ScanScreen() {
       />
 
       <View style={styles.bottomContainer}>
-        <Text style={styles.sideText}>{side === "front" ? "Capture Front of Card" : "Capture Back of Card"}</Text>
-        <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
+        <Text style={styles.sideText}>
+          {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
+        </Text>
+        <TouchableOpacity
+          style={styles.captureButton}
+          onPress={handleCapture}
+          disabled={captureDisabled}
+        >
           <Text style={styles.captureText}>Capture</Text>
         </TouchableOpacity>
       </View>

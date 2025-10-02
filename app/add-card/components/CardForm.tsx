@@ -15,6 +15,7 @@ export default function CardForm({ onSubmit }: CardFormProps) {
     <View style={styles.container}>
       <TextInput
         placeholder="Card Number"
+        placeholderTextColor="#888"
         value={cardNumber}
         onChangeText={setCardNumber}
         style={styles.input}
@@ -22,12 +23,14 @@ export default function CardForm({ onSubmit }: CardFormProps) {
       />
       <TextInput
         placeholder="Card Holder Name"
+        placeholderTextColor="#888"
         value={cardHolder}
         onChangeText={setCardHolder}
         style={styles.input}
       />
       <TextInput
         placeholder="Expiry (MM/YY)"
+        placeholderTextColor="#888"
         value={expiry}
         onChangeText={setExpiry}
         style={styles.input}
@@ -46,5 +49,6 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
     backgroundColor: "#fff",
+    color: "#000", // ensure input text is black
   },
 });
