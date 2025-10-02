@@ -1,47 +1,46 @@
-// app/add-card/preview.tsx
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLayoutEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function PreviewScreen() {
+  const router = useRouter();
+
+  const navigation = useNavigation();
+  useLayoutEffect(() => {
+    navigation.setOptions({ title: "Preview Card" });
+  }, [navigation]);
+
+  const { uri, side, frontUri, backUri } = useLocalSearchParams<{
+    uri?: string;
+    side?: "front" | "back";
+    frontUri?: string;
+    backUri?: string;
+  }>();
+
+  const [frontImage, setFrontImage] = useState(frontUri || (side === "front" ? uri : undefined));
+  const [backImage, setBackImage] = useState(backUri || (side === "back" ? uri : undefined));
+
   const [extractedText, setExtractedText] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showText, setShowText] = useState(false);
 
-  const navigation = useNavigation();
-  const router = useRouter();
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: "Preview your Card" });
-  }, [navigation]);
-
-  const { uri } = useLocalSearchParams<{ uri: string }>();
-
-  if (!uri) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>No image to preview</Text>
-      </View>
-    );
-  }
+  // Update images if a new URI is received
+  if (side === "front" && uri && !frontImage) setFrontImage(uri);
+  if (side === "back" && uri && !backImage) setBackImage(uri);
 
   const performOCR = async (imageUri: string) => {
     try {
       setIsProcessing(true);
-      console.log("Starting OCR for image:", imageUri);
-      
       const result = await TextRecognition.recognize(imageUri);
-      
-      if (result && result.text) {
+      if (result?.text) {
         setExtractedText(result.text);
         setShowText(true);
-        console.log("OCR Result:", result.text);
       } else {
         Alert.alert("No Text Found", "No text could be detected in this image.");
       }
-    } catch (error) {
-      console.error("OCR Error:", error);
+    } catch (err) {
+      console.error(err);
       Alert.alert("OCR Error", "Failed to extract text from the image. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -49,18 +48,47 @@ export default function PreviewScreen() {
   };
 
   const saveCard = () => {
-    // Here you would typically save the card with the extracted text
-    // For now, we'll just navigate back with the data
-    console.log("Saving card with text:", extractedText);
     Alert.alert("Card Saved", "Your card has been saved successfully!", [
       { text: "OK", onPress: () => router.push("/") }
     ]);
-  }; 
+  };
+
+  const captureBack = () => {
+    router.push({
+      pathname: "/add-card/scan",
+      params: { frontUri: frontImage },
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      <Image source={{ uri }} style={styles.image} resizeMode="contain" />
-      
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+      {/* FRONT SECTION */}
+      <View style={styles.cardSection}>
+        <Text style={styles.sectionTitle}>Front of Card</Text>
+        {frontImage ? (
+          <Image source={{ uri: frontImage }} style={styles.cardImage} resizeMode="contain" />
+        ) : (
+          <View style={[styles.cardImage, styles.placeholder]}>
+            <Text style={styles.message}>No front image captured yet</Text>
+          </View>
+        )}
+      </View>
+
+      {/* BACK SECTION */}
+      <View style={styles.cardSection}>
+        <Text style={styles.sectionTitle}>Back of Card</Text>
+        <View style={styles.cardImage}>
+          {backImage ? (
+            <Image source={{ uri: backImage }} style={styles.cardImage} resizeMode="contain" />
+          ) : (
+            <TouchableOpacity style={styles.captureBackButtonContainer} onPress={captureBack}>
+              <Text style={styles.captureBackButtonText}>Capture Back</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* OCR results */}
       {showText && extractedText && (
         <View style={styles.textContainer}>
           <Text style={styles.textTitle}>Extracted Text:</Text>
@@ -70,90 +98,59 @@ export default function PreviewScreen() {
         </View>
       )}
 
+      {/* Buttons */}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={[styles.button, styles.ocrButton]} 
-          onPress={() => performOCR(uri)}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Extract Text</Text>
-          )}
-        </TouchableOpacity>
+        {(frontImage || backImage) && (
+          <TouchableOpacity
+            style={[styles.button, styles.ocrButton]}
+            onPress={() => performOCR(frontImage || backImage!)}
+            disabled={isProcessing}
+          >
+            {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Extract Text</Text>}
+          </TouchableOpacity>
+        )}
 
         {extractedText && (
-          <TouchableOpacity 
-            style={[styles.button, styles.saveButton]} 
-            onPress={saveCard}
-          >
+          <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={saveCard}>
             <Text style={styles.buttonText}>Save Card</Text>
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: "#000" 
-  },
-  message: { 
-    color: "#fff", 
-    textAlign: "center", 
-    fontSize: 18,
-    margin: 20 
-  },
-  image: { 
-    flex: 1, 
-    width: "100%", 
-    maxHeight: "60%" 
-  },
-  textContainer: {
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    margin: 10,
-    padding: 15,
+  container: { flex: 1, backgroundColor: "#000" },
+  cardSection: { marginVertical: 12, paddingHorizontal: 12 },
+  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#fff", marginBottom: 6 },
+  cardImage: {
+    width: "100%",
+    height: 250,
     borderRadius: 8,
-    maxHeight: 200,
-  },
-  textTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#333",
-  },
-  textScrollView: {
-    maxHeight: 150,
-  },
-  extractedText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: "#333",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    padding: 20,
-    paddingBottom: 40,
-  },
-  button: {
-    padding: 12,
-    borderRadius: 8,
-    minWidth: 120,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    overflow: "hidden",
+    justifyContent: "center",
     alignItems: "center",
   },
-  ocrButton: {
-    backgroundColor: "#007AFF",
+  placeholder: { backgroundColor: "#111", justifyContent: "center", alignItems: "center" },
+  message: { color: "#fff", fontSize: 14, textAlign: "center" },
+  captureBackButtonContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#111",
+    width: "100%",
   },
-  saveButton: {
-    backgroundColor: "#34C759",
-  },
-  buttonText: { 
-    color: "#fff", 
-    fontWeight: "bold", 
-    fontSize: 16 
-  },
+  captureBackButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  textContainer: { backgroundColor: "rgba(255, 255, 255, 0.9)", margin: 10, padding: 15, borderRadius: 8, maxHeight: 200 },
+  textTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8, color: "#333" },
+  textScrollView: { maxHeight: 150 },
+  extractedText: { fontSize: 14, lineHeight: 20, color: "#333" },
+  buttonContainer: { flexDirection: "row", justifyContent: "space-around", paddingTop: 20 },
+  button: { padding: 12, borderRadius: 8, minWidth: 120, alignItems: "center" },
+  ocrButton: { backgroundColor: "#007AFF" },
+  saveButton: { backgroundColor: "#34C759" },
+  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });
