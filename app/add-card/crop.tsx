@@ -21,13 +21,15 @@ export default function CropScreen() {
     navigation.setOptions({ title: "Adjust Your Card" });
   }, [navigation]);
 
-  const { uri, cropX, cropY, cropWidth, cropHeight } =
+  const { uri, cropX, cropY, cropWidth, cropHeight, side, frontUri } =
     useLocalSearchParams<{
       uri: string;
       cropX: string;
       cropY: string;
       cropWidth: string;
       cropHeight: string;
+      side: string;
+      frontUri: string
     }>();
 
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
@@ -157,13 +159,20 @@ export default function CropScreen() {
       height: Math.round(cropBox.height * scaleY),
     };
 
-    const cropped = await ImageManipulator.manipulateAsync(
+    const croppedUri = await ImageManipulator.manipulateAsync(
       uri,
       [{ crop }],
       { format: ImageManipulator.SaveFormat.JPEG }
     );
 
-    router.push(`/add-card/preview?uri=${encodeURIComponent(cropped.uri)}`);
+    router.push({
+      pathname: "/add-card/preview",
+      params: {
+        uri: croppedUri.uri, // result of cropping
+        side,
+        frontUri,        // pass if this was front capture
+      },
+    });
   };
 
   return (
