@@ -1,54 +1,115 @@
-// app/add-card/components/CardForm.tsx
-import { useState } from "react";
-import { Button, StyleSheet, TextInput, View } from "react-native";
+// components/CardForm.tsx
+import { useEffect, useState } from "react";
+import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 
 interface CardFormProps {
-  onSubmit: (card: { cardNumber: string; cardHolder: string; expiry: string }) => void;
+  onSubmit: (card: { cardNumber: string; cardHolder: string; expiry: string, cvv:string, infoText: string }) => void;
+  defaultCardNumber?: string;
+  defaultCardHolder?: string;
+  defaultExpiry?: string;
+  defaultCvv?: string;
+  infoText?: string;
 }
 
-export default function CardForm({ onSubmit }: CardFormProps) {
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardHolder, setCardHolder] = useState("");
-  const [expiry, setExpiry] = useState("");
+export default function CardForm({
+  onSubmit,
+  defaultCardNumber = "",
+  defaultCardHolder = "",
+  defaultExpiry = "",
+  defaultCvv = "",
+  infoText,
+}: CardFormProps) {
+  const [cardNumber, setCardNumber] = useState(defaultCardNumber);
+  const [cardHolder, setCardHolder] = useState(defaultCardHolder);
+  const [expiry, setExpiry] = useState(defaultExpiry);
+  const [cvv, setCvv] = useState(defaultCvv);
+  const [showCvv, setShowCvv] = useState(false);
+
+  const handleSubmit = () => {
+    onSubmit({ cardNumber, cardHolder, expiry, cvv, infoText: infoText || "" });
+  };
+
+  useEffect(() => {
+    setCardNumber(defaultCardNumber);
+  }, [defaultCardNumber]);
+  
+  useEffect(() => {
+    setCardHolder(defaultCardHolder);
+  }, [defaultCardHolder]);
+  
+  useEffect(() => {
+    setExpiry(defaultExpiry);
+  }, [defaultExpiry]);
+  
+  useEffect(() => {
+    const numeric = defaultCvv?.replace(/[^0-9]/g, "");
+    setCvv(numeric ? String(Number(numeric)) : "");
+  }, [defaultCvv]);
 
   return (
-    <View style={styles.container}>
-      <TextInput
-        placeholder="Card Number"
-        placeholderTextColor="#888"
-        value={cardNumber}
-        onChangeText={setCardNumber}
-        style={styles.input}
-        keyboardType="numeric"
-      />
-      <TextInput
-        placeholder="Card Holder Name"
-        placeholderTextColor="#888"
-        value={cardHolder}
-        onChangeText={setCardHolder}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Expiry (MM/YY)"
-        placeholderTextColor="#888"
-        value={expiry}
-        onChangeText={setExpiry}
-        style={styles.input}
-      />
-      <Button title="Add Card" onPress={() => onSubmit({ cardNumber, cardHolder, expiry })} />
+    <View style={styles.form}>
+      {infoText ? <Text style={styles.info}>{infoText}</Text> : null}
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Card Number</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter card number"
+          value={cardNumber}
+          onChangeText={setCardNumber}
+          keyboardType="numeric"
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Card Holder</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter card holder name"
+          value={cardHolder}
+          onChangeText={setCardHolder}
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.label}>Expiry</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="MM/YY"
+          value={expiry}
+          onChangeText={setExpiry}
+        />
+      </View>
+
+
+      <View style={styles.field}>
+        <Text style={styles.label}>CVV</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="CVV"
+          value={cvv}
+          onChangeText={(text) => {
+            const numeric = text.replace(/[^0-9]/g, "");
+            setCvv(numeric ? String(Number(numeric)) : "");
+          }}
+        />
+      </View>
+
+      <Button title="Add Card" onPress={handleSubmit} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { marginVertical: 16 },
+  form: { marginTop: 20 },
+  info: { marginBottom: 16, color: "#666", fontSize: 14, textAlign: "center" },
+  field: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: "600", marginBottom: 6 },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    padding: 10,
     backgroundColor: "#fff",
-    color: "#000", // ensure input text is black
   },
 });
