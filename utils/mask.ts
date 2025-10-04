@@ -13,7 +13,8 @@ export function maskAndFormatCardNumber(cardNumber: string) {
     // Mask and format for 14-digit card
     masked = "xxxx xxxxxx " + lastFour;
   } else {
-    throw new Error("Unsupported card number length");
+    masked = "xxxx xxxx xxxx " + lastFour; // Default to 16-digit format
+    // throw new Error("Unsupported card number length");
   }
 
   return masked;

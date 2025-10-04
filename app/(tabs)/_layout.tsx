@@ -24,7 +24,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="add-card"
         options={{
           title: "Add Card",
@@ -36,7 +36,7 @@ export default function TabLayout() {
             router.push("/add-card"); // Push the stack screen instead
           },
         }}
-      />
+      /> */}
     </Tabs>
   );
 }

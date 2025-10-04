@@ -1,9 +1,10 @@
 // app/card-details/[cardName].tsx
+import CardNotFound from "@/components/CardNotFound";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Button, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CardDetailsScreen() {
@@ -33,23 +34,44 @@ export default function CardDetailsScreen() {
     loadCard();
   }, [id]);
 
-  if (!card) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centered}>
-          <Text style={styles.error}>Card not found.</Text>
-          <Button title="Go Back" onPress={() => router.back()} />
-        </View>
-      </SafeAreaView>
+  const handleDelete = async () => {
+    Alert.alert(
+      "Delete Card",
+      "Are you sure you want to delete this card?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const storedCards = await AsyncStorage.getItem("cards");
+              if (storedCards) {
+                const parsed = JSON.parse(storedCards);
+                const updated = parsed.filter((c: any) => c.id !== id);
+                await AsyncStorage.setItem("cards", JSON.stringify(updated));
+              }
+              router.replace("/"); // go back to home
+            } catch (err) {
+              console.error("Error deleting card:", err);
+              Alert.alert("Error", "Failed to delete the card. Please try again.");
+            }
+          },
+        },
+      ]
     );
+  };
+
+  if (!card) {
+    if (!card) {
+      return <CardNotFound />;
+    }
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.screenTitle}>Card Details</Text>
-
           {/* Card Front */}
           <View style={styles.cardFront}>
             <Text style={styles.bankName}>{card.bank}</Text>
@@ -78,6 +100,8 @@ export default function CardDetailsScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.footer}>
+          <Button title="Delete Card" color="red" onPress={handleDelete} />
+          <View style={{ height: 10 }} />
           <Button title="Back to Home" onPress={() => router.push("/")} />
         </View>
       </View>
@@ -89,8 +113,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
   contentContainer: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 80 }, // extra space above button
-  screenTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
-
   cardFront: {
     backgroundColor: "#4b7bec",
     borderRadius: 16,

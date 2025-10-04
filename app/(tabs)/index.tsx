@@ -1,9 +1,10 @@
 import CardItem from "@/components/CardItem";
+import NoCards from "@/components/NoCards";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -35,7 +36,6 @@ export default function HomeScreen() {
         }));
 
         console.log("Loaded cards:", cardsWithId);
-
         setCards(cardsWithId);
       }
     } catch (err) {
@@ -82,26 +82,30 @@ export default function HomeScreen() {
   
         <Text style={styles.title}>Your Cards</Text>
   
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <CardItem
-              id={item.id}
-              cardName={item.cardName || `Unnamed Card`}
-              cardNumber={maskAndFormatCardNumber(item.cardNumber)}
-              cardHolder={item.cardHolder}
-              expiry={item.expiry}
-              onDelete={handleRemoveCard} // ✅ new prop
-            />
-          )}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-        />
+        {cards.length === 0 ? (
+          <NoCards />
+        ) : (
+          <FlatList
+            data={cards}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <CardItem
+                id={item.id}
+                cardName={item.cardName || `Unnamed Card`}
+                cardNumber={maskAndFormatCardNumber(item.cardNumber)}
+                cardHolder={item.cardHolder}
+                expiry={item.expiry}
+                onDelete={handleRemoveCard}
+              />
+            )}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          />
+        )}
   
         {/* Navigate to Add Card */}
-        <Link href="/add-card" asChild>
+        {/* <Link href="/add-card" asChild>
           <Button title="Add New Card" />
-        </Link>
+        </Link> */}
       </SafeAreaView>
     );
 }
