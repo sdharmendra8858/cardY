@@ -8,6 +8,10 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// Import PipModule from native module
+import { NativeModules } from "react-native";
+const { PipModule } = NativeModules;
+
 export default function CardDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [card, setCard] = useState<any>(null);
@@ -16,8 +20,16 @@ export default function CardDetailsScreen() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    navigation.setOptions({ title: "Card Details" });
-  }, [navigation]);
+    navigation.setOptions({
+      title: "Card Details",
+      headerRight: () =>
+        card ? (
+          <Pressable onPress={openPip} style={{ marginRight: 16 }}>
+            <Ionicons name="caret-forward-circle-outline" size={28} color="#4b7bec" />
+          </Pressable>
+        ) : null,
+    });
+  }, [navigation, card]); // include card here!
 
   useEffect(() => {
     const loadCard = async () => {
@@ -64,10 +76,17 @@ export default function CardDetailsScreen() {
     );
   };
 
-  if (!card) {
-    if (!card) {
-      return <CardNotFound />;
+  const openPip = () => {
+    // Pass card as query param
+    console.log("Opening PiP with card:", card);
+
+    if (card) { 
+      PipModule.openPip(card.cardNumber); // pass data as JSON
     }
+  };
+
+  if (!card) {
+    return <CardNotFound />;
   }
 
   return (
@@ -88,7 +107,7 @@ export default function CardDetailsScreen() {
                   name={showNumber ? "eye-off" : "eye"}
                   size={22}
                   color="#fff"
-                  style={{ marginTop: 2 }} // subtle nudge for perfect vertical alignment
+                  style={{ marginTop: 2 }}
                 />
               </Pressable>
             </View>
@@ -130,7 +149,7 @@ export default function CardDetailsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
   contentContainer: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 80 }, // extra space above button
+  scrollContent: { padding: 16, paddingBottom: 80 },
   cardFront: {
     backgroundColor: "#4b7bec",
     borderRadius: 16,
@@ -143,7 +162,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   bankName: { color: "white", fontSize: 16, marginBottom: 20, fontWeight: "600" },
-  // cardNumber: { color: "white", fontSize: 22, letterSpacing: 2, marginBottom: 20 },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
   info: { color: "white", fontSize: 16, fontWeight: "bold" },
@@ -180,6 +198,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 22,
     letterSpacing: 2,
-    lineHeight: 26, // ensures consistent baseline
+    lineHeight: 26,
   },
 });
