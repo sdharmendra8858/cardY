@@ -1,15 +1,17 @@
 // app/card-details/[cardName].tsx
 import CardNotFound from "@/components/CardNotFound";
 import { maskAndFormatCardNumber } from "@/utils/mask";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Button, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Button, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CardDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [card, setCard] = useState<any>(null);
+  const [showNumber, setShowNumber] = useState(false);
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -75,7 +77,22 @@ export default function CardDetailsScreen() {
           {/* Card Front */}
           <View style={styles.cardFront}>
             <Text style={styles.bankName}>{card.bank}</Text>
-            <Text style={styles.cardNumber}>{maskAndFormatCardNumber(card.cardNumber)}</Text>
+
+            {/* Card Number with Eye Icon */}
+            <View style={styles.cardNumberRow}>
+              <Text style={styles.cardNumber}>
+                {showNumber ? card.cardNumber : maskAndFormatCardNumber(card.cardNumber)}
+              </Text>
+              <Pressable onPress={() => setShowNumber(!showNumber)} hitSlop={10}>
+                <Ionicons
+                  name={showNumber ? "eye-off" : "eye"}
+                  size={22}
+                  color="#fff"
+                  style={{ marginTop: 2 }} // subtle nudge for perfect vertical alignment
+                />
+              </Pressable>
+            </View>
+
             <View style={styles.cardInfoRow}>
               <View>
                 <Text style={styles.label}>Card Holder</Text>
@@ -86,6 +103,7 @@ export default function CardDetailsScreen() {
                 <Text style={styles.info}>{card.expiry}</Text>
               </View>
             </View>
+
             <Text style={styles.cardType}>{card.type}</Text>
           </View>
 
@@ -125,7 +143,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   bankName: { color: "white", fontSize: 16, marginBottom: 20, fontWeight: "600" },
-  cardNumber: { color: "white", fontSize: 22, letterSpacing: 2, marginBottom: 20 },
+  // cardNumber: { color: "white", fontSize: 22, letterSpacing: 2, marginBottom: 20 },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
   info: { color: "white", fontSize: 16, fontWeight: "bold" },
@@ -151,5 +169,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#ddd",
+  },
+  cardNumberRow: {
+    marginBottom: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardNumber: {
+    color: "white",
+    fontSize: 22,
+    letterSpacing: 2,
+    lineHeight: 26, // ensures consistent baseline
   },
 });
