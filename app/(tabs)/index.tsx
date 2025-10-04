@@ -1,13 +1,19 @@
 import CardItem from "@/components/CardItem";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Link, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import { Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const cards = [
-    { id: "1", cardNumber: "**** **** **** 1234", cardHolder: "John Doe", expiry: "12/25", cardName: "Dummy Card 1" },
-    { id: "2", cardNumber: "**** **** **** 5678", cardHolder: "Jane Smith", expiry: "08/24", cardName: "Dummy Card 2" },
-  ];
+
+  const [cards, setCards] = useState<Array<{
+    id: string;
+    cardNumber: string;
+    cardHolder: string;
+    expiry: string;
+    cardName?: string;
+  }>>([]);
 
   const router = useRouter();
 
@@ -16,48 +22,68 @@ export default function HomeScreen() {
     avatar: "https://i.pravatar.cc/150?img=12",
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* Profile Section */}
+
+    // Load saved cards from AsyncStorage
+    useEffect(() => {
+      const fetchCards = async () => {
+        try {
+          const storedCards = await AsyncStorage.getItem("cards");
+          if (storedCards) {
+            const parsedCards = JSON.parse(storedCards);
+            // Add id if missing
+            const cardsWithId = parsedCards.map((card: any, index: number) => ({
+              id: card.id || String(index + 1),
+              ...card,
+            }));
+            setCards(cardsWithId);
+          }
+        } catch (err) {
+          console.error("Failed to load cards", err);
+        }
+      };
+  
+      fetchCards();
+    }, []);
+
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Profile Section */}
         <View style={styles.profileContainer}>
-        <Pressable
-            style={styles.profileContainer}
-            onPress={() => router.push("/profile")}
-          >
-          <Image
-            source={{ uri: user.avatar }} // placeholder avatar
-            style={styles.avatar}
-          />
+          <Pressable onPress={() => router.push("/profile")}>
+            <Image
+              source={{ uri: user.avatar }}
+              style={styles.avatar}
+            />
           </Pressable>
           <View style={styles.profileText}>
             <Text style={styles.greeting}>Hello,</Text>
             <Text style={styles.name}>{user.name}</Text>
           </View>
         </View>
-
-      <Text style={styles.title}>Your Cards</Text>
-
-      <FlatList
-        data={cards}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <CardItem
-            id={item.id}
-            cardName={item.cardName}
-            cardNumber={item.cardNumber}
-            cardHolder={item.cardHolder}
-            expiry={item.expiry}
-          />
-        )}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-      />
-
-      {/* Navigate to Add Card */}
-      <Link href="/add-card" asChild>
-        <Button title="Add New Card" />
-      </Link>
-    </SafeAreaView>
-  );
+  
+        <Text style={styles.title}>Your Cards</Text>
+  
+        <FlatList
+          data={cards}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <CardItem
+              id={item.id}
+              cardName={item.cardName || `Card ${item.id}`}
+              cardNumber={item.cardNumber}
+              cardHolder={item.cardHolder}
+              expiry={item.expiry}
+            />
+          )}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+        />
+  
+        {/* Navigate to Add Card */}
+        <Link href="/add-card" asChild>
+          <Button title="Add New Card" />
+        </Link>
+      </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
