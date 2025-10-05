@@ -81,7 +81,7 @@ export default function CardDetailsScreen() {
     console.log("Opening PiP with card:", card);
 
     if (card) { 
-      PipModule.openPip(card.cardNumber); // pass data as JSON
+      PipModule.openPip(JSON.stringify(card)); // pass data as JSON
     }
   };
 
