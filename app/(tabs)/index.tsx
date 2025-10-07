@@ -1,8 +1,10 @@
 import CardItem from "@/components/CardItem";
+import NoCards from "@/components/NoCards";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -23,27 +25,44 @@ export default function HomeScreen() {
   };
 
 
+  const fetchCards = async () => {
+    try {
+      const storedCards = await AsyncStorage.getItem("cards");
+      if (storedCards) {
+        const parsedCards = JSON.parse(storedCards);
+        const cardsWithId = parsedCards.map((card: any) => ({
+          id: card.id,
+          ...card,
+        }));
+
+        console.log("Loaded cards:", cardsWithId);
+        setCards(cardsWithId);
+      }
+    } catch (err) {
+      console.error("Failed to load cards", err);
+    }
+  };
+
     // Load saved cards from AsyncStorage
     useEffect(() => {
-      const fetchCards = async () => {
-        try {
-          const storedCards = await AsyncStorage.getItem("cards");
-          if (storedCards) {
-            const parsedCards = JSON.parse(storedCards);
-            // Add id if missing
-            const cardsWithId = parsedCards.map((card: any, index: number) => ({
-              id: card.id || String(index + 1),
-              ...card,
-            }));
-            setCards(cardsWithId);
-          }
-        } catch (err) {
-          console.error("Failed to load cards", err);
-        }
-      };
-  
       fetchCards();
     }, []);
+
+    const handleRemoveCard = (id: string) => {
+      Alert.alert(
+        "Remove Card",
+        "Are you sure you want to delete this card?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: async () => {
+              const updatedCards = cards.filter((card) => card.id !== id);
+              setCards(updatedCards);
+              await AsyncStorage.setItem("cards", JSON.stringify(updatedCards));
+            } 
+          },
+        ]
+      );
+    };
 
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -63,25 +82,30 @@ export default function HomeScreen() {
   
         <Text style={styles.title}>Your Cards</Text>
   
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <CardItem
-              id={item.id}
-              cardName={item.cardName || `Card ${item.id}`}
-              cardNumber={item.cardNumber}
-              cardHolder={item.cardHolder}
-              expiry={item.expiry}
-            />
-          )}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-        />
+        {cards.length === 0 ? (
+          <NoCards />
+        ) : (
+          <FlatList
+            data={cards}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <CardItem
+                id={item.id}
+                cardName={item.cardName || `Unnamed Card`}
+                cardNumber={maskAndFormatCardNumber(item.cardNumber)}
+                cardHolder={item.cardHolder}
+                expiry={item.expiry}
+                onDelete={handleRemoveCard}
+              />
+            )}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
+          />
+        )}
   
         {/* Navigate to Add Card */}
-        <Link href="/add-card" asChild>
+        {/* <Link href="/add-card" asChild>
           <Button title="Add New Card" />
-        </Link>
+        </Link> */}
       </SafeAreaView>
     );
 }
@@ -116,5 +140,24 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginHorizontal: 16,
     marginBottom: 12,
+  },
+  cardContainer: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    elevation: 2,
+  },
+  deleteButton: {
+    marginTop: 8,
+    alignSelf: "flex-end",
+    backgroundColor: "#ff4d4f",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  deleteText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

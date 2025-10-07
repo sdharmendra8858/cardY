@@ -1,9 +1,10 @@
 // components/CardForm.tsx
+import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 
 interface CardFormProps {
-  onSubmit: (card: { cardNumber: string; cardHolder: string; expiry: string, cvv:string, infoText: string }) => void;
+  onSubmit: (card: { id: string, cardNumber: string; cardHolder: string; expiry: string, cvv:string, infoText: string }) => void;
   defaultCardNumber?: string;
   defaultCardHolder?: string;
   defaultExpiry?: string;
@@ -19,14 +20,14 @@ export default function CardForm({
   defaultCvv = "",
   infoText,
 }: CardFormProps) {
+  const id = generateRandomString(5);
   const [cardNumber, setCardNumber] = useState(defaultCardNumber);
   const [cardHolder, setCardHolder] = useState(defaultCardHolder);
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [cvv, setCvv] = useState(defaultCvv);
-  const [showCvv, setShowCvv] = useState(false);
 
   const handleSubmit = () => {
-    onSubmit({ cardNumber, cardHolder, expiry, cvv, infoText: infoText || "" });
+    onSubmit({ id, cardNumber, cardHolder, expiry, cvv, infoText: infoText || "" });
   };
 
   useEffect(() => {
