@@ -2,9 +2,9 @@ import CardItem from "@/components/CardItem";
 import NoCards from "@/components/NoCards";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -103,9 +103,11 @@ export default function HomeScreen() {
         )}
   
         {/* Navigate to Add Card */}
-        {/* <Link href="/add-card" asChild>
+        {cards.length !== 0 && (  
+        <Link href="/add-card" asChild>
           <Button title="Add New Card" />
-        </Link> */}
+        </Link>
+        )}
       </SafeAreaView>
     );
 }

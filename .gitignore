@@ -40,4 +40,22 @@ app-example
 
 # generated native folders
 /ios
-/android
+
+
+android/app/build/
+android/build/
+android/.gradle/
+android/.cxx/
+android/captures/
+
+android/local.properties
+
+
+# Keep your custom code and resources
+!android/app/src/main/java/
+!android/app/src/main/res/
+!android/build.gradle
+!android/app/build.gradle
+!android/gradle.properties
+!android/gradle/wrapper/
+!android/settings.gradle
