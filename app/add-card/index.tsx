@@ -1,4 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  addCard as secureAddCard
+} from "@/utils/secureStorage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLayoutEffect } from "react";
 import { StyleSheet, Text, View, } from "react-native";
@@ -16,10 +18,7 @@ export default function AddCardScreen() {
 
   const saveCardLocally = async (card: { cardNumber: string; cardHolder: string; expiry: string; cvv: string; infoText: string }) => {
     try {
-      const existing = await AsyncStorage.getItem("cards");
-      const cards = existing ? JSON.parse(existing) : [];
-      cards.push(card);
-      await AsyncStorage.setItem("cards", JSON.stringify(cards));
+      await secureAddCard(card as any)
     } catch (error) {
       throw error;
     }

@@ -1,21 +1,26 @@
 import CardItem from "@/components/CardItem";
 import NoCards from "@/components/NoCards";
 import { maskAndFormatCardNumber } from "@/utils/mask";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Link, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import {
+  getCards as secureGetCards,
+  removeCard as secureRemoveCards
+} from "@/utils/secureStorage";
+import { Link, useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, Button, FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
 
-  const [cards, setCards] = useState<Array<{
-    id: string;
-    cardNumber: string;
-    cardHolder: string;
-    expiry: string;
-    cardName?: string;
-  }>>([]);
+  const [cards, setCards] = useState<
+    {
+      id: string;
+      cardNumber: string;
+      cardHolder: string;
+      expiry: string;
+      cardName?: string;
+    }[]
+  >([]);
 
   const router = useRouter();
 
@@ -27,26 +32,20 @@ export default function HomeScreen() {
 
   const fetchCards = async () => {
     try {
-      const storedCards = await AsyncStorage.getItem("cards");
-      if (storedCards) {
-        const parsedCards = JSON.parse(storedCards);
-        const cardsWithId = parsedCards.map((card: any) => ({
-          id: card.id,
-          ...card,
-        }));
+      const cardList = await secureGetCards();
 
-        console.log("Loaded cards:", cardsWithId);
-        setCards(cardsWithId);
-      }
+      setCards(cardList.map((c: any) => ({id: c.id, ...c})))
     } catch (err) {
       console.error("Failed to load cards", err);
     }
   };
 
     // Load saved cards from AsyncStorage
-    useEffect(() => {
-      fetchCards();
-    }, []);
+    useFocusEffect(
+      useCallback(() => {
+        fetchCards();
+      }, [])
+    );
 
     const handleRemoveCard = (id: string) => {
       Alert.alert(
@@ -55,9 +54,8 @@ export default function HomeScreen() {
         [
           { text: "Cancel", style: "cancel" },
           { text: "Delete", style: "destructive", onPress: async () => {
-              const updatedCards = cards.filter((card) => card.id !== id);
-              setCards(updatedCards);
-              await AsyncStorage.setItem("cards", JSON.stringify(updatedCards));
+              await secureRemoveCards(id);
+              await fetchCards();
             } 
           },
         ]
