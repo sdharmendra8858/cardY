@@ -1,3 +1,4 @@
+import Hero from "@/components/Hero";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -11,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PreviewScreen() {
   const router = useRouter();
@@ -117,7 +119,7 @@ export default function PreviewScreen() {
       VAD: "VALID", // common short OCR error
     };
 
-    const lines: Array<{ text: string; bbox: any; blockIndex: number; lineIndex: number }> = [];
+    const lines: { text: string; bbox: any; blockIndex: number; lineIndex: number }[] = [];
 
     (ocrResult.blocks || []).forEach((block: any, bIdx: number) => {
       (block.lines || []).forEach((ln: any, lIdx: number) => {
@@ -156,7 +158,7 @@ export default function PreviewScreen() {
    * Accepts the lines returned from processOcrResult (array of objects).
    * Returns { cardDetails, matchedLines } where matchedLines maps field -> { index, text, bbox } (useful for debugging/overlay)
    */
-  const parseOcrResult = (lineObjs: Array<{ text: string; bbox: any; blockIndex: number; lineIndex: number }>) => {
+  const parseOcrResult = (lineObjs: { text: string; bbox: any; blockIndex: number; lineIndex: number }[]) => {
     const cardDetails: { [k: string]: string } = {};
     const matchedLines: { [k: string]: { idx: number; text: string; bbox: any } } = {};
 
@@ -201,7 +203,7 @@ export default function PreviewScreen() {
 
     // 2) Expiry detection (prefer THRU if present)
     const expiryRegex = /\b(0[1-9]|1[0-2])\/(\d{2}|\d{4})\b/;
-    const expiryCandidates: Array<{ i: number; val: string; tag?: string }> = [];
+    const expiryCandidates: { i: number; val: string; tag?: string }[] = [];
     for (let i = 0; i < lineObjs.length; i++) {
       const item = lineObjs[i];
       const m = item.text.match(expiryRegex);
@@ -382,60 +384,71 @@ export default function PreviewScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* FRONT SECTION */}
-      <View style={styles.cardSection}>
-        <Text style={styles.sectionTitle}>Front of Card</Text>
-        {frontImage ? (
-          <Image source={{ uri: frontImage }} style={styles.cardImage} resizeMode="contain" />
-        ) : (
-          <View style={[styles.cardImage, styles.placeholder]}>
-            <Text style={styles.message}>No front image captured yet</Text>
-          </View>
-        )}
-      </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
 
-      {/* BACK SECTION */}
-      <View style={styles.cardSection}>
-        <Text style={styles.sectionTitle}>Back of Card</Text>
-        {backImage ? (
-          <Image source={{ uri: backImage }} style={styles.cardImage} resizeMode="contain" />
-        ) : (
-          <TouchableOpacity style={styles.captureBackButtonContainer} onPress={captureBack}>
-            <Text style={styles.captureBackButtonText}>Capture Back</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* OCR results */}
-      {extractedText ? (
-        <View style={styles.textContainer}>
-          <Text style={styles.textTitle}>Extracted Details:</Text>
-          <ScrollView style={styles.textScrollView}>
-            <Text style={styles.extractedText}>{extractedText}</Text>
-          </ScrollView>
+        <View style={{alignSelf: "stretch", marginBottom: 20}}>
+          <Hero 
+            title="Preview & Extract"
+            subtitle="Confirm images, then Extract"
+            tone="dark"
+            surfaceColor="#000"
+          />
         </View>
-      ) : null}
+        {/* FRONT SECTION */}
+        <View style={styles.cardSection}>
+          <Text style={styles.sectionTitle}>Front of Card</Text>
+          {frontImage ? (
+            <Image source={{ uri: frontImage }} style={styles.cardImage} resizeMode="contain" />
+          ) : (
+            <View style={[styles.cardImage, styles.placeholder]}>
+              <Text style={styles.message}>No front image captured yet</Text>
+            </View>
+          )}
+        </View>
 
-      {/* Buttons */}
-      <View style={styles.buttonContainer}>
-        {frontImage && backImage && (
-          <TouchableOpacity
-            style={[styles.button, styles.ocrButton]}
-            onPress={extractCardDetails}
-            disabled={isProcessing}
-          >
-            {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Extract Text</Text>}
-          </TouchableOpacity>
-        )}
+        {/* BACK SECTION */}
+        <View style={styles.cardSection}>
+          <Text style={styles.sectionTitle}>Back of Card</Text>
+          {backImage ? (
+            <Image source={{ uri: backImage }} style={styles.cardImage} resizeMode="contain" />
+          ) : (
+            <TouchableOpacity style={styles.captureBackButtonContainer} onPress={captureBack}>
+              <Text style={styles.captureBackButtonText}>Capture Back</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-        {extractedText && (
-          <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={saveCard}>
-            <Text style={styles.buttonText}>Save Card</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </ScrollView>
+        {/* OCR results */}
+        {extractedText ? (
+          <View style={styles.textContainer}>
+            <Text style={styles.textTitle}>Extracted Details:</Text>
+            <ScrollView style={styles.textScrollView}>
+              <Text style={styles.extractedText}>{extractedText}</Text>
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {/* Buttons */}
+        <View style={styles.buttonContainer}>
+          {frontImage && backImage && (
+            <TouchableOpacity
+              style={[styles.button, styles.ocrButton]}
+              onPress={extractCardDetails}
+              disabled={isProcessing}
+            >
+              {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Extract Text</Text>}
+            </TouchableOpacity>
+          )}
+
+          {extractedText && (
+            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={saveCard}>
+              <Text style={styles.buttonText}>Save Card</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
