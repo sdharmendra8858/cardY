@@ -1,9 +1,12 @@
 // app/add-card/scan.tsx
+import AppButton from "@/components/AppButton";
+import Hero from "@/components/Hero";
 import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CARD_ASPECT_RATIO = 85.6 / 53.98; // Debit card (width / height)
@@ -98,37 +101,43 @@ export default function ScanScreen() {
     );
 
   return (
-    <View style={styles.container}>
-      {/* Always keep camera mounted */}
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-
-      {/* Fixed rectangle guide */}
-      <View
-        style={[
-          styles.guide,
-          {
-            top: guideY,
-            left: guideX,
-            width: guideWidth,
-            height: guideHeight,
-          },
-        ]}
-        pointerEvents="none"
-      />
-
-      <View style={styles.bottomContainer}>
-        <Text style={styles.sideText}>
-          {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
-        </Text>
-        <TouchableOpacity
-          style={styles.captureButton}
-          onPress={handleCapture}
-          disabled={captureDisabled}
-        >
-          <Text style={styles.captureText}>Capture</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={{alignSelf: "stretch"}}>
+        <Hero
+          title="Capture Card"
+          subtitle="Align card within the guid"
+          tone="dark"
+          surfaceColor="#000"
+        />
       </View>
-    </View>
+        {/* Always keep camera mounted */}
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+
+        {/* Fixed rectangle guide */}
+        <View
+          style={[
+            styles.guide,
+            {
+              top: guideY,
+              left: guideX,
+              width: guideWidth,
+              height: guideHeight,
+            },
+          ]}
+          pointerEvents="none"
+        />
+
+        <View style={styles.bottomContainer}>
+          <Text style={styles.sideText}>
+            {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
+          </Text>
+          <AppButton
+            title="Capture"
+            onPress={handleCapture}
+            disabled={captureDisabled}
+          />
+        </View>
+      </SafeAreaView>
   );
 }
 
@@ -154,11 +163,4 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 16,
   },
-  captureButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-  },
-  captureText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

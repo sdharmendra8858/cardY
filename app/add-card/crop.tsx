@@ -1,4 +1,5 @@
 // app/add-card/crop.tsx
+import Hero from "@/components/Hero";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useLayoutEffect, useState } from "react";
@@ -10,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type CropBox = { x: number; y: number; width: number; height: number };
 
@@ -29,7 +31,7 @@ export default function CropScreen() {
       cropWidth: string;
       cropHeight: string;
       side: string;
-      frontUri: string
+      frontUri: string;
     }>();
 
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
@@ -159,10 +161,9 @@ export default function CropScreen() {
       height: Math.round(cropBox.height * scaleY),
     };
 
-    const croppedUri = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ crop }],
-      { format: ImageManipulator.SaveFormat.JPEG }
+    const croppedUri = await ImageManipulator.manipulateAsync(uri, [{ crop }], { 
+      format: ImageManipulator.SaveFormat.JPEG,
+      }
     );
 
     router.push({
@@ -170,56 +171,64 @@ export default function CropScreen() {
       params: {
         uri: croppedUri.uri, // result of cropping
         side,
-        frontUri,        // pass if this was front capture
+        frontUri, // pass if this was front capture
       },
     });
   };
 
   return (
-    <View style={styles.container}>
-      {uri && (
-        <Image
-          source={{ uri }}
-          style={styles.image}
-          resizeMode="contain"
-          onLayout={(e) =>
-            setImageLayout({
-              width: e.nativeEvent.layout.width,
-              height: e.nativeEvent.layout.height,
-            })
-          }
-        />
-      )}
-
-      {/* Crop rectangle */}
-      <View
-        style={[
-          styles.cropBox,
-          {
-            top: cropBox.y,
-            left: cropBox.x,
-            width: cropBox.width,
-            height: cropBox.height,
-          },
-        ]}
-      >
-        {/* corner handles */}
-        <View style={[styles.handle, { top: -12, left: -12 }]} {...responders.topLeft.panHandlers} />
-        <View style={[styles.handle, { top: -12, right: -12 }]} {...responders.topRight.panHandlers} />
-        <View style={[styles.handle, { bottom: -12, left: -12 }]} {...responders.bottomLeft.panHandlers} />
-        <View style={[styles.handle, { bottom: -12, right: -12 }]} {...responders.bottomRight.panHandlers} />
-
-        {/* edge handles */}
-        <View style={[styles.edgeHandle, { top: -10, left: "40%", right: "40%" }]} {...responders.top.panHandlers} />
-        <View style={[styles.edgeHandle, { bottom: -10, left: "40%", right: "40%" }]} {...responders.bottom.panHandlers} />
-        <View style={[styles.edgeHandle, { left: -10, top: "40%", bottom: "40%" }]} {...responders.left.panHandlers} />
-        <View style={[styles.edgeHandle, { right: -10, top: "40%", bottom: "40%" }]} {...responders.right.panHandlers} />
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={{alignSelf: "stretch"}}>
+        <Hero 
+          title="Adjust Your Card"
+          subtitle="Resize the crop box precisely"
+          tone="dark"
+          surfaceColor="#000"
+          />
       </View>
+        {uri && (
+          <Image
+            source={{ uri }}
+            style={styles.image}
+            resizeMode="contain"
+            onLayout={(e) =>
+              setImageLayout({
+                width: e.nativeEvent.layout.width,
+                height: e.nativeEvent.layout.height,
+              })
+            }
+          />
+        )}
 
-      <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
-        <Text style={styles.cropText}>Crop & Preview</Text>
-      </TouchableOpacity>
-    </View>
+        {/* Crop rectangle */}
+        <View
+          style={[
+            styles.cropBox,
+            {
+              top: cropBox.y,
+              left: cropBox.x,
+              width: cropBox.width,
+              height: cropBox.height,
+            },
+          ]}
+        >
+          {/* corner handles */}
+          <View style={[styles.handle, { top: -12, left: -12 }]} {...responders.topLeft.panHandlers} />
+          <View style={[styles.handle, { top: -12, right: -12 }]} {...responders.topRight.panHandlers} />
+          <View style={[styles.handle, { bottom: -12, left: -12 }]} {...responders.bottomLeft.panHandlers} />
+          <View style={[styles.handle, { bottom: -12, right: -12 }]} {...responders.bottomRight.panHandlers} />
+
+          {/* edge handles */}
+          <View style={[styles.edgeHandle, { top: -10, left: "40%", right: "40%" }]} {...responders.top.panHandlers} />
+          <View style={[styles.edgeHandle, { bottom: -10, left: "40%", right: "40%" }]} {...responders.bottom.panHandlers} />
+          <View style={[styles.edgeHandle, { left: -10, top: "40%", bottom: "40%" }]} {...responders.left.panHandlers} />
+          <View style={[styles.edgeHandle, { right: -10, top: "40%", bottom: "40%" }]} {...responders.right.panHandlers} />
+        </View>
+
+        <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
+          <Text style={styles.cropText}>Crop & Preview</Text>
+        </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 

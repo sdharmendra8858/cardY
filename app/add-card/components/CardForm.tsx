@@ -1,7 +1,8 @@
 // components/CardForm.tsx
+import AppButton from "@/components/AppButton";
 import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 
 interface CardFormProps {
   onSubmit: (card: { id: string, cardNumber: string; cardHolder: string; expiry: string, cvv:string, infoText: string }) => void;
@@ -89,6 +90,7 @@ export default function CardForm({
           style={styles.input}
           placeholder="CVV"
           value={cvv}
+          keyboardType="numeric"
           onChangeText={(text) => {
             const numeric = text.replace(/[^0-9]/g, "");
             setCvv(numeric ? String(Number(numeric)) : "");
@@ -96,7 +98,12 @@ export default function CardForm({
         />
       </View>
 
-      <Button title="Add Card" onPress={handleSubmit} />
+      <AppButton 
+        title="Add Card" 
+        onPress={handleSubmit} 
+        fullWidth
+        variant="primary"
+      />
     </View>
   );
 }

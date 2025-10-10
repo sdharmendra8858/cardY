@@ -1,9 +1,11 @@
+import Hero from "@/components/Hero";
 import {
   addCard as secureAddCard
 } from "@/utils/secureStorage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLayoutEffect } from "react";
-import { StyleSheet, Text, View, } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
 import ScanButton from "./components/ScanButton";
 
@@ -50,23 +52,30 @@ export default function AddCardScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Add a New Card</Text>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Hero 
+        title="Add a new Card"
+        subtitle="Scan or enter details manually"
+        tone="dark"
+        surfaceColor="#F2F2F2"
+        />
+      <View style={styles.content}>
+        <ScanButton onPress={handleScan} />
 
-      <ScanButton onPress={handleScan} />
-
-      <CardForm
-        onSubmit={handleManualAdd}
-        defaultCardNumber={defaultCardNumber}
-        defaultCardHolder={defaultCardHolder}
-        defaultExpiry={defaultExpiry}
-        defaultCvv={defaultCvv}
-      />
-    </View>
+        <CardForm
+          onSubmit={handleManualAdd}
+          defaultCardNumber={defaultCardNumber}
+          defaultCardHolder={defaultCardHolder}
+          defaultExpiry={defaultExpiry}
+          defaultCvv={defaultCvv}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#f2f2f2" },
+  container: { flex: 1, backgroundColor: "#f2f2f2" },
+  content: { padding: 16 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 24, textAlign: "center" },
 });

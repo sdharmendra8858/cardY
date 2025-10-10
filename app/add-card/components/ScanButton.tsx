@@ -1,5 +1,5 @@
 // app/add-card/components/ScanButton.tsx
-import { Pressable, StyleSheet, Text } from "react-native";
+import AppButton from "@/components/AppButton";
 
 interface ScanButtonProps {
   onPress: () => void;
@@ -7,21 +7,5 @@ interface ScanButtonProps {
 }
 
 export default function ScanButton({ onPress, title = "Scan Card" }: ScanButtonProps) {
-  return (
-    <Pressable style={styles.button} onPress={onPress}>
-      <Text style={styles.text}>{title}</Text>
-    </Pressable>
-  );
+  return <AppButton title={title} onPress={onPress} variant="primary"/>
 }
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: "#4b7bec",
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 8,
-  },
-  text: { color: "white", fontSize: 16, fontWeight: "bold" },
-});

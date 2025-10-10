@@ -1,5 +1,7 @@
 // app/card-details/[cardName].tsx
+import AppButton from "@/components/AppButton";
 import CardNotFound from "@/components/CardNotFound";
+import Hero from "@/components/Hero";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
@@ -8,7 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Button, NativeModules, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, NativeModules, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 
@@ -84,11 +86,24 @@ export default function CardDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Hero 
+        title="Card Details"
+        subtitle="View and manage this card"
+        tone="dark"
+        surfaceColor="#F2F2F2"
+      />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Card Front */}
           <View style={styles.cardFront}>
             <Text style={styles.bankName}>{card.bank}</Text>
+            <Pressable
+              onPress={openPip}
+              style={styles.pipIconButton}
+              hitSlop={10}
+            >
+              <Ionicons name="contract-outline" size={22} color="#FFF"/>
+            </Pressable>
 
             {/* Card Number with Eye Icon */}
             <View style={styles.cardNumberRow}>
@@ -130,9 +145,9 @@ export default function CardDetailsScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.footer}>
-          <Button title="Delete Card" color="red" onPress={handleDelete} />
+          <AppButton title="Delete Card" variant="danger" onPress={handleDelete} />
           <View style={{ height: 10 }} />
-          <Button title="Back to Home" onPress={() => router.push("/")} />
+          <AppButton title="Back to Home" variant="secondary" onPress={() => router.push("/")} />
         </View>
       </View>
     </SafeAreaView>
@@ -177,9 +192,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#ddd",
   },
   cardNumberRow: {
     marginBottom: 20,
@@ -193,4 +205,12 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     lineHeight: 26,
   },
+  pipIconButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "rgba(255,255,255, 0.2",
+    borderRadius: 16,
+    padding: 8
+  }
 });
