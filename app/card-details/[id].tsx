@@ -1,15 +1,17 @@
 // app/card-details/[cardName].tsx
 import CardNotFound from "@/components/CardNotFound";
 import { maskAndFormatCardNumber } from "@/utils/mask";
+import {
+  getCards as secureGetCards,
+  removeCard as secureRemoveCard
+} from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Button, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, Button, NativeModules, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Import PipModule from native module
-import { NativeModules } from "react-native";
+
 const { PipModule } = NativeModules;
 
 export default function CardDetailsScreen() {
@@ -18,6 +20,14 @@ export default function CardDetailsScreen() {
   const [showNumber, setShowNumber] = useState(false);
   const router = useRouter();
   const navigation = useNavigation();
+
+  const openPip = useCallback(() => {
+    console.log("Opening PiP with card:", card);
+  
+    if (card) { 
+      PipModule.openPip(JSON.stringify(card)); // pass data as JSON
+    }
+  }, [card]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -29,17 +39,14 @@ export default function CardDetailsScreen() {
           </Pressable>
         ) : null,
     });
-  }, [navigation, card]); // include card here!
+  }, [navigation, card, openPip]); // include card here!
 
   useEffect(() => {
     const loadCard = async () => {
       try {
-        const storedCards = await AsyncStorage.getItem("cards");
-        if (storedCards) {
-          const parsed = JSON.parse(storedCards);
-          const found = parsed.find((c: any) => c.id === id);
-          if (found) setCard(found);
-        }
+        const list = await secureGetCards()
+        const found = list.find((c) => c.id === id)
+        if(found) setCard(found);
       } catch (err) {
         console.error("Error loading card details", err);
       }
@@ -59,12 +66,7 @@ export default function CardDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const storedCards = await AsyncStorage.getItem("cards");
-              if (storedCards) {
-                const parsed = JSON.parse(storedCards);
-                const updated = parsed.filter((c: any) => c.id !== id);
-                await AsyncStorage.setItem("cards", JSON.stringify(updated));
-              }
+              await secureRemoveCard(id)
               router.replace("/"); // go back to home
             } catch (err) {
               console.error("Error deleting card:", err);
@@ -74,15 +76,6 @@ export default function CardDetailsScreen() {
         },
       ]
     );
-  };
-
-  const openPip = () => {
-    // Pass card as query param
-    console.log("Opening PiP with card:", card);
-
-    if (card) { 
-      PipModule.openPip(JSON.stringify(card)); // pass data as JSON
-    }
   };
 
   if (!card) {
