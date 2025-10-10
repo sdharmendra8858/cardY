@@ -4,7 +4,8 @@ import {
 } from "@/utils/secureStorage";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLayoutEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
 import ScanButton from "./components/ScanButton";
@@ -52,14 +53,22 @@ export default function AddCardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <Hero 
         title="Add a new Card"
         subtitle="Scan or enter details manually"
         tone="dark"
         surfaceColor="#F2F2F2"
         />
-      <View style={styles.content}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        enableAutomaticScroll
+        extraHeight={120}
+        extraScrollHeight={120}
+        showsVerticalScrollIndicator={false}
+      >
         <ScanButton onPress={handleScan} />
 
         <CardForm
@@ -69,13 +78,14 @@ export default function AddCardScreen() {
           defaultExpiry={defaultExpiry}
           defaultCvv={defaultCvv}
         />
-      </View>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f2f2f2" },
-  content: { padding: 16 },
+  flex: {flex: 1},
+  content: { padding: 16, paddingBottom: 160, flexGrow: 1 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 24, textAlign: "center" },
 });
