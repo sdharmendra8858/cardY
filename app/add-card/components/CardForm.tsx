@@ -3,9 +3,9 @@ import AppButton from "@/components/AppButton";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateRandomString } from "@/utils/random";
-import { Picker } from "@react-native-picker/picker";
 import { useEffect, useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 import { BANK_OPTIONS } from "../../../constants/banks";
 
 function formatCardNumberForDisplay(raw: string): string {
@@ -90,6 +90,7 @@ export default function CardForm({
   const [cvv, setCvv] = useState(defaultCvv);
   const [bank, setBank] = useState<string>("");
   const [customBank, setCustomBank] = useState<string>("");
+  const [bankOpen, setBankOpen] = useState(false);
 
   const handleSubmit = () => {
     const bankToSave =
@@ -143,30 +144,25 @@ export default function CardForm({
 
       <View style={styles.field}>
         <Text style={styles.label}>Bank</Text>
-        <View
-          style={[
-            styles.pickerWrapper,
-            { borderColor: "#e5e7eb", backgroundColor: theme.background },
+        <DropDownPicker
+          open={bankOpen}
+          setOpen={setBankOpen}
+          value={bank}
+          setValue={(cb) => {
+            const v = cb(bank);
+            setBank(v || "");
+          }}
+          items={[
+            ...BANK_OPTIONS.slice().sort((a,b) => a.label.localeCompare(b.label)),
+            {label: "Other", value: "OTHER"},
           ]}
-        >
-          <Picker
-            selectedValue={bank}
-            onValueChange={(v: string) => setBank(v)}
-            style={[styles.picker, { color: theme.text }]}
-            itemStyle={styles.pickerItem}
-            dropdownIconColor={theme.icon}
-            prompt="Select bank"
-            mode="dropdown"
-          >
-            <Picker.Item label="Select a bank" value="" />
-            {BANK_OPTIONS.slice()
-              .sort((a, b) => a.label.localeCompare(b.label))
-              .map((b) => (
-                <Picker.Item key={b.value} label={b.label} value={b.value} />
-              ))}
-            <Picker.Item label="Other" value="OTHER" />
-          </Picker>
-        </View>
+          placeholder="Select a Bank"
+          style={{borderColor: "#CCC", minHeight: 50}}
+          dropDownContainerStyle={{ borderColor: "#CCC" }}
+          listMode="SCROLLVIEW"
+          disableBorderRadius={false}
+          zIndex={5000}
+        />
       </View>
 
       {bank === "OTHER" ? (
