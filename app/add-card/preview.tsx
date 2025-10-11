@@ -36,7 +36,6 @@ export default function PreviewScreen() {
     backUri || (side === "back" ? uri : undefined)
   );
 
-  const [extractedText, setExtractedText] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
 
   // ✅ Update images only when params change
@@ -344,18 +343,18 @@ export default function PreviewScreen() {
       console.log("Back matched lines:", backParsed.matchedLines);
       console.log("Combined extracted details:", combined);
 
-      setExtractedText(JSON.stringify(combined, null, 2));
       Alert.alert("Card Details Extracted", "Review the extracted details below.");
 
       // After successful OCR extraction
       const navigateBackWithDetails = () => {
-        router.replace({
+        router.push({
           pathname: "/add-card",
           params: {
             defaultCardNumber: combined.cardNumber,
             defaultCardHolder: combined.cardHolderName,
             defaultExpiry: combined.expiryDate,
             defaultCvv: combined.cvv, // you extracted this too
+            fromExtract: "true",
           },
         });
       };
@@ -370,11 +369,11 @@ export default function PreviewScreen() {
     }
   };
 
-  const saveCard = () => {
-    Alert.alert("Card Saved", "Your card has been saved successfully!", [
-      { text: "OK", onPress: () => router.push("/") },
-    ]);
-  };
+  // const saveCard = () => {
+  //   Alert.alert("Card Saved", "Your card has been saved successfully!", [
+  //     { text: "OK", onPress: () => router.push("/") },
+  //   ]);
+  // };
 
   const captureBack = () => {
     router.push({
@@ -419,16 +418,6 @@ export default function PreviewScreen() {
           )}
         </View>
 
-        {/* OCR results */}
-        {extractedText ? (
-          <View style={styles.textContainer}>
-            <Text style={styles.textTitle}>Extracted Details:</Text>
-            <ScrollView style={styles.textScrollView}>
-              <Text style={styles.extractedText}>{extractedText}</Text>
-            </ScrollView>
-          </View>
-        ) : null}
-
         {/* Buttons */}
         <View style={styles.buttonContainer}>
           {frontImage && backImage && (
@@ -438,12 +427,6 @@ export default function PreviewScreen() {
               disabled={isProcessing}
             >
               {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Extract Text</Text>}
-            </TouchableOpacity>
-          )}
-
-          {extractedText && (
-            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={saveCard}>
-              <Text style={styles.buttonText}>Save Card</Text>
             </TouchableOpacity>
           )}
         </View>

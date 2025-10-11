@@ -8,7 +8,8 @@ import {
   removeCard as secureRemoveCard
 } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { StackActions, useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, NativeModules, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -69,7 +70,7 @@ export default function CardDetailsScreen() {
           onPress: async () => {
             try {
               await secureRemoveCard(id)
-              router.replace("/"); // go back to home
+              navigation.dispatch(StackActions.popToTop())
             } catch (err) {
               console.error("Error deleting card:", err);
               Alert.alert("Error", "Failed to delete the card. Please try again.");
@@ -147,7 +148,7 @@ export default function CardDetailsScreen() {
         <View style={styles.footer}>
           <AppButton title="Delete Card" variant="danger" onPress={handleDelete} />
           <View style={{ height: 10 }} />
-          <AppButton title="Back to Home" variant="secondary" onPress={() => router.push("/")} />
+          <AppButton title="Back to Home" variant="secondary" onPress={() => navigation.dispatch(StackActions.popToTop())} />
         </View>
       </View>
     </SafeAreaView>
