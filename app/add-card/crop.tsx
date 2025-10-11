@@ -2,8 +2,14 @@
 import Hero from "@/components/Hero";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import {
+  Dimensions,
   Image,
   PanResponder,
   StyleSheet,
@@ -11,14 +17,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 type CropBox = { x: number; y: number; width: number; height: number };
 
 export default function CropScreen() {
   const router = useRouter();
-
   const navigation = useNavigation();
+  const screenWidth = Dimensions.get("window").width;
+  const screenHeight = Dimensions.get("window").height;
+
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Adjust Your Card" });
   }, [navigation]);
@@ -34,9 +45,22 @@ export default function CropScreen() {
       frontUri: string;
     }>();
 
-  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+  const [imageLayout, setImageLayout] = useState({
+    width: screenWidth,
+    height: screenHeight,
+  });
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [containerTop, setContainerTop] = useState(0);
+  const [containerMeasured, setContainerMeasured] = useState(false);
+  const [hasAdjusted, setHasAdjusted] = useState(false);
+  const insets = useSafeAreaInsets();
 
+  useEffect(() => {
+    if (!uri) return;
+    Image.getSize(uri, (width, height) => setImageSize({ width, height }));
+  }, [uri]);
+
+  // Keep green box exactly same as previous screen
   const [cropBox, setCropBox] = useState<CropBox>({
     x: Number(cropX),
     y: Number(cropY),
@@ -44,37 +68,58 @@ export default function CropScreen() {
     height: Number(cropHeight),
   });
 
-  // get actual image size
+  const clampBox = useCallback(
+    (box: CropBox): CropBox => {
+      const minSize = 60;
+      let newBox = { ...box };
+      if (newBox.width < minSize) newBox.width = minSize;
+      if (newBox.height < minSize) newBox.height = minSize;
+      if (newBox.x < 0) newBox.x = 0;
+      if (newBox.y < 0) newBox.y = 0;
+      if (newBox.x + newBox.width > imageLayout.width)
+        newBox.width = imageLayout.width - newBox.x;
+      if (newBox.y + newBox.height > imageLayout.height)
+        newBox.height = imageLayout.height - newBox.y;
+      return newBox;
+    },
+    [imageLayout]
+  );
+
+  // Adjust initial cropBox to account for the vertical offset introduced by Hero/SafeAreaView
   useEffect(() => {
-    if (!uri) return;
-    Image.getSize(uri, (width, height) => setImageSize({ width, height }));
-  }, [uri]);
+    if (hasAdjusted || !containerMeasured) return;
+    if (
+      typeof cropY === "string" &&
+      typeof cropX === "string" &&
+      typeof cropWidth === "string" &&
+      typeof cropHeight === "string"
+    ) {
+      const adjusted: CropBox = {
+        x: Number(cropX),
+        y: Math.max(0, Number(cropY) - containerTop - (insets?.top ?? 0)),
+        width: Number(cropWidth),
+        height: Number(cropHeight),
+      };
+      setCropBox(clampBox(adjusted));
+      setHasAdjusted(true);
+    }
+  }, [
+    containerMeasured,
+    containerTop,
+    hasAdjusted,
+    cropX,
+    cropY,
+    cropWidth,
+    cropHeight,
+    clampBox,
+    insets,
+  ]);
 
-  // utility: clamp box inside screen
-  const clampBox = (box: CropBox): CropBox => {
-    const minSize = 60;
-    let newBox = { ...box };
-
-    if (newBox.width < minSize) newBox.width = minSize;
-    if (newBox.height < minSize) newBox.height = minSize;
-
-    if (newBox.x < 0) newBox.x = 0;
-    if (newBox.y < 0) newBox.y = 0;
-    if (newBox.x + newBox.width > imageLayout.width)
-      newBox.width = imageLayout.width - newBox.x;
-    if (newBox.y + newBox.height > imageLayout.height)
-      newBox.height = imageLayout.height - newBox.y;
-
-    return newBox;
-  };
-
-  // PanResponder generator for each handle
   const createHandleResponder = (corner: string) =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: (_, { dx, dy }) => {
         let newBox = { ...cropBox };
-
         switch (corner) {
           case "topLeft":
             newBox.x += dx;
@@ -111,12 +156,10 @@ export default function CropScreen() {
             newBox.width += dx;
             break;
         }
-
         setCropBox(clampBox(newBox));
       },
     });
 
-  // create all responders
   const responders = {
     topLeft: createHandleResponder("topLeft"),
     topRight: createHandleResponder("topRight"),
@@ -130,29 +173,31 @@ export default function CropScreen() {
 
   const handleCrop = async () => {
     if (!uri) return;
+    const { width: imgW, height: imgH } = imageSize;
+    const { width: containerW, height: containerH } = imageLayout;
 
-    const displayedWidth = imageLayout.width;
-    const displayedHeight = imageLayout.height;
+    const imageAspect = imgW / imgH;
+    const containerAspect = containerW / containerH;
 
-    const imageAspect = imageSize.width / imageSize.height;
-    const containerAspect = displayedWidth / displayedHeight;
-
-    let offsetX = 0;
-    let offsetY = 0;
-    let scaleX = 1;
-    let scaleY = 1;
+    let renderW,
+      renderH,
+      offsetX = 0,
+      offsetY = 0;
 
     if (imageAspect > containerAspect) {
-      const scaledHeight = displayedWidth / imageAspect;
-      offsetY = (displayedHeight - scaledHeight) / 2;
-      scaleX = imageSize.width / displayedWidth;
-      scaleY = imageSize.height / scaledHeight;
+      renderH = containerH;
+      renderW = renderH * imageAspect;
+      offsetX = (containerW - renderW) / 2;
+      offsetY = 0;
     } else {
-      const scaledWidth = displayedHeight * imageAspect;
-      offsetX = (displayedWidth - scaledWidth) / 2;
-      scaleX = imageSize.width / scaledWidth;
-      scaleY = imageSize.height / displayedHeight;
+      renderW = containerW;
+      renderH = renderW / imageAspect;
+      offsetX = 0;
+      offsetY = (containerH - renderH) / 2;
     }
+
+    const scaleX = imgW / renderW;
+    const scaleY = imgH / renderH;
 
     const crop = {
       originX: Math.round((cropBox.x - offsetX) * scaleX),
@@ -161,36 +206,41 @@ export default function CropScreen() {
       height: Math.round(cropBox.height * scaleY),
     };
 
-    const croppedUri = await ImageManipulator.manipulateAsync(uri, [{ crop }], { 
+    const result = await ImageManipulator.manipulateAsync(uri, [{ crop }], {
       format: ImageManipulator.SaveFormat.JPEG,
-      }
-    );
+    });
 
     router.push({
       pathname: "/add-card/preview",
-      params: {
-        uri: croppedUri.uri, // result of cropping
-        side,
-        frontUri, // pass if this was front capture
-      },
+      params: { uri: result.uri, side, frontUri },
     });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={{alignSelf: "stretch"}}>
-        <Hero 
-          title="Adjust Your Card"
-          subtitle="Resize the crop box precisely"
-          tone="dark"
-          surfaceColor="#000"
-          />
-      </View>
-        {uri && (
+      <Hero
+        title="Adjust Your Card"
+        subtitle="Resize the crop box precisely"
+        tone="dark"
+        surfaceColor="#000"
+      />
+
+      {uri && (
+        <View
+          style={styles.imageContainer}
+          onLayout={(e) => {
+            setContainerTop(e.nativeEvent.layout.y);
+            setContainerMeasured(true);
+          }}
+        >
           <Image
             source={{ uri }}
-            style={styles.image}
-            resizeMode="contain"
+            style={[
+              styles.image,
+              {
+                resizeMode: "cover",
+              },
+            ]}
             onLayout={(e) =>
               setImageLayout({
                 width: e.nativeEvent.layout.width,
@@ -198,47 +248,61 @@ export default function CropScreen() {
               })
             }
           />
-        )}
 
-        {/* Crop rectangle */}
-        <View
-          style={[
-            styles.cropBox,
-            {
-              top: cropBox.y,
-              left: cropBox.x,
-              width: cropBox.width,
-              height: cropBox.height,
-            },
-          ]}
-        >
-          {/* corner handles */}
-          <View style={[styles.handle, { top: -12, left: -12 }]} {...responders.topLeft.panHandlers} />
-          <View style={[styles.handle, { top: -12, right: -12 }]} {...responders.topRight.panHandlers} />
-          <View style={[styles.handle, { bottom: -12, left: -12 }]} {...responders.bottomLeft.panHandlers} />
-          <View style={[styles.handle, { bottom: -12, right: -12 }]} {...responders.bottomRight.panHandlers} />
-
-          {/* edge handles */}
-          <View style={[styles.edgeHandle, { top: -10, left: "40%", right: "40%" }]} {...responders.top.panHandlers} />
-          <View style={[styles.edgeHandle, { bottom: -10, left: "40%", right: "40%" }]} {...responders.bottom.panHandlers} />
-          <View style={[styles.edgeHandle, { left: -10, top: "40%", bottom: "40%" }]} {...responders.left.panHandlers} />
-          <View style={[styles.edgeHandle, { right: -10, top: "40%", bottom: "40%" }]} {...responders.right.panHandlers} />
+          {/* Green Crop Overlay */}
+          {hasAdjusted && (
+            <View style={styles.overlay}>
+              <View
+                style={{
+                  position: "absolute",
+                  top: cropBox.y,
+                  left: cropBox.x,
+                  width: cropBox.width,
+                  height: cropBox.height,
+                  borderWidth: 2,
+                  borderColor: "lime",
+                }}
+              >
+                {/* Handles */}
+                <View
+                  style={[styles.handle, { top: -12, left: -12 }]}
+                  {...responders.topLeft.panHandlers}
+                />
+                <View
+                  style={[styles.handle, { top: -12, right: -12 }]}
+                  {...responders.topRight.panHandlers}
+                />
+                <View
+                  style={[styles.handle, { bottom: -12, left: -12 }]}
+                  {...responders.bottomLeft.panHandlers}
+                />
+                <View
+                  style={[styles.handle, { bottom: -12, right: -12 }]}
+                  {...responders.bottomRight.panHandlers}
+                />
+              </View>
+            </View>
+          )}
         </View>
+      )}
 
-        <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
-          <Text style={styles.cropText}>Crop & Preview</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
+        <Text style={styles.cropText}>Crop & Preview</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+  imageContainer: { flex: 1 },
   image: { flex: 1, width: "100%", height: "100%" },
-  cropBox: {
+  overlay: {
     position: "absolute",
-    borderWidth: 2,
-    borderColor: "lime",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   handle: {
     position: "absolute",
@@ -246,12 +310,6 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: "lime",
     borderRadius: 12,
-  },
-  edgeHandle: {
-    position: "absolute",
-    backgroundColor: "lime",
-    height: 20,
-    width: 40,
   },
   cropButton: {
     position: "absolute",
@@ -262,4 +320,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cropText: { color: "#fff", fontWeight: "bold" },
+  debugBox: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    backgroundColor: "#0008",
+    padding: 6,
+    borderRadius: 6,
+  },
+  debugText: { color: "#0f0", fontSize: 10 },
 });

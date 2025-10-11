@@ -50,6 +50,7 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log("ScanScreen focused, resuming camera");
+      setCaptureDisabled(false)
       cameraRef.current?.resumePreview?.();
 
       return () => {
