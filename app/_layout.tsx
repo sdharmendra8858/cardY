@@ -5,7 +5,6 @@ import {
 } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
@@ -42,7 +41,7 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <Stack screenOptions={{headerShown: false}} />
-        <StatusBar style="auto" />
+        {/* <StatusBar style="auto" /> */}
       </SafeAreaProvider>
     </ThemeProvider>
   );

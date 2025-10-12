@@ -2,9 +2,10 @@ import Hero from "@/components/Hero";
 import {
   addCard as secureAddCard
 } from "@/utils/secureStorage";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useLayoutEffect } from "react";
-import { StyleSheet } from "react-native";
+import { StackActions, useNavigation } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useLayoutEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
@@ -12,12 +13,27 @@ import ScanButton from "./components/ScanButton";
 
 export default function AddCardScreen() {
   const router = useRouter();
-  const { defaultCardNumber, defaultCardHolder, defaultExpiry, defaultCvv } = useLocalSearchParams<{
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('state', () => {
+      console.log("Current navigation stack:", JSON.stringify(navigation.getState(), null, 2));
+    });
+
+    // Optional: log immediately
+    console.log("Initial navigation state:", JSON.stringify(navigation.getState(), null, 2));
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const { defaultCardNumber, defaultCardHolder, defaultExpiry, defaultCvv, fromExtract } = useLocalSearchParams<{
     defaultCardNumber?: string;
     defaultCardHolder?: string;
     defaultExpiry?: string;
     defaultCvv?: string;
+    fromExtract?: string;
   }>();
+  const hideScanButton = fromExtract === "true";
 
   const saveCardLocally = async (card: { cardNumber: string; cardHolder: string; expiry: string; cvv: string; infoText: string }) => {
     try {
@@ -27,7 +43,6 @@ export default function AddCardScreen() {
     }
   };
 
-  const navigation = useNavigation();
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Add Card" });
   }, [navigation]);
@@ -44,7 +59,7 @@ export default function AddCardScreen() {
     saveCardLocally(card)
       .then(() => {
         // 2️⃣ Navigate to home screen after saving
-        router.replace("/"); // or router.push("/") if you want back button
+        navigation.dispatch(StackActions.popToTop())
       })
       .catch((err) => {
         console.error("Failed to save card:", err);
@@ -69,7 +84,17 @@ export default function AddCardScreen() {
         extraScrollHeight={120}
         showsVerticalScrollIndicator={false}
       >
-        <ScanButton onPress={handleScan} />
+        {!hideScanButton && (
+          <>
+            <ScanButton onPress={handleScan} />
+
+            <View style={styles.orSeparatorContainer}>
+              <View style={styles.line} />
+              <Text style={styles.orText}>OR</Text>
+              <View style={styles.line} />
+            </View>
+          </>
+        )}
 
         <CardForm
           onSubmit={handleManualAdd}
@@ -88,4 +113,19 @@ const styles = StyleSheet.create({
   flex: {flex: 1},
   content: { padding: 16, paddingBottom: 160, flexGrow: 1 },
   title: { fontSize: 24, fontWeight: "bold", marginBottom: 24, textAlign: "center" },
+  orSeparatorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ccc",
+  },
+  orText: {
+    marginHorizontal: 8,
+    fontWeight: "bold",
+    color: "#666",
+  },
 });
