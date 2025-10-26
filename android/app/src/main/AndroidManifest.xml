@@ -4,59 +4,40 @@
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
   <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-
-  <application
-      android:name=".MainApplication"
-      android:allowBackup="true"
-      android:label="@string/app_name"
-      android:icon="@mipmap/ic_launcher"
-      android:roundIcon="@mipmap/ic_launcher_round"
-      android:theme="@style/AppTheme"
-      android:enableOnBackInvokedCallback="false">
-
-      <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
-      <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
-      <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
-
-      <activity
-          android:name=".MainActivity"
-          android:exported="true"
-          android:launchMode="singleTask"
-          android:theme="@style/LaunchTheme"
-          android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-          android:windowSoftInputMode="adjustResize"
-          android:screenOrientation="portrait">
-          <intent-filter>
-              <action android:name="android.intent.action.MAIN"/>
-              <category android:name="android.intent.category.LAUNCHER"/>
-          </intent-filter>
-          <intent-filter>
-              <action android:name="android.intent.action.VIEW" />
-              <category android:name="android.intent.category.DEFAULT" />
-              <category android:name="android.intent.category.BROWSABLE" />
-
-              <data
-                  android:scheme="cardy"
-                  android:host=""
-                  android:pathPrefix="/card-details" />
-          </intent-filter>
-          <intent-filter>
-          <action android:name="android.intent.action.VIEW" />
-          <category android:name="android.intent.category.DEFAULT" />
-          <category android:name="android.intent.category.BROWSABLE" />
-
-          <data
-              android:scheme="cardy"
-              android:host="expo-development-client" />
+  <application android:name=".MainApplication" android:allowBackup="true" android:label="@string/app_name" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:theme="@style/AppTheme" android:enableOnBackInvokedCallback="false">
+    <meta-data android:name="expo.modules.updates.ENABLED" android:value="false"/>
+    <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
+    <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
+    <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/LaunchTheme" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:windowSoftInputMode="adjustResize" android:screenOrientation="portrait">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
-      </activity>
-
-      <activity
-          android:name=".PipCardActivity"
-          android:exported="true"
-          android:supportsPictureInPicture="true"
-          android:resizeableActivity="false"
-          android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-          android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" />
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="cardy" android:host="" android:pathPrefix="/card-details"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <data android:scheme="cardy" android:host="expo-development-client"/>
+      </intent-filter>
+      <intent-filter data-generated="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <data android:scheme="cardy"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+      <intent-filter data-generated="true">
+        <action android:name="android.intent.action.VIEW"/>
+        <data android:scheme="cardy" android:host="expo-development-client"/>
+        <category android:name="android.intent.category.BROWSABLE"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".PipCardActivity" android:supportsPictureInPicture="true" android:launchMode="singleTask" android:resizeableActivity="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
   </application>
 </manifest>
