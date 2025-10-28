@@ -38,6 +38,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
       </intent-filter>
     </activity>
-    <activity android:name=".PipCardActivity" android:supportsPictureInPicture="true" android:launchMode="singleTask" android:resizeableActivity="false" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+    <activity android:name=".PipCardActivity" android:supportsPictureInPicture="true" android:launchMode="singleTask" android:resizeableActivity="true" android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation" android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
   </application>
 </manifest>
