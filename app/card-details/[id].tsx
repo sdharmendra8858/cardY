@@ -1,19 +1,28 @@
-// app/card-details/[cardName].tsx
+// app/card-details/[id].tsx
 import AppButton from "@/components/AppButton";
 import CardNotFound from "@/components/CardNotFound";
 import Hero from "@/components/Hero";
+import type { PipCardHandle } from "@/components/PipCard";
+import PipCard from "@/components/PipCard";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
-  removeCard as secureRemoveCard
+  removeCard as secureRemoveCard,
 } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
-import { StackActions, useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { Alert, NativeModules, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { StackActions, useNavigation } from "@react-navigation/native";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  NativeModules,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
 
 const { PipModule } = NativeModules;
 
@@ -21,14 +30,39 @@ export default function CardDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [card, setCard] = useState<any>(null);
   const [showNumber, setShowNumber] = useState(false);
-  const router = useRouter();
+  const pipCardRef = useRef<PipCardHandle | null>(null);
+  const [renderPipCard, setRenderPipCard] = useState(false);
+  const layoutResolveRef = useRef<null | (() => void)>(null);
+  // Removed image preview state
+  // Removed video preview state
   const navigation = useNavigation();
 
-  const openPip = useCallback(() => {
-    console.log("Opening PiP with card:", card);
-  
-    if (card) { 
-      PipModule.openPip(JSON.stringify(card)); // pass data as JSON
+  const openPip = useCallback(async () => {
+    if (!card) return;
+
+    try {
+      // Mount off-screen and wait for layout
+      setRenderPipCard(true);
+      await new Promise<void>((resolve) => {
+        layoutResolveRef.current = resolve;
+      });
+      // No time-based delay
+
+      if (!pipCardRef.current) throw new Error("Pip card ref not mounted");
+      const frameUri = await pipCardRef.current.captureSnapshot({
+        format: "png",
+        quality: 1,
+      });
+
+      setRenderPipCard(false);
+
+      console.log("✅ Captured image:", frameUri);
+      // Launch PiP with image directly, pass card id for return navigation
+      // @ts-ignore - Native module method signature (imageUri, cardId)
+      PipModule.enterPipMode(frameUri, id);
+    } catch (err) {
+      setRenderPipCard(false);
+      console.error("❌ Failed:", err);
     }
   }, [card]);
 
@@ -38,18 +72,22 @@ export default function CardDetailsScreen() {
       headerRight: () =>
         card ? (
           <Pressable onPress={openPip} style={{ marginRight: 16 }}>
-            <Ionicons name="caret-forward-circle-outline" size={28} color="#4b7bec" />
+            <Ionicons
+              name="caret-forward-circle-outline"
+              size={28}
+              color="#4b7bec"
+            />
           </Pressable>
         ) : null,
     });
-  }, [navigation, card, openPip]); // include card here!
+  }, [navigation, card, openPip]); // ✅ openPip is stable now
 
   useEffect(() => {
     const loadCard = async () => {
       try {
-        const list = await secureGetCards()
-        const found = list.find((c) => c.id === id)
-        if(found) setCard(found);
+        const list = await secureGetCards();
+        const found = list.find((c) => c.id === id);
+        if (found) setCard(found);
       } catch (err) {
         console.error("Error loading card details", err);
       }
@@ -59,26 +97,25 @@ export default function CardDetailsScreen() {
   }, [id]);
 
   const handleDelete = async () => {
-    Alert.alert(
-      "Delete Card",
-      "Are you sure you want to delete this card?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await secureRemoveCard(id)
-              navigation.dispatch(StackActions.popToTop())
-            } catch (err) {
-              console.error("Error deleting card:", err);
-              Alert.alert("Error", "Failed to delete the card. Please try again.");
-            }
-          },
+    Alert.alert("Delete Card", "Are you sure you want to delete this card?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await secureRemoveCard(id);
+            navigation.dispatch(StackActions.popToTop());
+          } catch (err) {
+            console.error("Error deleting card:", err);
+            Alert.alert(
+              "Error",
+              "Failed to delete the card. Please try again."
+            );
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   if (!card) {
@@ -87,7 +124,7 @@ export default function CardDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Hero 
+      <Hero
         title="Card Details"
         subtitle="View and manage this card"
         tone="dark"
@@ -103,15 +140,20 @@ export default function CardDetailsScreen() {
               style={styles.pipIconButton}
               hitSlop={10}
             >
-              <Ionicons name="contract-outline" size={22} color="#FFF"/>
+              <Ionicons name="contract-outline" size={22} color="#FFF" />
             </Pressable>
 
             {/* Card Number with Eye Icon */}
             <View style={styles.cardNumberRow}>
               <Text style={styles.cardNumber}>
-                {showNumber ? card.cardNumber : maskAndFormatCardNumber(card.cardNumber)}
+                {showNumber
+                  ? card.cardNumber
+                  : maskAndFormatCardNumber(card.cardNumber)}
               </Text>
-              <Pressable onPress={() => setShowNumber(!showNumber)} hitSlop={10}>
+              <Pressable
+                onPress={() => setShowNumber(!showNumber)}
+                hitSlop={10}
+              >
                 <Ionicons
                   name={showNumber ? "eye-off" : "eye"}
                   size={22}
@@ -146,11 +188,50 @@ export default function CardDetailsScreen() {
 
         {/* Fixed Bottom Button */}
         <View style={styles.footer}>
-          <AppButton title="Delete Card" variant="danger" onPress={handleDelete} />
+          <AppButton
+            title="Delete Card"
+            variant="danger"
+            onPress={handleDelete}
+          />
           <View style={{ height: 10 }} />
-          <AppButton title="Back to Home" variant="secondary" onPress={() => navigation.dispatch(StackActions.popToTop())} />
+          <AppButton
+            title="Back to Home"
+            variant="secondary"
+            onPress={() => navigation.dispatch(StackActions.popToTop())}
+          />
         </View>
       </View>
+
+      {/* Hidden offscreen PipCard for capture */}
+      {renderPipCard && (
+        <View
+          collapsable={false}
+          pointerEvents="none"
+          renderToHardwareTextureAndroid
+          needsOffscreenAlphaCompositing
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            opacity: 0.01,
+            width: 320,
+            height: 200,
+            backgroundColor: "#fff",
+          }}
+          onLayout={() => {
+            if (layoutResolveRef.current) {
+              layoutResolveRef.current();
+              layoutResolveRef.current = null;
+            }
+          }}
+        >
+          <PipCard ref={pipCardRef} card={card} showNumber={showNumber} />
+        </View>
+      )}
+
+      {/* Removed image preview */}
+
+      {/* Video preview removed; PiP uses image directly */}
     </SafeAreaView>
   );
 }
@@ -170,7 +251,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 5,
   },
-  bankName: { color: "white", fontSize: 16, marginBottom: 20, fontWeight: "600" },
+  bankName: {
+    color: "white",
+    fontSize: 16,
+    marginBottom: 20,
+    fontWeight: "600",
+  },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
   info: { color: "white", fontSize: 16, fontWeight: "bold" },
@@ -212,6 +298,6 @@ const styles = StyleSheet.create({
     right: 12,
     backgroundColor: "rgba(255,255,255, 0.2",
     borderRadius: 16,
-    padding: 8
-  }
+    padding: 8,
+  },
 });
