@@ -1,10 +1,10 @@
 import Hero from "@/components/Hero";
+import { useAlert } from "@/context/AlertContext";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function PreviewScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { showAlert } = useAlert();
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Preview Card" });
@@ -64,7 +65,7 @@ export default function PreviewScreen() {
   const cleanupLineText = (raw: string) => {
     let s = String(raw || "").toUpperCase();
     s = s.replace(/[\u0000-\u001F\u007F]/g, " "); // remove control chars
-    s = s.replace(/[^A-Z0-9\s\/:]/g, " ");        // keep only A-Z, 0-9, space, /, :
+    s = s.replace(/[^A-Z0-9\s\/:]/g, " "); // keep only A-Z, 0-9, space, /, :
     s = s.replace(/\s+/g, " ").trim();
     return s;
   };
@@ -90,13 +91,19 @@ export default function PreviewScreen() {
     if (!bbox) return null;
     // ML Kit may give frame: {left, top, width, height} OR boundingBox/cornerPoints
     if (bbox.left !== undefined && bbox.top !== undefined) {
-      return `L:${Math.round(bbox.left)} T:${Math.round(bbox.top)} W:${Math.round(bbox.width||0)} H:${Math.round(bbox.height||0)}`;
+      return `L:${Math.round(bbox.left)} T:${Math.round(
+        bbox.top
+      )} W:${Math.round(bbox.width || 0)} H:${Math.round(bbox.height || 0)}`;
     }
     if (Array.isArray(bbox) && bbox.length) {
       // cornerPoints: [{x,y},...] => return min/max
-      const xs = bbox.map((p:any) => p.x || p[0]);
-      const ys = bbox.map((p:any) => p.y || p[1]);
-      return `L:${Math.round(Math.min(...xs))} T:${Math.round(Math.min(...ys))} W:${Math.round(Math.max(...xs)-Math.min(...xs))} H:${Math.round(Math.max(...ys)-Math.min(...ys))}`;
+      const xs = bbox.map((p: any) => p.x || p[0]);
+      const ys = bbox.map((p: any) => p.y || p[1]);
+      return `L:${Math.round(Math.min(...xs))} T:${Math.round(
+        Math.min(...ys)
+      )} W:${Math.round(Math.max(...xs) - Math.min(...xs))} H:${Math.round(
+        Math.max(...ys) - Math.min(...ys)
+      )}`;
     }
     return JSON.stringify(bbox);
   };
@@ -118,7 +125,12 @@ export default function PreviewScreen() {
       VAD: "VALID", // common short OCR error
     };
 
-    const lines: { text: string; bbox: any; blockIndex: number; lineIndex: number }[] = [];
+    const lines: {
+      text: string;
+      bbox: any;
+      blockIndex: number;
+      lineIndex: number;
+    }[] = [];
 
     (ocrResult.blocks || []).forEach((block: any, bIdx: number) => {
       (block.lines || []).forEach((ln: any, lIdx: number) => {
@@ -142,8 +154,22 @@ export default function PreviewScreen() {
         if (cleaned.length) {
           // Try to get bbox info: different libs use frame/boundingBox/cornerPoints
           const bbox = ln.frame || ln.boundingBox || ln.cornerPoints || null;
-          const item = { text: cleaned, bbox, blockIndex: bIdx, lineIndex: lIdx };
-          console.log("Cleaned Line:", cleaned, "| bbox:", prettyBBox(bbox), "| block:", bIdx, "line:", lIdx);
+          const item = {
+            text: cleaned,
+            bbox,
+            blockIndex: bIdx,
+            lineIndex: lIdx,
+          };
+          console.log(
+            "Cleaned Line:",
+            cleaned,
+            "| bbox:",
+            prettyBBox(bbox),
+            "| block:",
+            bIdx,
+            "line:",
+            lIdx
+          );
           lines.push(item);
         }
       });
@@ -157,17 +183,47 @@ export default function PreviewScreen() {
    * Accepts the lines returned from processOcrResult (array of objects).
    * Returns { cardDetails, matchedLines } where matchedLines maps field -> { index, text, bbox } (useful for debugging/overlay)
    */
-  const parseOcrResult = (lineObjs: { text: string; bbox: any; blockIndex: number; lineIndex: number }[]) => {
+  const parseOcrResult = (
+    lineObjs: {
+      text: string;
+      bbox: any;
+      blockIndex: number;
+      lineIndex: number;
+    }[]
+  ) => {
     const cardDetails: { [k: string]: string } = {};
-    const matchedLines: { [k: string]: { idx: number; text: string; bbox: any } } = {};
+    const matchedLines: {
+      [k: string]: { idx: number; text: string; bbox: any };
+    } = {};
 
     const knownBanks = [
-      "HDFC BANK", "ICICI BANK", "SBI", "STATE BANK", "AXIS BANK", "CITI", "CITIBANK",
-      "CHASE", "BANK OF AMERICA", "WELLS FARGO", "HSBC", "DISCOVER", "DINERS CLUB", "AMEX", "RUPAY", "VISA", "MASTERCARD"
+      "HDFC BANK",
+      "ICICI BANK",
+      "SBI",
+      "STATE BANK",
+      "AXIS BANK",
+      "CITI",
+      "CITIBANK",
+      "CHASE",
+      "BANK OF AMERICA",
+      "WELLS FARGO",
+      "HSBC",
+      "DISCOVER",
+      "DINERS CLUB",
+      "AMEX",
+      "RUPAY",
+      "VISA",
+      "MASTERCARD",
     ];
 
     const isDisclaimerOrPhone = (line: string) => {
-      if (/\d{5,}/.test(line) && /PHONE|TOLL|CALL|CUSTOMER|TRAVEL|TRAVELLING|FOREIGN|NEPAL|BHUTAN/.test(line)) return true;
+      if (
+        /\d{5,}/.test(line) &&
+        /PHONE|TOLL|CALL|CUSTOMER|TRAVEL|TRAVELLING|FOREIGN|NEPAL|BHUTAN/.test(
+          line
+        )
+      )
+        return true;
       if (/^(?:\+?\d[\d\s\-\/]{6,})$/.test(line)) return true;
       return false;
     };
@@ -178,7 +234,7 @@ export default function PreviewScreen() {
     for (let i = 0; i < lineObjs.length; i++) {
       const item = lineObjs[i];
       const raw = item.text;
-      const collapsed = raw.replace(/\s+/g, "");        // remove spaces
+      const collapsed = raw.replace(/\s+/g, ""); // remove spaces
       const digitsOnly = collapsed.replace(/[^0-9]/g, ""); // leave digits only
 
       const match = digitsOnly.match(/\d{13,19}/);
@@ -187,14 +243,32 @@ export default function PreviewScreen() {
         if (luhnValidate(candidate)) {
           cardDetails.cardNumber = candidate;
           cardNumberIndex = i;
-          matchedLines.cardNumber = { idx: i, text: item.text, bbox: item.bbox };
-          console.log("Matched cardNumber (Luhn) at line", i, item.text, prettyBBox(item.bbox));
+          matchedLines.cardNumber = {
+            idx: i,
+            text: item.text,
+            bbox: item.bbox,
+          };
+          console.log(
+            "Matched cardNumber (Luhn) at line",
+            i,
+            item.text,
+            prettyBBox(item.bbox)
+          );
           break;
         } else if (!cardDetails.cardNumber) {
           cardDetails.cardNumber = candidate; // fallback
           cardNumberIndex = i;
-          matchedLines.cardNumber = { idx: i, text: item.text, bbox: item.bbox };
-          console.log("Matched cardNumber (no Luhn) at line", i, item.text, prettyBBox(item.bbox));
+          matchedLines.cardNumber = {
+            idx: i,
+            text: item.text,
+            bbox: item.bbox,
+          };
+          console.log(
+            "Matched cardNumber (no Luhn) at line",
+            i,
+            item.text,
+            prettyBBox(item.bbox)
+          );
           // keep searching for Luhn-valid later lines
         }
       }
@@ -206,18 +280,37 @@ export default function PreviewScreen() {
     for (let i = 0; i < lineObjs.length; i++) {
       const item = lineObjs[i];
       const m = item.text.match(expiryRegex);
-      if (m) expiryCandidates.push({ i, val: m[0], tag: item.text.includes("THRU") ? "THRU" : item.text.includes("FROM") ? "FROM" : undefined });
+      if (m)
+        expiryCandidates.push({
+          i,
+          val: m[0],
+          tag: item.text.includes("THRU")
+            ? "THRU"
+            : item.text.includes("FROM")
+            ? "FROM"
+            : undefined,
+        });
       else {
         const all = item.text.match(/\b(0[1-9]|1[0-2])\/(?:\d{2}|\d{4})\b/g);
-        if (all && all.length) all.forEach((v) => expiryCandidates.push({ i, val: v }));
+        if (all && all.length)
+          all.forEach((v) => expiryCandidates.push({ i, val: v }));
       }
     }
     if (expiryCandidates.length) {
       const thru = expiryCandidates.find((c) => c.tag === "THRU");
       const chosen = thru || expiryCandidates[expiryCandidates.length - 1];
       cardDetails.expiryDate = chosen.val;
-      matchedLines.expiryDate = { idx: chosen.i, text: lineObjs[chosen.i].text, bbox: lineObjs[chosen.i].bbox };
-      console.log("Matched expiryDate at line", chosen.i, lineObjs[chosen.i].text, prettyBBox(lineObjs[chosen.i].bbox));
+      matchedLines.expiryDate = {
+        idx: chosen.i,
+        text: lineObjs[chosen.i].text,
+        bbox: lineObjs[chosen.i].bbox,
+      };
+      console.log(
+        "Matched expiryDate at line",
+        chosen.i,
+        lineObjs[chosen.i].text,
+        prettyBBox(lineObjs[chosen.i].bbox)
+      );
     }
 
     // 3) CVV - look for "CVV" label then next numeric line, else fallback to standalone 3-4 digits near end
@@ -227,19 +320,41 @@ export default function PreviewScreen() {
         const next = (lineObjs[i + 1] || {}).text || "";
         if (/^\d{3,4}$/.test(next.replace(/\s+/g, ""))) {
           cardDetails.cvv = next.replace(/\s+/g, "");
-          matchedLines.cvv = { idx: i + 1, text: next, bbox: (lineObjs[i + 1] || {}).bbox };
-          console.log("Matched CVV from next line at", i + 1, next, prettyBBox((lineObjs[i + 1] || {}).bbox));
+          matchedLines.cvv = {
+            idx: i + 1,
+            text: next,
+            bbox: (lineObjs[i + 1] || {}).bbox,
+          };
+          console.log(
+            "Matched CVV from next line at",
+            i + 1,
+            next,
+            prettyBBox((lineObjs[i + 1] || {}).bbox)
+          );
           break;
         }
       }
     }
     if (!cardDetails.cvv) {
-      for (let i = lineObjs.length - 1; i >= Math.max(0, lineObjs.length - 6); i--) {
+      for (
+        let i = lineObjs.length - 1;
+        i >= Math.max(0, lineObjs.length - 6);
+        i--
+      ) {
         const token = lineObjs[i].text.replace(/\s+/g, "");
         if (/^\d{3,4}$/.test(token)) {
           cardDetails.cvv = token;
-          matchedLines.cvv = { idx: i, text: lineObjs[i].text, bbox: lineObjs[i].bbox };
-          console.log("Matched CVV fallback at", i, lineObjs[i].text, prettyBBox(lineObjs[i].bbox));
+          matchedLines.cvv = {
+            idx: i,
+            text: lineObjs[i].text,
+            bbox: lineObjs[i].bbox,
+          };
+          console.log(
+            "Matched CVV fallback at",
+            i,
+            lineObjs[i].text,
+            prettyBBox(lineObjs[i].bbox)
+          );
           break;
         }
       }
@@ -252,8 +367,17 @@ export default function PreviewScreen() {
       for (const bank of knownBanks) {
         if (item.text.includes(bank) && !cardDetails.issuerBank) {
           cardDetails.issuerBank = bank;
-          matchedLines.issuerBank = { idx: i, text: item.text, bbox: item.bbox };
-          console.log("Matched issuerBank by whitelist at", i, item.text, prettyBBox(item.bbox));
+          matchedLines.issuerBank = {
+            idx: i,
+            text: item.text,
+            bbox: item.bbox,
+          };
+          console.log(
+            "Matched issuerBank by whitelist at",
+            i,
+            item.text,
+            prettyBBox(item.bbox)
+          );
         }
       }
     }
@@ -261,17 +385,46 @@ export default function PreviewScreen() {
     if (!cardDetails.issuerBank) {
       for (let i = 0; i < lineObjs.length; i++) {
         const item = lineObjs[i];
-        if (item.text.includes("BANK") && !/\d/.test(item.text) && !isDisclaimerOrPhone(item.text)) {
+        if (
+          item.text.includes("BANK") &&
+          !/\d/.test(item.text) &&
+          !isDisclaimerOrPhone(item.text)
+        ) {
           cardDetails.issuerBank = item.text;
-          matchedLines.issuerBank = { idx: i, text: item.text, bbox: item.bbox };
-          console.log("Matched issuerBank by BANK keyword at", i, item.text, prettyBBox(item.bbox));
+          matchedLines.issuerBank = {
+            idx: i,
+            text: item.text,
+            bbox: item.bbox,
+          };
+          console.log(
+            "Matched issuerBank by BANK keyword at",
+            i,
+            item.text,
+            prettyBBox(item.bbox)
+          );
           break;
         }
       }
     }
 
     // 5) Cardholder name: pick nearest good-looking name above the card number index (or fallback top candidate)
-    const nameBlacklist = ["VALID", "NOT", "PAYMENT", "EXCHANGE", "CUSTOMER", "PHONEBANKING", "AUTHORIZED", "SIGNATURE", "NOT TRANSFERABLE", "SCAN", "OPEN", "WWW", "CARD", "TOLL", "FREE"];
+    const nameBlacklist = [
+      "VALID",
+      "NOT",
+      "PAYMENT",
+      "EXCHANGE",
+      "CUSTOMER",
+      "PHONEBANKING",
+      "AUTHORIZED",
+      "SIGNATURE",
+      "NOT TRANSFERABLE",
+      "SCAN",
+      "OPEN",
+      "WWW",
+      "CARD",
+      "TOLL",
+      "FREE",
+    ];
     const looksLikeName = (txt: string) => {
       if (!/^[A-Z\s]+$/.test(txt)) return false;
       const words = txt.trim().split(" ").filter(Boolean);
@@ -282,11 +435,24 @@ export default function PreviewScreen() {
     };
 
     if (cardNumberIndex >= 0) {
-      for (let i = cardNumberIndex - 1; i >= Math.max(0, cardNumberIndex - 8); i--) {
+      for (
+        let i = cardNumberIndex - 1;
+        i >= Math.max(0, cardNumberIndex - 8);
+        i--
+      ) {
         if (looksLikeName(lineObjs[i].text)) {
           cardDetails.cardHolderName = lineObjs[i].text;
-          matchedLines.cardHolderName = { idx: i, text: lineObjs[i].text, bbox: lineObjs[i].bbox };
-          console.log("Matched name (near card number) at", i, lineObjs[i].text, prettyBBox(lineObjs[i].bbox));
+          matchedLines.cardHolderName = {
+            idx: i,
+            text: lineObjs[i].text,
+            bbox: lineObjs[i].bbox,
+          };
+          console.log(
+            "Matched name (near card number) at",
+            i,
+            lineObjs[i].text,
+            prettyBBox(lineObjs[i].bbox)
+          );
           break;
         }
       }
@@ -296,8 +462,17 @@ export default function PreviewScreen() {
       for (let i = 0; i < lineObjs.length; i++) {
         if (looksLikeName(lineObjs[i].text)) {
           cardDetails.cardHolderName = lineObjs[i].text;
-          matchedLines.cardHolderName = { idx: i, text: lineObjs[i].text, bbox: lineObjs[i].bbox };
-          console.log("Matched name (fallback) at", i, lineObjs[i].text, prettyBBox(lineObjs[i].bbox));
+          matchedLines.cardHolderName = {
+            idx: i,
+            text: lineObjs[i].text,
+            bbox: lineObjs[i].bbox,
+          };
+          console.log(
+            "Matched name (fallback) at",
+            i,
+            lineObjs[i].text,
+            prettyBBox(lineObjs[i].bbox)
+          );
           break;
         }
       }
@@ -309,7 +484,10 @@ export default function PreviewScreen() {
   // Extract card details from both images
   const extractCardDetails = async () => {
     if (!frontImage && !backImage) {
-      Alert.alert("Missing Images", "Please capture at least one side of the card.");
+      await showAlert({
+        title: "Missing Images",
+        message: "Please capture at least one side of the card.",
+      });
       return;
     }
 
@@ -317,25 +495,41 @@ export default function PreviewScreen() {
       setIsProcessing(true);
 
       const results = await Promise.all([
-        frontImage ? TextRecognition.recognize(frontImage) : Promise.resolve(null),
-        backImage ? TextRecognition.recognize(backImage) : Promise.resolve(null),
+        frontImage
+          ? TextRecognition.recognize(frontImage)
+          : Promise.resolve(null),
+        backImage
+          ? TextRecognition.recognize(backImage)
+          : Promise.resolve(null),
       ]);
 
       const [frontResult, backResult] = results; // these are the OCR outputs
 
-      const frontProcessed = frontResult ? processOcrResult(frontResult) : { lines: [] };
-      const backProcessed = backResult ? processOcrResult(backResult) : { lines: [] };
+      const frontProcessed = frontResult
+        ? processOcrResult(frontResult)
+        : { lines: [] };
+      const backProcessed = backResult
+        ? processOcrResult(backResult)
+        : { lines: [] };
 
       const frontParsed = parseOcrResult(frontProcessed.lines);
       const backParsed = parseOcrResult(backProcessed.lines);
 
-      const combined: any = { ...frontParsed.cardDetails, ...backParsed.cardDetails };
+      const combined: any = {
+        ...frontParsed.cardDetails,
+        ...backParsed.cardDetails,
+      };
 
       // if both sides have different cardNumber, pick Luhn-valid
-      if (frontParsed.cardDetails.cardNumber && backParsed.cardDetails.cardNumber
-        && frontParsed.cardDetails.cardNumber !== backParsed.cardDetails.cardNumber) {
-      if (luhnValidate(backParsed.cardDetails.cardNumber)) combined.cardNumber = backParsed.cardDetails.cardNumber;
-      else if (luhnValidate(frontParsed.cardDetails.cardNumber)) combined.cardNumber = frontParsed.cardDetails.cardNumber;
+      if (
+        frontParsed.cardDetails.cardNumber &&
+        backParsed.cardDetails.cardNumber &&
+        frontParsed.cardDetails.cardNumber !== backParsed.cardDetails.cardNumber
+      ) {
+        if (luhnValidate(backParsed.cardDetails.cardNumber))
+          combined.cardNumber = backParsed.cardDetails.cardNumber;
+        else if (luhnValidate(frontParsed.cardDetails.cardNumber))
+          combined.cardNumber = frontParsed.cardDetails.cardNumber;
       }
 
       // Log matched lines for debugging
@@ -343,7 +537,10 @@ export default function PreviewScreen() {
       console.log("Back matched lines:", backParsed.matchedLines);
       console.log("Combined extracted details:", combined);
 
-      Alert.alert("Card Details Extracted", "Review the extracted details below.");
+      await showAlert({
+        title: "Card Details Extracted",
+        message: "Review the extracted details in next screen.",
+      });
 
       // After successful OCR extraction
       const navigateBackWithDetails = () => {
@@ -360,10 +557,12 @@ export default function PreviewScreen() {
       };
 
       navigateBackWithDetails();
-
     } catch (error) {
       console.error("OCR Error:", error);
-      Alert.alert("Error", "Failed to process the images. Please try again.");
+      await showAlert({
+        title: "Error",
+        message: "Failed to process the images. Please try again.",
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -385,9 +584,8 @@ export default function PreviewScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-
-        <View style={{alignSelf: "stretch", marginBottom: 20}}>
-          <Hero 
+        <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
+          <Hero
             title="Preview & Extract"
             subtitle="Confirm images, then Extract"
             tone="dark"
@@ -398,7 +596,11 @@ export default function PreviewScreen() {
         <View style={styles.cardSection}>
           <Text style={styles.sectionTitle}>Front of Card</Text>
           {frontImage ? (
-            <Image source={{ uri: frontImage }} style={styles.cardImage} resizeMode="contain" />
+            <Image
+              source={{ uri: frontImage }}
+              style={styles.cardImage}
+              resizeMode="contain"
+            />
           ) : (
             <View style={[styles.cardImage, styles.placeholder]}>
               <Text style={styles.message}>No front image captured yet</Text>
@@ -410,9 +612,16 @@ export default function PreviewScreen() {
         <View style={styles.cardSection}>
           <Text style={styles.sectionTitle}>Back of Card</Text>
           {backImage ? (
-            <Image source={{ uri: backImage }} style={styles.cardImage} resizeMode="contain" />
+            <Image
+              source={{ uri: backImage }}
+              style={styles.cardImage}
+              resizeMode="contain"
+            />
           ) : (
-            <TouchableOpacity style={styles.captureBackButtonContainer} onPress={captureBack}>
+            <TouchableOpacity
+              style={styles.captureBackButtonContainer}
+              onPress={captureBack}
+            >
               <Text style={styles.captureBackButtonText}>Capture Back</Text>
             </TouchableOpacity>
           )}
@@ -426,7 +635,11 @@ export default function PreviewScreen() {
               onPress={extractCardDetails}
               disabled={isProcessing}
             >
-              {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Extract Text</Text>}
+              {isProcessing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Extract Text</Text>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -438,7 +651,12 @@ export default function PreviewScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   cardSection: { marginVertical: 12, paddingHorizontal: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: "bold", color: "#fff", marginBottom: 6 },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 6,
+  },
   cardImage: {
     width: "100%",
     height: 250,
@@ -449,7 +667,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  placeholder: { backgroundColor: "#111", justifyContent: "center", alignItems: "center" },
+  placeholder: {
+    backgroundColor: "#111",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   message: { color: "#fff", fontSize: 14, textAlign: "center" },
   captureBackButtonContainer: {
     height: 250,
@@ -466,10 +688,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     maxHeight: 200,
   },
-  textTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8, color: "#333" },
+  textTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    color: "#333",
+  },
   textScrollView: { maxHeight: 150 },
   extractedText: { fontSize: 14, lineHeight: 20, color: "#333" },
-  buttonContainer: { flexDirection: "row", justifyContent: "space-around", paddingTop: 20 },
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 20,
+  },
   button: { padding: 12, borderRadius: 8, minWidth: 120, alignItems: "center" },
   ocrButton: { backgroundColor: "#007AFF" },
   saveButton: { backgroundColor: "#34C759" },
