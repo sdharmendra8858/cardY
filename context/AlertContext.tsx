@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Modal, StyleSheet, View } from "react-native";
+import { BackHandler, Modal, StyleSheet, TouchableWithoutFeedback, View } from "react-native";
 
 import AppButton from "@/components/AppButton";
 import { ThemedText } from "@/components/themed-text";
@@ -42,7 +42,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
 
   const showAlert = useCallback((options: ShowAlertOptions) => {
     return new Promise<AlertButton | undefined>((resolve) => {
-      setPending({ ...options, resolve });
+      setPending({ cancelable: true, ...options, resolve });
     });
   }, []);
 
@@ -108,64 +108,78 @@ function AlertDialog({
     return [{ text: "OK", style: "default" }];
   }, [buttons]);
 
+  // ✅ Handle Android back press
+  React.useEffect(() => {
+    const handleBackPress = () => {
+      if (visible && cancelable) {
+        onRequestClose();
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
+    return () => sub.remove();
+  }, [visible, cancelable, onRequestClose]);
+
   return (
     <Modal
       animationType="fade"
       transparent
       visible={visible}
-      onRequestClose={onRequestClose}
+      onRequestClose={onRequestClose} // Android fallback
     >
-      <View style={[styles.overlay, { backgroundColor: overlayBg }]}>
-        <ThemedView style={[styles.card, { backgroundColor: cardBg }]}>
-          {title ? (
-            <ThemedText type="subtitle" style={styles.title}>
-              {title}
-            </ThemedText>
-          ) : null}
-          {message ? (
-            <ThemedText style={styles.message}>{message}</ThemedText>
-          ) : null}
+      {/* Outer wrapper detects tap outside */}
+      <TouchableWithoutFeedback
+        onPress={() => {
+          if (cancelable) onRequestClose();
+        }}
+      >
+        <View style={[styles.overlay, { backgroundColor: overlayBg }]}>
+          {/* Inner wrapper stops propagation (prevents closing when tapping inside) */}
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <ThemedView style={[styles.card, { backgroundColor: cardBg }]}>
+              {title ? (
+                <ThemedText type="subtitle" style={styles.title}>
+                  {title}
+                </ThemedText>
+              ) : null}
 
-          <View style={styles.buttonsRow}>
-            {normalizedButtons.map((btn, index) => {
-              const variant =
-                btn.style === "destructive"
-                  ? "danger"
-                  : btn.style === "cancel"
-                  ? "secondary"
-                  : index === 0
-                  ? "primary"
-                  : "secondary";
-              return (
-                <AppButton
-                  key={`${btn.text}-${index}`}
-                  title={btn.text}
-                  variant={variant as any}
-                  fullWidth
-                  style={styles.button}
-                  onPress={() => {
-                    try {
-                      btn.onPress?.();
-                    } finally {
-                      onSelect(btn);
-                    }
-                  }}
-                />
-              );
-            })}
-          </View>
+              {message ? (
+                <ThemedText style={styles.message}>{message}</ThemedText>
+              ) : null}
 
-          {cancelable ? (
-            <AppButton
-              title="Close"
-              variant="secondary"
-              fullWidth
-              style={{ marginTop: 8 }}
-              onPress={() => onRequestClose()}
-            />
-          ) : null}
-        </ThemedView>
-      </View>
+              <View style={styles.buttonsRow}>
+                {normalizedButtons.map((btn, index) => {
+                  const variant =
+                    btn.style === "destructive"
+                      ? "danger"
+                      : btn.style === "cancel"
+                      ? "secondary"
+                      : index === 0
+                      ? "primary"
+                      : "secondary";
+                  return (
+                    <AppButton
+                      key={`${btn.text}-${index}`}
+                      title={btn.text}
+                      variant={variant as any}
+                      fullWidth
+                      style={styles.button}
+                      onPress={() => {
+                        try {
+                          btn.onPress?.();
+                        } finally {
+                          onSelect(btn);
+                        }
+                      }}
+                    />
+                  );
+                })}
+              </View>
+            </ThemedView>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }
