@@ -16,6 +16,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   NativeModules,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,19 +25,24 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { PipModule } = NativeModules;
+const { PipModule, LockModule } = NativeModules;
 
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [card, setCard] = useState<any>(null);
   const [showNumber, setShowNumber] = useState(false);
+  const [canUsePip, setCanUsePip] = useState(false);
+  const [showCVV, setShowCVV] = useState(false);
   const pipCardRef = useRef<PipCardHandle | null>(null);
   const [renderPipCard, setRenderPipCard] = useState(false);
   const layoutResolveRef = useRef<null | (() => void)>(null);
-  // Removed image preview state
-  // Removed video preview state
   const navigation = useNavigation();
+
+  // reset the pip disability on reopen
+  useEffect(() => {
+    setCanUsePip(false);
+  }, [id]);
 
   const openPip = useCallback(async () => {
     if (!card) return;
@@ -123,6 +129,35 @@ export default function CardDetailsScreen() {
     });
   };
 
+  const handleDeviceLock =  async () => {
+    try {
+      // if trying to hide number, no need for auth
+      if (showNumber) {
+        setShowNumber(false);
+        setCanUsePip(false);
+        setShowCVV(false);
+        return;
+      }
+
+      // 🔐 Trigger device lock (Android)
+      const success =
+        Platform.OS === "android" && LockModule
+          ? await LockModule.authenticateUser()
+          : true; // skip lock on iOS for now
+
+      if (success) {
+        // Unlock succeeded → show number + enable PiP
+        setShowCVV(true); // 👈 show CVV as well
+        setShowNumber(true);
+        setCanUsePip(true);
+      } else {
+        console.log("❌ Authentication canceled");
+      }
+    } catch (err) {
+      console.error("Error during authentication:", err);
+    }
+  }
+
   if (!card) {
     return <CardNotFound />;
   }
@@ -141,11 +176,15 @@ export default function CardDetailsScreen() {
           <View style={styles.cardFront}>
             <Text style={styles.bankName}>{card.bank}</Text>
             <Pressable
-              onPress={openPip}
-              style={styles.pipIconButton}
+              onPress={canUsePip ? openPip : undefined}
+              disabled={!canUsePip}
+              style={[
+                styles.pipIconButton,
+                !canUsePip && { opacity: 0.4 }, // visually dim when disabled
+              ]}
               hitSlop={10}
             >
-              <Ionicons name="contract-outline" size={22} color="#FFF" />
+              <Ionicons name="contract-outline" size={22} color={canUsePip ? "#FFF" : "rgba(255,255,255,0.5)"} />
             </Pressable>
 
             {/* Card Number with Eye Icon */}
@@ -156,7 +195,7 @@ export default function CardDetailsScreen() {
                   : maskAndFormatCardNumber(card.cardNumber)}
               </Text>
               <Pressable
-                onPress={() => setShowNumber(!showNumber)}
+                onPress={handleDeviceLock}
                 hitSlop={10}
               >
                 <Ionicons
@@ -184,8 +223,23 @@ export default function CardDetailsScreen() {
 
           {/* Card Back */}
           <View style={styles.cardBack}>
-            <Text style={styles.label}>CVV</Text>
-            <Text style={styles.info}>{card.cvv}</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Text style={[styles.label, { fontSize: 13 }]}>CVV / CVC</Text>
+              <Text
+                style={[
+                  styles.info,
+                  { fontSize: 16, letterSpacing: 2, color: "#fff" },
+                ]}
+              >
+                {showCVV ? card.cvv : "•••"}
+              </Text>
+            </View>
           </View>
 
           <Text style={styles.note}>Card ID: {id}</Text>
