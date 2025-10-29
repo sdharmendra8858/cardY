@@ -199,7 +199,7 @@ export default function CardDetailsScreen() {
                 hitSlop={10}
               >
                 <Ionicons
-                  name={showNumber ? "eye-off" : "eye"}
+                  name={!showNumber ? "eye-off" : "eye"}
                   size={22}
                   color="#fff"
                   style={{ marginTop: 2 }}
