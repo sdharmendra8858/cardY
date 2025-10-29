@@ -1,6 +1,7 @@
 // components/DeleteButton.tsx
+import { useAlert } from "@/context/AlertContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Alert, Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 type DeleteButtonProps = {
   onDelete: () => void;
@@ -8,16 +9,21 @@ type DeleteButtonProps = {
   color?: string;
 };
 
-export default function DeleteButton({ onDelete, size = 20, color = "red" }: DeleteButtonProps) {
+export default function DeleteButton({
+  onDelete,
+  size = 20,
+  color = "red",
+}: DeleteButtonProps) {
+  const { showAlert } = useAlert();
   const handlePress = () => {
-    Alert.alert(
-      "Delete",
-      "Are you sure you want to delete?",
-      [
+    showAlert({
+      title: "Delete",
+      message: "Are you sure you want to delete?",
+      buttons: [
         { text: "Cancel", style: "cancel" },
         { text: "Delete", style: "destructive", onPress: onDelete },
-      ]
-    );
+      ],
+    });
   };
 
   return (

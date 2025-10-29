@@ -4,6 +4,7 @@ import CardNotFound from "@/components/CardNotFound";
 import Hero from "@/components/Hero";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
+import { useAlert } from "@/context/AlertContext";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
@@ -14,7 +15,6 @@ import { StackActions, useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   NativeModules,
   Pressable,
   ScrollView,
@@ -27,6 +27,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const { PipModule } = NativeModules;
 
 export default function CardDetailsScreen() {
+  const { showAlert } = useAlert();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [card, setCard] = useState<any>(null);
   const [showNumber, setShowNumber] = useState(false);
@@ -97,25 +98,29 @@ export default function CardDetailsScreen() {
   }, [id]);
 
   const handleDelete = async () => {
-    Alert.alert("Delete Card", "Are you sure you want to delete this card?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await secureRemoveCard(id);
-            navigation.dispatch(StackActions.popToTop());
-          } catch (err) {
-            console.error("Error deleting card:", err);
-            Alert.alert(
-              "Error",
-              "Failed to delete the card. Please try again."
-            );
-          }
+    await showAlert({
+      title: "Delete Card",
+      message: "Are you sure you want to delete this card?",
+      buttons: [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await secureRemoveCard(id);
+              navigation.dispatch(StackActions.popToTop());
+            } catch (err) {
+              console.error("Error deleting card:", err);
+              await showAlert({
+                title: "Error",
+                message: "Failed to delete the card. Please try again.",
+              });
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   if (!card) {

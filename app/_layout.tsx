@@ -8,6 +8,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { AlertProvider } from '@/context/AlertContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -40,8 +41,10 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
-        <Stack screenOptions={{headerShown: false}} />
-        {/* <StatusBar style="auto" /> */}
+        <AlertProvider>
+          <Stack screenOptions={{headerShown: false}} />
+          {/* <StatusBar style="auto" /> */}
+        </AlertProvider>
       </SafeAreaProvider>
     </ThemeProvider>
   );
