@@ -75,14 +75,17 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      {/* Profile Section */}
-      <View style={styles.profileContainer}>
-        <Pressable onPress={() => router.push("/profile")}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+      {/* Settings Section */}
+      <View style={styles.settingsContainer}>
+        <Pressable onPress={() => router.push("/settings")}>
+          <Image
+            source={require("@/assets/images/settings.png")} // or use your own icon asset
+            style={styles.avatar}
+          />
         </Pressable>
-        <View style={styles.profileText}>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>{user.name}</Text>
+        <View style={styles.settingsText}>
+          <Text style={styles.greeting}>Settings</Text>
+          <Text style={styles.name}>Manage App & Privacy</Text>
         </View>
       </View>
 
@@ -124,7 +127,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
-  profileContainer: {
+  settingsContainer: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -132,11 +135,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 0,
   },
-  profileText: {
+  settingsText: {
     marginLeft: 12,
   },
   greeting: {
