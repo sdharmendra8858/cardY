@@ -1,28 +1,53 @@
-// app/profile.tsx
+// app/profile/index.tsx
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useFocusEffect } from "@react-navigation/native";
+import { Image } from "expo-image";
 import { useNavigation, useRouter } from "expo-router";
-import { useLayoutEffect } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { getAvatarById } from "../../constants/avatars";
+import { Colors } from "../../constants/theme";
+import { DEFAULT_PROFILE, getProfile } from "../../utils/profileStorage";
 
 export default function ProfileScreen() {
-  // Dummy profile data
-  const user = {
-    name: "John Doe",
-    avatar: "https://i.pravatar.cc/150?img=12", // placeholder image
-  };
+  const [name, setName] = useState<string>(DEFAULT_PROFILE.name);
+  const [avatarSource, setAvatarSource] = useState<any>(
+    (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
+      DEFAULT_PROFILE.avatarUrl
+  );
 
   const navigation = useNavigation();
   const router = useRouter();
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Profile" });
   }, [navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      (async () => {
+        const profile = await getProfile();
+        if (isActive) {
+          setName(profile.name);
+          const resolved = profile.avatarId
+            ? getAvatarById(profile.avatarId)
+            : undefined;
+          setAvatarSource(
+            resolved || profile.avatarUrl || DEFAULT_PROFILE.avatarUrl
+          );
+        }
+      })();
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   return (
     <ScrollView
@@ -32,16 +57,20 @@ export default function ProfileScreen() {
     >
       <View style={styles.profileHeader}>
         <View style={styles.avatarContainer}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          <Image
+            source={avatarSource}
+            style={styles.avatar}
+            contentFit="cover"
+          />
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => {}}
+            onPress={() => router.push({ pathname: "/profile/edit" })}
             style={styles.editIcon}
           >
             <MaterialIcons name="edit" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.name}>{user.name}</Text>
+        <Text style={styles.name}>{name}</Text>
       </View>
 
       <View style={styles.menuCard}>
@@ -50,7 +79,11 @@ export default function ProfileScreen() {
           onPress={() => router.push("/settings")}
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons name="settings" size={22} color="#3b82f6" />
+            <MaterialIcons
+              name="settings"
+              size={22}
+              color={Colors.light.tint}
+            />
             <Text style={styles.menuText}>Settings</Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#bbb" />
@@ -64,7 +97,11 @@ export default function ProfileScreen() {
           onPress={() => router.push("/support")}
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons name="support-agent" size={22} color="#3b82f6" />
+            <MaterialIcons
+              name="support-agent"
+              size={22}
+              color={Colors.light.tint}
+            />
             <Text style={styles.menuText}>Support</Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#bbb" />
@@ -77,7 +114,11 @@ export default function ProfileScreen() {
           onPress={() => router.push({ pathname: "/settings/TermsScreen" })}
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons name="description" size={22} color="#3b82f6" />
+            <MaterialIcons
+              name="description"
+              size={22}
+              color={Colors.light.tint}
+            />
             <Text style={styles.menuText}>Terms & Conditions</Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#bbb" />
@@ -92,7 +133,7 @@ export default function ProfileScreen() {
           }
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons name="gavel" size={22} color="#3b82f6" />
+            <MaterialIcons name="gavel" size={22} color={Colors.light.tint} />
             <Text style={styles.menuText}>Legal & Privacy</Text>
           </View>
           <MaterialIcons name="chevron-right" size={22} color="#bbb" />
@@ -132,7 +173,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 6,
     bottom: 6,
-    backgroundColor: "#3b82f6",
+    backgroundColor: Colors.light.tint,
     borderRadius: 14,
     padding: 6,
     shadowColor: "#000",

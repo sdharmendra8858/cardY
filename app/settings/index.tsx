@@ -161,7 +161,7 @@ export default function SettingsScreen() {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.version}>Version 1.0.3</Text>
+            <Text style={styles.version}>Version 1.0.0</Text>
           </View>
 
           {/* Future Ad Section */}
