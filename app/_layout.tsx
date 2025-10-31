@@ -8,6 +8,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import 'react-native-reanimated';
+import Toast from "react-native-toast-message";
 
 import { AlertProvider } from '@/context/AlertContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -93,6 +94,7 @@ export default function RootLayout() {
         <AlertProvider>
           <Stack screenOptions={{headerShown: false}} />
           {/* <StatusBar style="auto" /> */}
+          <Toast position="bottom" visibilityTime={3000} />
         </AlertProvider>
       </SafeAreaProvider>
     </ThemeProvider>

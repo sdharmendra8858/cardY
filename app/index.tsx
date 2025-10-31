@@ -132,19 +132,19 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 70,
+    height: 70,
+    borderRadius: 50,
   },
   profileText: {
     marginLeft: 12,
   },
   greeting: {
-    fontSize: 16,
+    fontSize: 17,
     color: "#666",
   },
   name: {
-    fontSize: 20,
+    fontSize: 25,
     fontWeight: "bold",
   },
   title: {
