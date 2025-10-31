@@ -1,15 +1,14 @@
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import Hero from "@/components/Hero";
 import { useAlert } from "@/context/AlertContext";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Switch,
+  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const { showAlert } = useAlert();
 
   // persistent state
@@ -34,7 +32,8 @@ export default function SettingsScreen() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (typeof parsed.appLock === "boolean") setAppLock(parsed.appLock);
-          if (typeof parsed.hideInfo === "boolean") setHideInfo(parsed.hideInfo);
+          if (typeof parsed.hideInfo === "boolean")
+            setHideInfo(parsed.hideInfo);
         }
       } catch (e) {
         console.error("Error loading settings:", e);
@@ -44,7 +43,10 @@ export default function SettingsScreen() {
   }, []);
 
   // Save settings whenever changed
-  const saveSettings = async (updated: { appLock?: boolean; hideInfo?: boolean }) => {
+  const saveSettings = async (updated: {
+    appLock?: boolean;
+    hideInfo?: boolean;
+  }) => {
     try {
       const current = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = current ? JSON.parse(current) : {};
@@ -70,7 +72,8 @@ export default function SettingsScreen() {
   const handleClearCards = () => {
     showAlert({
       title: "Clear All Cards",
-      message: "This will permanently delete all saved cards from your device. Are you sure?",
+      message:
+        "This will permanently delete all saved cards from your device. Are you sure?",
       buttons: [
         { text: "Cancel", style: "cancel" },
         {
@@ -80,112 +83,85 @@ export default function SettingsScreen() {
             try {
               await clearCards();
               Toast.show({
-                type: 'success',
-                text1: 'All cards cleared securely'
+                type: "success",
+                text1: "All cards cleared securely",
               });
             } catch (error) {
               console.error("Error clearing cards:", error);
               Toast.show({
-                type: 'error',
-                text1: 'Something went wrong while clearing cards.'
+                type: "error",
+                text1: "Something went wrong while clearing cards.",
               });
             }
           },
         },
-      ]
+      ],
     });
   };
 
   const handleClearCache = () => {
     Toast.show({
-      type: "info", 
-      text1: "Cache Cleared", 
-      text2 :"Temporary data has been removed."
+      type: "info",
+      text1: "Cache Cleared",
+      text2: "Temporary data has been removed.",
     });
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={styles.container}>
+      <Hero
+        title="Settings"
+        subtitle="Manage privacy, security, and preferences"
+        tone="dark"
+        surfaceColor="#F2F2F2"
+      />
+      <View style={styles.container}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <ThemedText style={styles.title}>Settings</ThemedText>
-          <ThemedText style={styles.subtitle}>
-            Manage privacy, security, and app preferences
-          </ThemedText>
+          {/* Header removed; handled by Hero */}
 
           {/* Section: Security */}
           <View style={styles.card}>
-            <ThemedText style={styles.sectionTitle}>Security</ThemedText>
+            <Text style={styles.sectionTitle}>Security</Text>
             <View style={styles.row}>
-              <ThemedText style={styles.label}>Enable App Lock</ThemedText>
+              <Text style={styles.label}>Enable App Lock</Text>
               <Switch value={appLock} onValueChange={handleAppLockToggle} />
             </View>
           </View>
 
           {/* Section: Card Display */}
           <View style={styles.card}>
-            <ThemedText style={styles.sectionTitle}>Card Display</ThemedText>
+            <Text style={styles.sectionTitle}>Card Display</Text>
             <View style={styles.row}>
-              <ThemedText style={styles.label}>
-                Hide Sensitive Info by Default
-              </ThemedText>
+              <Text style={styles.label}>Hide Sensitive Info by Default</Text>
               <Switch value={hideInfo} onValueChange={handleHideInfoToggle} />
             </View>
           </View>
 
           {/* Section: Data Management */}
           <View style={styles.card}>
-            <ThemedText style={styles.sectionTitle}>Data Management</ThemedText>
-
-            <TouchableOpacity onPress={handleClearCards} style={styles.touchRow}>
-              <ThemedText style={styles.label}>Clear All Saved Cards</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={handleClearCache} style={styles.touchRow}>
-              <ThemedText style={styles.label}>Clear Cache</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Section: Support */}
-          <View style={styles.card}>
-            <ThemedText style={styles.sectionTitle}>Support</ThemedText>
+            <Text style={styles.sectionTitle}>Data Management</Text>
 
             <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Contact Support", "Email us at support@cardy.app")
-              }
+              onPress={handleClearCards}
               style={styles.touchRow}
             >
-              <ThemedText style={styles.label}>Contact / Feedback</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Section: Legal */}
-          <View style={styles.card}>
-            <ThemedText style={styles.sectionTitle}>Legal</ThemedText>
-
-            <TouchableOpacity
-              onPress={() => router.push({pathname:"/settings/TermsScreen"})}
-              style={styles.touchRow}
-            >
-              <ThemedText style={styles.link}>Terms & Conditions</ThemedText>
+              <Text style={styles.label}>Clear All Saved Cards</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push({pathname: "/settings/PrivacyPolicyScreen"})}
+              onPress={handleClearCache}
               style={styles.touchRow}
             >
-              <ThemedText style={styles.link}>Privacy Policy</ThemedText>
+              <Text style={styles.label}>Clear Cache</Text>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <ThemedText style={styles.version}>Version 1.0.3</ThemedText>
+            <Text style={styles.version}>Version 1.0.3</Text>
           </View>
 
           {/* Future Ad Section */}
@@ -198,7 +174,7 @@ export default function SettingsScreen() {
           </View>
           */}
         </ScrollView>
-      </ThemedView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -209,6 +185,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    backgroundColor: "#f2f2f2",
     paddingHorizontal: 16,
     paddingTop: 12,
   },
@@ -223,14 +200,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 14,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#fff",
     shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 15,
