@@ -1,22 +1,18 @@
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import NoCards from "@/components/NoCards";
+import { getAvatarById } from "@/constants/avatars";
 import { useAlert } from "@/context/AlertContext";
 import { maskAndFormatCardNumber } from "@/utils/mask";
+import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
 import {
   getCards as secureGetCards,
   removeCard as secureRemoveCards,
 } from "@/utils/secureStorage";
+import { Image } from "expo-image";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import {
-  FlatList,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -28,15 +24,16 @@ export default function HomeScreen() {
       cardHolder: string;
       expiry: string;
       cardName?: string;
+      bank?: string;
     }[]
   >([]);
 
   const router = useRouter();
-
-  const user = {
-    name: "John Doe",
-    avatar: "https://i.pravatar.cc/150?img=12",
-  };
+  const [profileName, setProfileName] = useState<string>(DEFAULT_PROFILE.name);
+  const [avatarSource, setAvatarSource] = useState<any>(
+    (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
+      DEFAULT_PROFILE.avatarUrl
+  );
 
   const fetchCards = async () => {
     try {
@@ -48,10 +45,26 @@ export default function HomeScreen() {
     }
   };
 
-  // Load saved cards from AsyncStorage
+  const fetchProfile = async () => {
+    try {
+      const profile = await getProfile();
+      setProfileName(profile.name);
+      const resolved = profile.avatarId
+        ? getAvatarById(profile.avatarId)
+        : undefined;
+      setAvatarSource(
+        resolved || profile.avatarUrl || DEFAULT_PROFILE.avatarUrl
+      );
+    } catch {
+      // fallback already set
+    }
+  };
+
+  // Load saved cards and profile
   useFocusEffect(
     useCallback(() => {
       fetchCards();
+      fetchProfile();
     }, [])
   );
 
@@ -78,11 +91,15 @@ export default function HomeScreen() {
       {/* Profile Section */}
       <View style={styles.profileContainer}>
         <Pressable onPress={() => router.push("/profile")}>
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
+          <Image
+            source={avatarSource}
+            style={styles.avatar}
+            contentFit="cover"
+          />
         </Pressable>
         <View style={styles.profileText}>
           <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.name}>{profileName}</Text>
         </View>
       </View>
 
@@ -91,21 +108,33 @@ export default function HomeScreen() {
       {cards.length === 0 ? (
         <NoCards />
       ) : (
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <CardItem
-              id={item.id}
-              cardName={item.cardName || `Unnamed Card`}
-              cardNumber={maskAndFormatCardNumber(item.cardNumber)}
-              cardHolder={item.cardHolder}
-              expiry={item.expiry}
-              onDelete={handleRemoveCard}
-            />
-          )}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-        />
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16, flex: 1 }}>
+          <FlatList
+            data={cards}
+            keyExtractor={(item) => item.id}
+            renderItem={({
+              item,
+            }: {
+              item: {
+                id: string;
+                cardNumber: string;
+                cardHolder: string;
+                expiry: string;
+                cardName?: string;
+                bank?: string;
+              };
+            }) => (
+              <CardItem
+                id={item.id}
+                cardName={item.bank || item.cardName || `Unknown Bank`}
+                cardNumber={maskAndFormatCardNumber(item.cardNumber)}
+                cardHolder={item.cardHolder}
+                expiry={item.expiry}
+                onDelete={handleRemoveCard}
+              />
+            )}
+          />
+        </View>
       )}
 
       {/* Navigate to Add Card */}

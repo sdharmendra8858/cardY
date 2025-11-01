@@ -1,6 +1,7 @@
 import Hero from "@/components/Hero";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, useRouter } from "expo-router";
+import { Colors } from "../../constants/theme";
 
 import React, { useLayoutEffect } from "react";
 import {
@@ -53,35 +54,35 @@ export default function SupportScreen() {
           <View style={styles.card}>
             <TouchableOpacity style={styles.row} onPress={openEmail}>
               <View style={styles.left}>
-                <MaterialIcons name="email" size={22} color="#111" />
+                <MaterialIcons name="email" size={22} color={Colors.light.tint} />
                 <Text style={styles.label}>Email: support@cardy.app</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#999" />
+              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
             </TouchableOpacity>
 
             <View style={styles.divider} />
 
             <TouchableOpacity style={styles.row} onPress={openFeedback}>
               <View style={styles.left}>
-                <MaterialIcons name="rate-review" size={22} color="#111" />
+                <MaterialIcons name="rate-review" size={22} color={Colors.light.tint} />
                 <Text style={styles.label}>Send Feedback</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#999" />
+              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
             </TouchableOpacity>
 
             <View style={styles.divider} />
 
             <TouchableOpacity style={styles.row} onPress={openWebsite}>
               <View style={styles.left}>
-                <MaterialIcons name="public" size={22} color="#111" />
+                <MaterialIcons name="public" size={22} color={Colors.light.tint} />
                 <Text style={styles.label}>Visit Website</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#999" />
+              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.version}>Version 1.0.3</Text>
+            <Text style={styles.version}>Version 1.0.0</Text>
           </View>
         </ScrollView>
       </View>
