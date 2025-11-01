@@ -10,6 +10,7 @@ import { ActivityIndicator, Platform, Text, View } from 'react-native';
 import 'react-native-reanimated';
 import Toast from "react-native-toast-message";
 
+import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from '@/context/AlertContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -93,6 +94,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <AlertProvider>
           <Stack screenOptions={{headerShown: false}} />
+          <TermsPopup />
           {/* <StatusBar style="auto" /> */}
           <Toast position="bottom" visibilityTime={3000} />
         </AlertProvider>
