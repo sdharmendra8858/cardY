@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import InfoBox from "@/components/InfoBox";
 import {
   addCard as secureAddCard
 } from "@/utils/secureStorage";
@@ -84,7 +85,7 @@ export default function AddCardScreen() {
         extraScrollHeight={120}
         showsVerticalScrollIndicator={false}
       >
-        {!hideScanButton && (
+        {!hideScanButton ? (
           <>
             <ScanButton onPress={handleScan} />
 
@@ -94,6 +95,12 @@ export default function AddCardScreen() {
               <View style={styles.line} />
             </View>
           </>
+        ): (
+          <InfoBox
+            message="⚠️ Please review all details carefully before saving. The scanned information might contain errors."
+            type="warning"
+            style={{marginHorizontal: 0}}
+          />
         )}
 
         <CardForm
