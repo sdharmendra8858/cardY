@@ -81,7 +81,11 @@ export default function EditProfileScreen() {
     >
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <View style={styles.previewContainer}>
-          <View style={styles.previewAvatarWrap}>
+          <View style={[styles.previewAvatarWrap,{
+            backgroundColor: palette.card,
+            borderColor: palette.tint,
+            shadowColor: palette.tint
+          }]}>
             <Image
               source={selectedSource}
               style={styles.previewAvatar}
@@ -100,8 +104,13 @@ export default function EditProfileScreen() {
           placeholder="Enter your name"
           style={[
             styles.input,
-            { backgroundColor: palette.card, borderColor: palette.border },
+            { 
+              backgroundColor: palette.card, 
+              borderColor: palette.border, 
+              color: palette.text 
+            },
           ]}
+          placeholderTextColor={palette.icon}
           maxLength={40}
         />
 
@@ -125,7 +134,10 @@ export default function EditProfileScreen() {
                     backgroundColor: palette.card,
                     borderColor: palette.border,
                   },
-                  isSelected && styles.avatarWrapSelected,
+                  isSelected && [
+                    styles.avatarWrapSelected,
+                    { borderColor: palette.tint, shadowColor: palette.tint }
+                  ],
                 ]}
               >
                 <Image
@@ -134,8 +146,12 @@ export default function EditProfileScreen() {
                   contentFit="cover"
                 />
                 {isSelected ? (
-                  <View style={styles.check}>
-                    <MaterialIcons name="check" size={16} color="#fff" />
+                  <View style={[styles.check, {backgroundColor: palette.primary}]}>
+                    <MaterialIcons 
+                      name="check" 
+                      size={16} 
+                      color={palette.onPrimary} 
+                    />
                   </View>
                 ) : null}
               </TouchableOpacity>

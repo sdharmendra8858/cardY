@@ -18,6 +18,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // 👇 import your Android native lock module wrapper
+import AuthRequired from "@/components/AuthRequired";
 import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
 import * as SplashScreen from "expo-splash-screen";
 SplashScreen.preventAutoHideAsync();
@@ -43,7 +44,7 @@ export default function RootLayout() {
 
           // hide splash once auth is done (success or fail)
           await SplashScreen.hideAsync();
-        } catch (err) {
+        } catch {
           await SplashScreen.hideAsync();
         }
       })();
@@ -71,6 +72,18 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [router]);
 
+  const handleRetryAuth = async () => {
+    try {
+      const ok = await authenticateUser();
+      setAuthenticated(ok);
+      if (!ok) {
+        Toast.show({type: "error", text1: "Authentication canceled"});
+      }
+    } catch {
+      Toast.show({type: "error", text1: "Authentication failed"});
+    }
+  }
+
   // 🕓 Show loading or lock screen
   if (!checked) {
     return (
@@ -82,11 +95,7 @@ export default function RootLayout() {
   }
 
   if (!authenticated) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Authentication required to continue.</Text>
-      </View>
-    );
+    return <AuthRequired onRetry={handleRetryAuth}/>
   }
 
   return (
