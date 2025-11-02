@@ -198,7 +198,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 18,
     fontWeight: "600",
-    color: "#11181C",
   },
   label: { fontSize: 14, marginBottom: 8 },
   input: {

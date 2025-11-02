@@ -1,4 +1,6 @@
 // app/add-card/crop.tsx
+import AppButton from "@/components/AppButton";
+import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -15,9 +17,7 @@ import {
   Image,
   PanResponder,
   StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import {
   SafeAreaView,
@@ -288,14 +288,9 @@ export default function CropScreen() {
         </View>
       )}
 
-      <TouchableOpacity
-        style={[styles.cropButton, { backgroundColor: palette.primary }]}
-        onPress={handleCrop}
-      >
-        <Text style={[styles.cropText, { color: palette.onPrimary }]}>
-          Crop & Preview
-        </Text>
-      </TouchableOpacity>
+      <BottomActions style={{bottom: 12}}>
+        <AppButton title="Crop & Preview" onPress={handleCrop} fullWidth/>
+      </BottomActions>
     </SafeAreaView>
   );
 }
@@ -317,14 +312,6 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: "lime",
     borderRadius: 12,
-  },
-  cropButton: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
-    padding: 12,
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
   },
   cropText: { color: "#fff", fontWeight: "bold" },
   debugBox: {

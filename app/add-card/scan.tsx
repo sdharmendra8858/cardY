@@ -1,6 +1,9 @@
 // app/add-card/scan.tsx
 import AppButton from "@/components/AppButton";
+import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -22,6 +25,8 @@ export default function ScanScreen() {
   const router = useRouter();
   const { frontUri } = useLocalSearchParams<{ frontUri?: string }>();
   const [side] = useState<"front" | "back">(frontUri ? "back" : "front");
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   const navigation = useNavigation();
   useLayoutEffect(() => {
@@ -111,13 +116,29 @@ export default function ScanScreen() {
     );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView 
+      style={[styles.container, {backgroundColor: palette.background}]} 
+      edges={["top"]}
+    >
       <View style={{ alignSelf: "stretch" }}>
-        <Hero title="Capture Card" subtitle="Align card within the guid" />
+        <Hero 
+          title="Capture Card" 
+          subtitle="Align card within the guid" 
+          surfaceColor="transparent"
+        />
       </View>
-      {/* Always keep camera mounted */}
-      <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-
+      {/*Camera with overlay helper text */}
+      <View style={styles.cameraContainer}>
+        {/* Always keep camera mounted */}
+        <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+        <View style={styles.helperOverlay} pointerEvents="none">
+          <Text style={styles.helperText}>
+            {side === "front"
+              ? "Capture Front of Card"
+              : "Capture Back of Card"}
+          </Text>
+        </View>
+      </View>
       {/* Fixed rectangle guide */}
       <View
         style={[
@@ -132,22 +153,21 @@ export default function ScanScreen() {
         pointerEvents="none"
       />
 
-      <View style={styles.bottomContainer}>
-        <Text style={styles.sideText}>
-          {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
-        </Text>
+      <BottomActions style={{ bottom: 12 }}>
         <AppButton
           title="Capture"
           onPress={handleCapture}
           disabled={captureDisabled}
+          fullWidth
         />
-      </View>
+      </BottomActions>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+  cameraContainer: { flex: 1, position: "relative" },
   camera: { flex: 1 },
   guide: {
     position: "absolute",
@@ -156,16 +176,21 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderRadius: 6,
   },
-  bottomContainer: {
+  helperOverlay: {
     position: "absolute",
-    bottom: 36,
+    top: 12,
     left: 0,
     right: 0,
     alignItems: "center",
+    zIndex: 20,
   },
-  sideText: {
+  helperText: {
+    fontSize: 14,
+    textAlign: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
     color: "#fff",
-    marginBottom: 8,
-    fontSize: 16,
   },
 });

@@ -1,5 +1,6 @@
 // app/profile/index.tsx
 import { ThemedText } from "@/components/themed-text";
+import { useThemeController } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -14,6 +15,7 @@ import { DEFAULT_PROFILE, getProfile } from "../../utils/profileStorage";
 export default function ProfileScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+  const { override, setOverride } = useThemeController();
   const [name, setName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
@@ -147,6 +149,90 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
       </View>
+
+      <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
+          <ThemedText style={{fontSize: 16, fontWeight: "700"}}>
+            Appearance
+          </ThemedText>
+          <ThemedText style={{ fontSize: 12, opacity: 0.7 , marginTop:2 }}>
+            Choose how Cardy looks
+          </ThemedText>
+          <View style={[styles.themeRow, {marginTop: 12}]}>
+            {[
+              {
+                id: "system",
+                label: "System",
+                value: null,
+                icon: "phone-android",
+              },
+              {
+                id: "light",
+                label: "Light",
+                value: "light",
+                icon: "brightness-7",
+              },
+              {
+                id: "dark",
+                label: "Dark",
+                value: "dark",
+                icon: "brightness-4",
+              }
+            ].map((opt) => {
+              const selected = (override ?? "system") === (opt.value ?? "system");
+              const iconColor = selected ? palette.onPrimary : palette.tint;
+              return (
+                <TouchableOpacity 
+                  key={opt.id}
+                  accessibilityRole="button"
+                  onPress={() => setOverride(opt.value as any)}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.themeOption,
+                    {
+                      backgroundColor: selected
+                        ? palette.primary
+                        : palette.surface,
+                      borderColor: selected ? palette.primary : palette.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.themeOptionInner}>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: selected
+                          ? "rgba(255,255,255,0.2)"
+                          : scheme === "dark"
+                          ? "rgba(255,255,255,0.06)"
+                          : "rgba(0,0,0,0.06)",
+                          marginBottom: 6,
+                      }}
+                    >
+                      <MaterialIcons 
+                        name={opt.icon as any}
+                        size={18}
+                        color={iconColor}
+                      />
+                    </View>
+                    <ThemedText
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: selected ? palette.onPrimary : palette.text,
+                      }}
+                    >
+                      {opt.label}
+                    </ThemedText>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+      </View>
     </ScrollView>
   );
 }
@@ -212,4 +298,19 @@ const styles = StyleSheet.create({
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuText: { fontSize: 16 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#e5e5e5" },
+  themeRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingBottom: 8,
+  },
+  themeOption: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 64,
+  },
+  themeOptionInner: { alignItems: "center", justifyContent: "center" }
 });

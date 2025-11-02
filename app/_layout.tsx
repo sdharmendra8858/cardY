@@ -34,23 +34,24 @@ function AppShell() {
   const [authenticated, setAuthenticated] = useState(Platform.OS !== "android"); // bypass on iOS for now
   const [checked, setChecked] = useState(Platform.OS !== "android");
   const barStyle = colorScheme === "dark" ? "light" : "dark";
-  const barBg = colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+  const barBg = 
+    colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
   const [appIsActive, setAppIsActive] = useState(
     AppState.currentState === "active"
-  )
+  );
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
       setAppIsActive(state === "active");
     });
     setAppIsActive(AppState.currentState === "active");
-    return () => sub.remove()
-  }, [])
+    return () => sub.remove();
+  }, []);
 
   // 🔒 Android system lock authentication
   useEffect(() => {
     if (checked) return; // already handled
-    if (Platform.OS === "android") {
+    if (Platform.OS !== "android") {
       setChecked(true);
       SplashScreen.hideAsync();
       return;
@@ -93,10 +94,10 @@ function AppShell() {
       const ok = await authenticateUser();
       setAuthenticated(ok);
       if (!ok) {
-        Toast.show({type: "error", text1: "Authentication canceled"});
+        Toast.show({ type: "error", text1: "Authentication canceled" });
       }
     } catch {
-      Toast.show({type: "error", text1: "Authentication failed"});
+      Toast.show({ type: "error", text1: "Authentication failed" });
     }
   }
 
@@ -118,21 +119,20 @@ function AppShell() {
 
   if (!authenticated) {
     return (
-    <>
-      <StatusBar
-        style={barStyle}
-        backgroundColor={barBg}
-        translucent={false}
-        animated
-      />
-      <AuthRequired onRetry={handleRetryAuth}/>
-    </>)
+      <>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
+        <AuthRequired onRetry={handleRetryAuth}/>
+      </>
+    );
   }
 
   return (
-      <NavThemeProvider
-        value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-      >
+      <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <SafeAreaProvider>
           <AlertProvider>
             <Stack screenOptions={{ headerShown: false }} />
@@ -153,7 +153,7 @@ function AppShell() {
 export default function RootLayout() {
   return (
     <ThemeOverrideProvider>
-      <AppShell/>
+      <AppShell />
     </ThemeOverrideProvider>
   );
 }
