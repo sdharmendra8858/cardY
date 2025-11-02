@@ -1,61 +1,74 @@
 import Hero from "@/components/Hero";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import React from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function PrivacyPolicyScreen() {
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Hero
-        title="Privacy Policy"
-        subtitle="Your privacy matters"
-        tone="dark"
-        surfaceColor="#F2F2F2"
-      />
-      <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+    >
+      <Hero title="Privacy Policy" subtitle="Your privacy matters" />
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
           <View>
-            <Text style={styles.date}>Last Updated: October 30, 2025</Text>
+            <ThemedText style={styles.date}>
+              Last Updated: October 30, 2025
+            </ThemedText>
 
-            <Text style={styles.paragraph}>
-              Thank you for using <Text style={styles.bold}>Cardy</Text> (“the
-              App”). Your privacy is important to us. This Privacy Policy
-              explains how Cardy handles your information and ensures your
-              personal data remains safe.
-            </Text>
+            <ThemedText style={styles.paragraph}>
+              Thank you for using{" "}
+              <ThemedText style={styles.bold}>Cardy</ThemedText> (“the App”).
+              Your privacy is important to us. This Privacy Policy explains how
+              Cardy handles your information and ensures your personal data
+              remains safe.
+            </ThemedText>
 
-            <Text style={styles.heading}>1. Data Collection</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              1. Data Collection
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               Cardy does not collect, transmit, or share any personal
               information. The App operates entirely offline — no user data,
               card information, or personal identifiers are sent to any external
               server. We do not use analytics, tracking, or third-party SDKs
               that monitor user behavior.
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>2. Data Storage</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              2. Data Storage
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               • All data (such as card numbers or notes) you save in Cardy is
               stored locally on your device.{"\n"}• Cardy does not automatically
               back up or sync your data to any cloud or server.{"\n"}• You have
               full control over your data — uninstalling the App permanently
               deletes all saved information.
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>3. Security</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              3. Security
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               • Cardy provides optional device lock authentication (PIN,
               fingerprint, or pattern) for viewing sensitive data.{"\n"}•
               Because data is stored only on your device, the security of your
               information depends on your device’s protection measures.{"\n"}•
               We recommend keeping your device locked and up to date.
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>4. Advertising and Monetization</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              4. Advertising and Monetization
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               In future versions, Cardy may include non-personalized
               advertisements through Google AdMob or similar services. These ads
               will never appear on screens displaying sensitive card
@@ -67,33 +80,39 @@ export default function PrivacyPolicyScreen() {
               purposes.{"\n\n"}
               You can review Google’s privacy policy at:
               https://policies.google.com/privacy
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>5. Children’s Privacy</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              5. Children’s Privacy
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               Cardy is designed for general audiences and does not knowingly
               collect data from children under 13. Since the App operates
               offline, no special parental consent is required.
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>6. Policy Updates</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              6. Policy Updates
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               We may update this Privacy Policy periodically to improve
               transparency or comply with new regulations. The latest version
               will always be available inside the App.
-            </Text>
+            </ThemedText>
 
-            <Text style={styles.heading}>7. Contact</Text>
-            <Text style={styles.paragraph}>
+            <ThemedText type="defaultSemiBold" style={styles.heading}>
+              7. Contact
+            </ThemedText>
+            <ThemedText style={styles.paragraph}>
               If you have questions or concerns about this Privacy Policy, you
               can contact us at:{"\n"}📧
-              <Text style={styles.bold}> support@cardy.app</Text>
-            </Text>
+              <ThemedText style={styles.bold}> support@cardy.app</ThemedText>
+            </ThemedText>
 
-            <Text style={styles.paragraph}>
+            <ThemedText style={styles.paragraph}>
               By using Cardy, you acknowledge that you have read and understood
               this Privacy Policy.
-            </Text>
+            </ThemedText>
           </View>
         </ScrollView>
       </View>

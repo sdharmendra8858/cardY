@@ -1,3 +1,6 @@
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useThemeColor } from "@/hooks/use-theme-color";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 
@@ -13,25 +16,23 @@ export default function Hero({
   title,
   subtitle,
   imageSource,
-  tone = "light",
-  surfaceColor = "#fff",
+  tone,
+  surfaceColor,
 }: HeroProps) {
-  const isDark = tone === "dark";
+  const systemScheme = useColorScheme();
+  const isDark = tone ? tone === "dark" : systemScheme === "dark";
+  const titleColor = useThemeColor({}, "text");
+  const subtitleColor = isDark ? Colors.dark.icon : Colors.light.icon;
+  const containerBg = isDark ? "#0a2540" : "#eaf6ff";
+  const overlapBg =
+    surfaceColor ?? (isDark ? Colors.dark.surface : Colors.light.surface);
+
   return (
-    <View style={[styles.container, isDark ? styles.dark : styles.light]}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       <View style={styles.textContainer}>
-        <Text
-          style={[styles.title, isDark ? styles.titleDark : styles.titleLight]}
-        >
-          {title}
-        </Text>
+        <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
         {subtitle ? (
-          <Text
-            style={[
-              styles.subtitle,
-              isDark ? styles.subtitleDark : styles.subtitleLight,
-            ]}
-          >
+          <Text style={[styles.subtitle, { color: subtitleColor }]}>
             {subtitle}
           </Text>
         ) : null}
@@ -39,7 +40,7 @@ export default function Hero({
       {imageSource ? (
         <Image source={imageSource} style={styles.image} resizeMode="contain" />
       ) : null}
-      <View style={[styles.bottomOverlap, { backgroundColor: surfaceColor }]} />
+      <View style={[styles.bottomOverlap, { backgroundColor: overlapBg }]} />
     </View>
   );
 }

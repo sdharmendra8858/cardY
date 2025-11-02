@@ -1,67 +1,86 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider
-} from '@react-navigation/native';
-import * as Linking from 'expo-linking';
-import { Stack, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Text, View } from 'react-native';
-import 'react-native-reanimated';
+  ThemeProvider as NavThemeProvider,
+} from "@react-navigation/native";
+import * as Linking from "expo-linking";
+import { Stack, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, AppState, Platform, Text, View } from "react-native";
+import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
 import TermsPopup from "@/components/TermsPopup";
-import { AlertProvider } from '@/context/AlertContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AlertProvider } from "@/context/AlertContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // 👇 import your Android native lock module wrapper
-import { authenticateUser } from '@/utils/LockScreen'; // ← Create this file (shown below)
-import * as SplashScreen from 'expo-splash-screen';
+import AuthRequired from "@/components/AuthRequired";
+import { Colors } from "@/constants/theme";
+import { ThemeOverrideProvider } from "@/context/ThemeContext";
+import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
+import * as SplashScreen from "expo-splash-screen";
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: "(tabs)",
 };
 
-export default function RootLayout() {
+function AppShell() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const [authenticated, setAuthenticated] = useState(Platform.OS !== 'android'); // bypass on iOS for now
-  const [checked, setChecked] = useState(Platform.OS !== 'android');
+  const [authenticated, setAuthenticated] = useState(Platform.OS !== "android"); // bypass on iOS for now
+  const [checked, setChecked] = useState(Platform.OS !== "android");
+  const barStyle = colorScheme === "dark" ? "light" : "dark";
+  const barBg = 
+    colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+  const [appIsActive, setAppIsActive] = useState(
+    AppState.currentState === "active"
+  );
 
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      setAppIsActive(state === "active");
+    });
+    setAppIsActive(AppState.currentState === "active");
+    return () => sub.remove();
+  }, []);
 
   // 🔒 Android system lock authentication
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      (async () => {
-        try {
-          const ok = await authenticateUser();
-          setAuthenticated(ok);
-          setChecked(true);
-  
-          // hide splash once auth is done (success or fail)
-          await SplashScreen.hideAsync();
-        } catch (err) {
-          await SplashScreen.hideAsync();
-        }
-      })();
-    } else {
+    if (checked) return; // already handled
+    if (Platform.OS !== "android") {
+      setChecked(true);
       SplashScreen.hideAsync();
+      return;
     }
-  }, []);
+    if (!appIsActive) return;
+
+    (async () => {
+      try {
+        const ok = await authenticateUser();
+        setAuthenticated(ok);
+      } finally {
+        setChecked(true);
+        await SplashScreen.hideAsync();
+      }
+    })();
+  }, [appIsActive, checked]);
+
 
   // 🔗 Deep linking setup
   useEffect(() => {
     const handleUrl = ({ url }: { url: string }) => {
       const parsed = Linking.parse(url);
-      if (parsed.path?.startsWith('card-details/')) {
-        const id = parsed.path.split('/')[1];
-        router.push({ pathname: '/card-details/[id]', params: { id } });
+      if (parsed.path?.startsWith("card-details/")) {
+        const id = parsed.path.split("/")[1];
+        router.push({ pathname: "/card-details/[id]", params: { id } });
       }
     };
 
-    const subscription = Linking.addEventListener('url', handleUrl);
+    const subscription = Linking.addEventListener("url", handleUrl);
 
     Linking.getInitialURL().then((url) => {
       if (url) handleUrl({ url });
@@ -70,11 +89,28 @@ export default function RootLayout() {
     return () => subscription.remove();
   }, [router]);
 
-  
+  const handleRetryAuth = async () => {
+    try {
+      const ok = await authenticateUser();
+      setAuthenticated(ok);
+      if (!ok) {
+        Toast.show({ type: "error", text1: "Authentication canceled" });
+      }
+    } catch {
+      Toast.show({ type: "error", text1: "Authentication failed" });
+    }
+  }
+
   // 🕓 Show loading or lock screen
   if (!checked) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
         <ActivityIndicator size="large" />
         <Text style={{ marginTop: 12 }}>Unlocking Cardy...</Text>
       </View>
@@ -83,22 +119,41 @@ export default function RootLayout() {
 
   if (!authenticated) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Authentication required to continue.</Text>
-      </View>
+      <>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
+        <AuthRequired onRetry={handleRetryAuth}/>
+      </>
     );
-  } 
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <SafeAreaProvider>
-        <AlertProvider>
-          <Stack screenOptions={{headerShown: false}} />
-          <TermsPopup />
-          {/* <StatusBar style="auto" /> */}
-          <Toast position="bottom" visibilityTime={3000} />
-        </AlertProvider>
-      </SafeAreaProvider>
-    </ThemeProvider>
+      <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <SafeAreaProvider>
+          <AlertProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            <TermsPopup />
+            <StatusBar
+              style={barStyle}
+              backgroundColor={barBg}
+              translucent={false}
+              animated
+            />
+            <Toast position="bottom" visibilityTime={3000} />
+          </AlertProvider>
+        </SafeAreaProvider>
+      </NavThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeOverrideProvider>
+      <AppShell />
+    </ThemeOverrideProvider>
   );
 }

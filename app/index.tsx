@@ -2,8 +2,11 @@ import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
+import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
+import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
 import {
@@ -13,11 +16,13 @@ import {
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const { showAlert } = useAlert();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const [cards, setCards] = useState<
     {
       id: string;
@@ -88,7 +93,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      edges={["top", "bottom"]}
+    >
       {/* Profile Section */}
       <View style={styles.profileContainer}>
         <Pressable onPress={() => router.push("/profile")}>
@@ -98,18 +106,38 @@ export default function HomeScreen() {
             contentFit="cover"
           />
         </Pressable>
-        <View style={styles.profileText}>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>{profileName}</Text>
+        <View
+          style={[
+            styles.profileText,
+            {
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            },
+          ]}
+        >
+          <View>
+            <ThemedText style={styles.greeting}>Hello,</ThemedText>
+            <ThemedText type="title" style={styles.name}>
+              {profileName}
+            </ThemedText>
+          </View>
         </View>
       </View>
 
-      <Text style={styles.title}>Your Cards</Text>
-      <InfoBox
-        message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
-        type="warning"
-        style={{marginHorizontal: 16}}
-      />
+      {cards.length !== 0 && (
+        <View>
+          <ThemedText type="title" style={styles.title}>
+            Your Cards
+          </ThemedText>
+          <InfoBox
+            message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+            type="warning"
+            style={{ marginHorizontal: 16 }}
+          />
+        </View>
+      )}
 
       {cards.length === 0 ? (
         <NoCards />

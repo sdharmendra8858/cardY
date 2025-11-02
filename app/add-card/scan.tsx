@@ -1,10 +1,19 @@
 // app/add-card/scan.tsx
 import AppButton from "@/components/AppButton";
+import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -16,6 +25,8 @@ export default function ScanScreen() {
   const router = useRouter();
   const { frontUri } = useLocalSearchParams<{ frontUri?: string }>();
   const [side] = useState<"front" | "back">(frontUri ? "back" : "front");
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   const navigation = useNavigation();
   useLayoutEffect(() => {
@@ -38,7 +49,8 @@ export default function ScanScreen() {
     (async () => {
       const { status } = await Camera.getCameraPermissionsAsync();
       if (status !== "granted") {
-        const { status: reqStatus } = await Camera.requestCameraPermissionsAsync();
+        const { status: reqStatus } =
+          await Camera.requestCameraPermissionsAsync();
         setHasPermission(reqStatus === "granted");
       } else {
         setHasPermission(true);
@@ -50,7 +62,7 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log("ScanScreen focused, resuming camera");
-      setCaptureDisabled(false)
+      setCaptureDisabled(false);
       cameraRef.current?.resumePreview?.();
 
       return () => {
@@ -97,53 +109,65 @@ export default function ScanScreen() {
   if (!hasPermission)
     return (
       <View style={styles.container}>
-        <Text style={{ textAlign: "center", marginTop: 20 }}>No access to camera</Text>
+        <Text style={{ textAlign: "center", marginTop: 20 }}>
+          No access to camera
+        </Text>
       </View>
     );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={{alignSelf: "stretch"}}>
-        <Hero
-          title="Capture Card"
-          subtitle="Align card within the guid"
-          tone="dark"
-          surfaceColor="#000"
+    <SafeAreaView 
+      style={[styles.container, {backgroundColor: palette.background}]} 
+      edges={["top"]}
+    >
+      <View style={{ alignSelf: "stretch" }}>
+        <Hero 
+          title="Capture Card" 
+          subtitle="Align card within the guid" 
+          surfaceColor="transparent"
         />
       </View>
+      {/*Camera with overlay helper text */}
+      <View style={styles.cameraContainer}>
         {/* Always keep camera mounted */}
         <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-
-        {/* Fixed rectangle guide */}
-        <View
-          style={[
-            styles.guide,
-            {
-              top: guideY,
-              left: guideX,
-              width: guideWidth,
-              height: guideHeight,
-            },
-          ]}
-          pointerEvents="none"
-        />
-
-        <View style={styles.bottomContainer}>
-          <Text style={styles.sideText}>
-            {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
+        <View style={styles.helperOverlay} pointerEvents="none">
+          <Text style={styles.helperText}>
+            {side === "front"
+              ? "Capture Front of Card"
+              : "Capture Back of Card"}
           </Text>
-          <AppButton
-            title="Capture"
-            onPress={handleCapture}
-            disabled={captureDisabled}
-          />
         </View>
-      </SafeAreaView>
+      </View>
+      {/* Fixed rectangle guide */}
+      <View
+        style={[
+          styles.guide,
+          {
+            top: guideY,
+            left: guideX,
+            width: guideWidth,
+            height: guideHeight,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
+      <BottomActions style={{ bottom: 12 }}>
+        <AppButton
+          title="Capture"
+          onPress={handleCapture}
+          disabled={captureDisabled}
+          fullWidth
+        />
+      </BottomActions>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
+  cameraContainer: { flex: 1, position: "relative" },
   camera: { flex: 1 },
   guide: {
     position: "absolute",
@@ -152,16 +176,21 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderRadius: 6,
   },
-  bottomContainer: {
+  helperOverlay: {
     position: "absolute",
-    bottom: 36,
+    top: 12,
     left: 0,
     right: 0,
     alignItems: "center",
+    zIndex: 20,
   },
-  sideText: {
+  helperText: {
+    fontSize: 14,
+    textAlign: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
     color: "#fff",
-    marginBottom: 8,
-    fontSize: 16,
   },
 });

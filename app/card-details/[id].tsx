@@ -4,7 +4,10 @@ import CardNotFound from "@/components/CardNotFound";
 import Hero from "@/components/Hero";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
@@ -20,7 +23,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,6 +32,8 @@ const { PipModule, LockModule } = NativeModules;
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const [card, setCard] = useState<any>(null);
   const [showNumber, setShowNumber] = useState(false);
   const [canUsePip, setCanUsePip] = useState(false);
@@ -82,12 +86,12 @@ export default function CardDetailsScreen() {
             <Ionicons
               name="caret-forward-circle-outline"
               size={28}
-              color="#4b7bec"
+              color={palette.tint}
             />
           </Pressable>
         ) : null,
     });
-  }, [navigation, card, openPip]); // ✅ openPip is stable now
+  }, [navigation, card, openPip, palette.tint]); // ✅ openPip is stable now
 
   useEffect(() => {
     const loadCard = async () => {
@@ -129,7 +133,7 @@ export default function CardDetailsScreen() {
     });
   };
 
-  const handleDeviceLock =  async () => {
+  const handleDeviceLock = async () => {
     try {
       // if trying to hide number, no need for auth
       if (showNumber) {
@@ -156,25 +160,24 @@ export default function CardDetailsScreen() {
     } catch (err) {
       console.error("Error during authentication:", err);
     }
-  }
+  };
 
   if (!card) {
     return <CardNotFound />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Hero
-        title="Card Details"
-        subtitle="View and manage this card"
-        tone="dark"
-        surfaceColor="#F2F2F2"
-      />
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+    >
+      <Hero title="Card Details" subtitle="View and manage this card" />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Card Front */}
-          <View style={styles.cardFront}>
-            <Text style={styles.bankName}>{card.bank}</Text>
+          <View
+            style={[styles.cardFront, { backgroundColor: palette.primary }]}
+          >
+            <ThemedText style={styles.bankName}>{card.bank}</ThemedText>
             <Pressable
               onPress={canUsePip ? openPip : undefined}
               disabled={!canUsePip}
@@ -184,20 +187,23 @@ export default function CardDetailsScreen() {
               ]}
               hitSlop={10}
             >
-              <Ionicons name="contract-outline" size={22} color={canUsePip ? "#FFF" : "rgba(255,255,255,0.5)"} />
+              <Ionicons
+                name="contract-outline"
+                size={22}
+                color={canUsePip ? "#FFF" : "rgba(255,255,255,0.5)"}
+              />
             </Pressable>
 
             {/* Card Number with Eye Icon */}
             <View style={styles.cardNumberRow}>
-              <Text style={styles.cardNumber}>
+              <ThemedText
+                style={[styles.cardNumber, { color: palette.onPrimary }]}
+              >
                 {showNumber
                   ? card.cardNumber
                   : maskAndFormatCardNumber(card.cardNumber)}
-              </Text>
-              <Pressable
-                onPress={handleDeviceLock}
-                hitSlop={10}
-              >
+              </ThemedText>
+              <Pressable onPress={handleDeviceLock} hitSlop={10}>
                 <Ionicons
                   name={!showNumber ? "eye-off" : "eye"}
                   size={22}
@@ -209,20 +215,20 @@ export default function CardDetailsScreen() {
 
             <View style={styles.cardInfoRow}>
               <View>
-                <Text style={styles.label}>Card Holder</Text>
-                <Text style={styles.info}>{card.cardHolder}</Text>
+                <ThemedText style={styles.label}>Card Holder</ThemedText>
+                <ThemedText style={styles.info}>{card.cardHolder}</ThemedText>
               </View>
               <View>
-                <Text style={styles.label}>Expiry</Text>
-                <Text style={styles.info}>{card.expiry}</Text>
+                <ThemedText style={styles.label}>Expiry</ThemedText>
+                <ThemedText style={styles.info}>{card.expiry}</ThemedText>
               </View>
             </View>
 
-            <Text style={styles.cardType}>{card.type}</Text>
+            <ThemedText style={styles.cardType}>{card.type}</ThemedText>
           </View>
 
           {/* Card Back */}
-          <View style={styles.cardBack}>
+          <View style={[styles.cardBack, { backgroundColor: palette.card }]}>
             <View
               style={{
                 flexDirection: "row",
@@ -230,19 +236,23 @@ export default function CardDetailsScreen() {
                 alignItems: "center",
               }}
             >
-              <Text style={[styles.label, { fontSize: 13 }]}>CVV / CVC</Text>
-              <Text
+              <ThemedText style={{ fontSize: 13 }}>CVV / CVC</ThemedText>
+              <ThemedText
                 style={[
                   styles.info,
-                  { fontSize: 16, letterSpacing: 2, color: "#fff" },
+                  {
+                    fontSize: 16,
+                    letterSpacing: 2,
+                    color: scheme === "dark" ? "#fff" : "#111",
+                  },
                 ]}
               >
-                {showCVV ? card.cvv : "•••"}
-              </Text>
+                {showCVV ? card.cvv : "XXX"}
+              </ThemedText>
             </View>
           </View>
 
-          <Text style={styles.note}>Card ID: {id}</Text>
+          <ThemedText style={styles.note}>Card ID: {id}</ThemedText>
         </ScrollView>
 
         {/* Fixed Bottom Button */}
@@ -311,10 +321,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   bankName: {
-    color: "white",
     fontSize: 16,
     marginBottom: 20,
     fontWeight: "600",
+    color: "white",
   },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
@@ -328,7 +338,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  note: { fontSize: 12, color: "#666", textAlign: "center", marginTop: 12 },
+  note: { fontSize: 12, textAlign: "center", marginTop: 12 },
   error: { fontSize: 18, textAlign: "center", marginTop: 20, color: "red" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
@@ -346,7 +356,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   cardNumber: {
-    color: "white",
     fontSize: 22,
     letterSpacing: 2,
     lineHeight: 26,

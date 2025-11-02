@@ -1,8 +1,11 @@
 import Hero from "@/components/Hero";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation } from "expo-router";
 import React, { useLayoutEffect } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function WebsiteComingSoonScreen() {
@@ -10,28 +13,34 @@ export default function WebsiteComingSoonScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Website" });
   }, [navigation]);
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Hero
-        title="Website"
-        subtitle="Coming soon"
-        tone="dark"
-        surfaceColor="#F2F2F2"
-      />
-      <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+    >
+      <Hero title="Website" subtitle="Coming soon" />
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.centerBox}>
-            <View style={styles.iconCircle}>
-              <MaterialIcons name="public" size={36} color="#3b82f6" />
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: scheme === "dark" ? "#0a2540" : "#eaf6ff" },
+              ]}
+            >
+              <MaterialIcons name="public" size={36} color={palette.tint} />
             </View>
-            <Text style={styles.title}>Coming Soon</Text>
-            <Text style={styles.subtitle}>
+            <ThemedText type="title" style={styles.title}>
+              Coming Soon
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
               We’re building our website experience. Stay tuned!
-            </Text>
+            </ThemedText>
           </View>
         </ScrollView>
       </View>
@@ -58,5 +67,5 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  subtitle: { fontSize: 14, color: "#555", textAlign: "center" },
+  subtitle: { fontSize: 14, textAlign: "center" },
 });

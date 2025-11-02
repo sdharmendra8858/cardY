@@ -1,4 +1,6 @@
 import Hero from "@/components/Hero";
+import { ThemedText } from "@/components/themed-text";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, useRouter } from "expo-router";
 import { Colors } from "../../constants/theme";
@@ -8,7 +10,6 @@ import {
   Linking,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,6 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function SupportScreen() {
   const navigation = useNavigation();
   const router = useRouter();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Support" });
   }, [navigation]);
@@ -39,50 +42,69 @@ export default function SupportScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Hero
-        title="Support"
-        subtitle="We’re here to help"
-        tone="dark"
-        surfaceColor="#F2F2F2"
-      />
-      <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+    >
+      <Hero title="Support" subtitle="We’re here to help" />
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
             <TouchableOpacity style={styles.row} onPress={openEmail}>
               <View style={styles.left}>
-                <MaterialIcons name="email" size={22} color={Colors.light.tint} />
-                <Text style={styles.label}>Email: support@cardy.app</Text>
+                <MaterialIcons name="email" size={22} color={palette.tint} />
+                <ThemedText style={styles.label}>
+                  Email: support@cardy.app
+                </ThemedText>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+              <MaterialIcons
+                name="chevron-right"
+                size={22}
+                color={scheme === "dark" ? "#666" : "#bbb"}
+              />
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View
+              style={[styles.divider, { backgroundColor: palette.border }]}
+            />
 
             <TouchableOpacity style={styles.row} onPress={openFeedback}>
               <View style={styles.left}>
-                <MaterialIcons name="rate-review" size={22} color={Colors.light.tint} />
-                <Text style={styles.label}>Send Feedback</Text>
+                <MaterialIcons
+                  name="rate-review"
+                  size={22}
+                  color={palette.tint}
+                />
+                <ThemedText style={styles.label}>Send Feedback</ThemedText>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+              <MaterialIcons
+                name="chevron-right"
+                size={22}
+                color={scheme === "dark" ? "#666" : "#bbb"}
+              />
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View
+              style={[styles.divider, { backgroundColor: palette.border }]}
+            />
 
             <TouchableOpacity style={styles.row} onPress={openWebsite}>
               <View style={styles.left}>
-                <MaterialIcons name="public" size={22} color={Colors.light.tint} />
-                <Text style={styles.label}>Visit Website</Text>
+                <MaterialIcons name="public" size={22} color={palette.tint} />
+                <ThemedText style={styles.label}>Visit Website</ThemedText>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+              <MaterialIcons
+                name="chevron-right"
+                size={22}
+                color={scheme === "dark" ? "#666" : "#bbb"}
+              />
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.version}>Version 1.0.0</Text>
+            <ThemedText style={styles.version}>Version 1.0.0</ThemedText>
           </View>
         </ScrollView>
       </View>

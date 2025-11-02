@@ -1,5 +1,9 @@
 // app/add-card/crop.tsx
+import AppButton from "@/components/AppButton";
+import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -13,9 +17,7 @@ import {
   Image,
   PanResponder,
   StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import {
   SafeAreaView,
@@ -27,6 +29,8 @@ type CropBox = { x: number; y: number; width: number; height: number };
 export default function CropScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
 
@@ -217,13 +221,11 @@ export default function CropScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <Hero
-        title="Adjust Your Card"
-        subtitle="Resize the crop box precisely"
-        tone="dark"
-        surfaceColor="#000"
-      />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
+      edges={["top"]}
+    >
+      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely" />
 
       {uri && (
         <View
@@ -286,9 +288,9 @@ export default function CropScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
-        <Text style={styles.cropText}>Crop & Preview</Text>
-      </TouchableOpacity>
+      <BottomActions style={{bottom: 12}}>
+        <AppButton title="Crop & Preview" onPress={handleCrop} fullWidth/>
+      </BottomActions>
     </SafeAreaView>
   );
 }
@@ -310,14 +312,6 @@ const styles = StyleSheet.create({
     height: 24,
     backgroundColor: "lime",
     borderRadius: 12,
-  },
-  cropButton: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
-    padding: 12,
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
   },
   cropText: { color: "#fff", fontWeight: "bold" },
   debugBox: {
