@@ -7,18 +7,19 @@ import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Platform, Text, View } from "react-native";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
 import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from "@/context/AlertContext";
-import { ThemeOverrideProvider } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // 👇 import your Android native lock module wrapper
 import AuthRequired from "@/components/AuthRequired";
+import { Colors } from "@/constants/theme";
+import { ThemeOverrideProvider } from "@/context/ThemeContext";
 import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
 import * as SplashScreen from "expo-splash-screen";
 SplashScreen.preventAutoHideAsync();
@@ -27,31 +28,46 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-export default function RootLayout() {
+function AppShell() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(Platform.OS !== "android"); // bypass on iOS for now
   const [checked, setChecked] = useState(Platform.OS !== "android");
+  const barStyle = colorScheme === "dark" ? "light" : "dark";
+  const barBg = colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+  const [appIsActive, setAppIsActive] = useState(
+    AppState.currentState === "active"
+  )
+
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      setAppIsActive(state === "active");
+    });
+    setAppIsActive(AppState.currentState === "active");
+    return () => sub.remove()
+  }, [])
 
   // 🔒 Android system lock authentication
   useEffect(() => {
+    if (checked) return; // already handled
     if (Platform.OS === "android") {
-      (async () => {
-        try {
-          const ok = await authenticateUser();
-          setAuthenticated(ok);
-          setChecked(true);
-
-          // hide splash once auth is done (success or fail)
-          await SplashScreen.hideAsync();
-        } catch {
-          await SplashScreen.hideAsync();
-        }
-      })();
-    } else {
+      setChecked(true);
       SplashScreen.hideAsync();
+      return;
     }
-  }, []);
+    if (!appIsActive) return;
+
+    (async () => {
+      try {
+        const ok = await authenticateUser();
+        setAuthenticated(ok);
+      } finally {
+        setChecked(true);
+        await SplashScreen.hideAsync();
+      }
+    })();
+  }, [appIsActive, checked]);
+
 
   // 🔗 Deep linking setup
   useEffect(() => {
@@ -88,6 +104,12 @@ export default function RootLayout() {
   if (!checked) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
         <ActivityIndicator size="large" />
         <Text style={{ marginTop: 12 }}>Unlocking Cardy...</Text>
       </View>
@@ -95,11 +117,19 @@ export default function RootLayout() {
   }
 
   if (!authenticated) {
-    return <AuthRequired onRetry={handleRetryAuth}/>
+    return (
+    <>
+      <StatusBar
+        style={barStyle}
+        backgroundColor={barBg}
+        translucent={false}
+        animated
+      />
+      <AuthRequired onRetry={handleRetryAuth}/>
+    </>)
   }
 
   return (
-    <ThemeOverrideProvider>
       <NavThemeProvider
         value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
       >
@@ -107,11 +137,23 @@ export default function RootLayout() {
           <AlertProvider>
             <Stack screenOptions={{ headerShown: false }} />
             <TermsPopup />
-            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+            <StatusBar
+              style={barStyle}
+              backgroundColor={barBg}
+              translucent={false}
+              animated
+            />
             <Toast position="bottom" visibilityTime={3000} />
           </AlertProvider>
         </SafeAreaProvider>
       </NavThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeOverrideProvider>
+      <AppShell/>
     </ThemeOverrideProvider>
   );
 }
