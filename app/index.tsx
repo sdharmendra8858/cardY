@@ -25,7 +25,7 @@ export default function HomeScreen() {
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
-  const { toggle, override } = useThemeController();
+  const { toggle } = useThemeController();
   const [cards, setCards] = useState<
     {
       id: string;
@@ -160,14 +160,18 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <ThemedText type="title" style={styles.title}>
-        Your Cards
-      </ThemedText>
-      <InfoBox
-        message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
-        type="warning"
-        style={{ marginHorizontal: 16 }}
-      />
+      {cards.length !== 0 && (
+        <View>
+          <ThemedText type="title" style={styles.title}>
+            Your Cards
+          </ThemedText>
+          <InfoBox
+            message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+            type="warning"
+            style={{ marginHorizontal: 16 }}
+          />
+        </View>
+      )}
 
       {cards.length === 0 ? (
         <NoCards />
