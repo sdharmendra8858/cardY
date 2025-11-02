@@ -132,11 +132,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#000",
   },
   headerSubtitle: {
     fontSize: 13,
-    color: "#555",
     marginTop: 2,
   },
   scrollArea: {
