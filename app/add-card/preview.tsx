@@ -6,10 +6,11 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
+import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -43,6 +44,15 @@ export default function PreviewScreen() {
   );
 
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (frontImage)
+        FileSystem.deleteAsync(frontImage, {idempotent: true}).catch(() => {});
+      if (backImage)
+        FileSystem.deleteAsync(backImage, {idempotent: true}).catch(() => {});
+    }
+  }, [frontImage, backImage])
 
   // ✅ Update images only when params change
   useEffect(() => {
@@ -611,7 +621,8 @@ export default function PreviewScreen() {
               <Image
                 source={{ uri: frontImage }}
                 style={[styles.cardImage, { borderColor: palette.border }]}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="none"
               />
             ) : (
               <View
@@ -640,7 +651,8 @@ export default function PreviewScreen() {
               <Image
                 source={{ uri: backImage }}
                 style={[styles.cardImage, { borderColor: palette.border }]}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="none"
               />
             ) : (
               <TouchableOpacity

@@ -21,6 +21,7 @@ import java.io.InputStream;
 import java.io.FileNotFoundException;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
+import java.io.File;
 
 public class PipCardActivity extends AppCompatActivity {
     private ImageView imageView;
@@ -52,7 +53,8 @@ public class PipCardActivity extends AppCompatActivity {
                 if (!hasNavigated) {
                     try {
                         Intent back = new Intent(this, MainActivity.class);
-                        back.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        back.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                | Intent.FLAG_ACTIVITY_NEW_TASK);
                         if (cardId != null) {
                             back.putExtra("route", "card-details");
                             back.putExtra("cardId", cardId);
@@ -60,7 +62,8 @@ public class PipCardActivity extends AppCompatActivity {
                         startActivity(back);
                         hasNavigated = true;
                         finish();
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
             } else {
                 Log.d("PipCardActivity", "PiP event: CLOSE (X pressed)");
@@ -71,7 +74,8 @@ public class PipCardActivity extends AppCompatActivity {
                     } else {
                         finish();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
@@ -108,7 +112,10 @@ public class PipCardActivity extends AppCompatActivity {
                             enterPictureInPictureMode(params);
                             pipRequested = true;
                         }
-                        try { moveTaskToBack(true); } catch (Exception ignored) {}
+                        try {
+                            moveTaskToBack(true);
+                        } catch (Exception ignored) {
+                        }
                     }
                 } else {
                     Log.e("PipCardActivity", "❌ Failed to decode bitmap from URI: " + imageUriString);
@@ -127,12 +134,14 @@ public class PipCardActivity extends AppCompatActivity {
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
         Log.d("PipCardActivity", "onUserLeaveHint: attempting to enter PiP");
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !isInPictureInPictureMode() && !pipRequested) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !isInPictureInPictureMode()
+                && !pipRequested) {
             Rational aspectRatio = pipAspectRatio != null ? pipAspectRatio : new Rational(16, 9);
             PictureInPictureParams params = new PictureInPictureParams.Builder()
                     .setAspectRatio(aspectRatio)
                     .build();
-            Log.d("PipCardActivity", "Entering PiP with aspect ratio: " + aspectRatio.getNumerator() + ":" + aspectRatio.getDenominator());
+            Log.d("PipCardActivity", "Entering PiP with aspect ratio: " + aspectRatio.getNumerator() + ":"
+                    + aspectRatio.getDenominator());
             enterPictureInPictureMode(params);
             pipRequested = true;
         }
@@ -145,7 +154,8 @@ public class PipCardActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 inPip = isInPictureInPictureMode();
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
         Log.d("PipCardActivity", "onStop: finishing=" + isFinishing() + ", inPiP=" + inPip);
     }
@@ -160,11 +170,25 @@ public class PipCardActivity extends AppCompatActivity {
         try {
             Intent original = getIntent();
             String imageUriString = original != null ? original.getStringExtra("IMAGE_URI") : null;
-            if (imageUriString != null && imageUriString.startsWith("file://")) {
-                Uri uri = Uri.parse(imageUriString);
-                getContentResolver().delete(uri, null, null);
+            if (imageUriString != null) {
+                if (imageUriString.startsWith("file://")) {
+                    Uri uri = Uri.parse(imageUriString);
+                    File f = new File(uri.getPath());
+                    try {
+                        if (f.exists()) {
+                            f.delete();
+                        }
+                    } catch (Exception ignored) {
+                    }
+                } else if (imageUriString.startsWith("content://")) {
+                    try {
+                        getContentResolver().delete(Uri.parse(imageUriString), null, null);
+                    } catch (Exception ignored) {
+                    }
+                }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         Log.d("PipCardActivity", "onDestroy: finishing=" + isFinishing());
     }
 }

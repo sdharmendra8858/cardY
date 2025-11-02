@@ -78,7 +78,7 @@ export default function ScanScreen() {
     try {
       console.log("Taking picture...");
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.9,
+        quality: 0.7,
         skipProcessing: true,
       });
       console.log("Photo taken:", photo.uri);
