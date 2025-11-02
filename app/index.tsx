@@ -1,5 +1,6 @@
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
+import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
 import { getAvatarById } from "@/constants/avatars";
 import { useAlert } from "@/context/AlertContext";
@@ -104,6 +105,11 @@ export default function HomeScreen() {
       </View>
 
       <Text style={styles.title}>Your Cards</Text>
+      <InfoBox
+        message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+        type="warning"
+        style={{marginHorizontal: 16}}
+      />
 
       {cards.length === 0 ? (
         <NoCards />
