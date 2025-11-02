@@ -1,19 +1,21 @@
 import Hero from "@/components/Hero";
 import TermsContent from "@/components/TermsContent";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TermsScreen() {
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <Hero
-        title="Terms & Conditions"
-        subtitle="Please read carefully"
-        tone="dark"
-        surfaceColor="#F2F2F2"
-      />
-      <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      edges={["top", "bottom"]}
+    >
+      <Hero title="Terms & Conditions" subtitle="Please read carefully" />
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <TermsContent />
       </View>
     </SafeAreaView>

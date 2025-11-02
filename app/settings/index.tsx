@@ -3,12 +3,14 @@ import { useAlert } from "@/context/AlertContext";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,6 +19,8 @@ import Toast from "react-native-toast-message";
 
 export default function SettingsScreen() {
   const { showAlert } = useAlert();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   // persistent state
   const [appLock, setAppLock] = useState(true);
@@ -112,10 +116,8 @@ export default function SettingsScreen() {
       <Hero
         title="Settings"
         subtitle="Manage privacy, security, and preferences"
-        tone="dark"
-        surfaceColor="#F2F2F2"
       />
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
@@ -123,45 +125,55 @@ export default function SettingsScreen() {
           {/* Header removed; handled by Hero */}
 
           {/* Section: Security */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Security</Text>
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              Security
+            </ThemedText>
             <View style={styles.row}>
-              <Text style={styles.label}>Enable App Lock</Text>
+              <ThemedText style={styles.label}>Enable App Lock</ThemedText>
               <Switch value={appLock} onValueChange={handleAppLockToggle} />
             </View>
           </View>
 
           {/* Section: Card Display */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Card Display</Text>
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              Card Display
+            </ThemedText>
             <View style={styles.row}>
-              <Text style={styles.label}>Hide Sensitive Info by Default</Text>
+              <ThemedText style={styles.label}>
+                Hide Sensitive Info by Default
+              </ThemedText>
               <Switch value={hideInfo} onValueChange={handleHideInfoToggle} />
             </View>
           </View>
 
           {/* Section: Data Management */}
-          <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Data Management</Text>
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              Data Management
+            </ThemedText>
 
             <TouchableOpacity
               onPress={handleClearCards}
               style={styles.touchRow}
             >
-              <Text style={styles.label}>Clear All Saved Cards</Text>
+              <ThemedText style={styles.label}>
+                Clear All Saved Cards
+              </ThemedText>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleClearCache}
               style={styles.touchRow}
             >
-              <Text style={styles.label}>Clear Cache</Text>
+              <ThemedText style={styles.label}>Clear Cache</ThemedText>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.version}>Version 1.0.0</Text>
+            <ThemedText style={styles.version}>Version 1.0.0</ThemedText>
           </View>
 
           {/* Future Ad Section */}

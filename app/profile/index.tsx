@@ -1,21 +1,19 @@
 // app/profile/index.tsx
+import { ThemedText } from "@/components/themed-text";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { getAvatarById } from "../../constants/avatars";
 import { Colors } from "../../constants/theme";
 import { DEFAULT_PROFILE, getProfile } from "../../utils/profileStorage";
 
 export default function ProfileScreen() {
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const [name, setName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
@@ -51,7 +49,7 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: palette.surface }]}
       contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
     >
@@ -65,31 +63,33 @@ export default function ProfileScreen() {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => router.push({ pathname: "/profile/edit" })}
-            style={styles.editIcon}
+            style={[styles.editIcon, { backgroundColor: palette.tint }]}
           >
-            <MaterialIcons name="edit" size={18} color="#fff" />
+            <MaterialIcons name="edit" size={18} color={palette.onPrimary} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.name}>{name}</Text>
+        <ThemedText type="title" style={styles.name}>
+          {name}
+        </ThemedText>
       </View>
 
-      <View style={styles.menuCard}>
+      <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
         <TouchableOpacity
           style={styles.menuRow}
           onPress={() => router.push("/settings")}
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons
-              name="settings"
-              size={22}
-              color={Colors.light.tint}
-            />
-            <Text style={styles.menuText}>Settings</Text>
+            <MaterialIcons name="settings" size={22} color={palette.tint} />
+            <ThemedText style={styles.menuText}>Settings</ThemedText>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+          <MaterialIcons
+            name="chevron-right"
+            size={22}
+            color={scheme === "dark" ? "#666" : "#bbb"}
+          />
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: palette.border }]} />
 
         <TouchableOpacity
           style={styles.menuRow}
@@ -100,31 +100,35 @@ export default function ProfileScreen() {
             <MaterialIcons
               name="support-agent"
               size={22}
-              color={Colors.light.tint}
+              color={palette.tint}
             />
-            <Text style={styles.menuText}>Support</Text>
+            <ThemedText style={styles.menuText}>Support</ThemedText>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+          <MaterialIcons
+            name="chevron-right"
+            size={22}
+            color={scheme === "dark" ? "#666" : "#bbb"}
+          />
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: palette.border }]} />
 
         <TouchableOpacity
           style={styles.menuRow}
           onPress={() => router.push({ pathname: "/settings/TermsScreen" })}
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons
-              name="description"
-              size={22}
-              color={Colors.light.tint}
-            />
-            <Text style={styles.menuText}>Terms & Conditions</Text>
+            <MaterialIcons name="description" size={22} color={palette.tint} />
+            <ThemedText style={styles.menuText}>Terms & Conditions</ThemedText>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+          <MaterialIcons
+            name="chevron-right"
+            size={22}
+            color={scheme === "dark" ? "#666" : "#bbb"}
+          />
         </TouchableOpacity>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: palette.border }]} />
 
         <TouchableOpacity
           style={styles.menuRow}
@@ -133,10 +137,14 @@ export default function ProfileScreen() {
           }
         >
           <View style={styles.menuLeft}>
-            <MaterialIcons name="gavel" size={22} color={Colors.light.tint} />
-            <Text style={styles.menuText}>Legal & Privacy</Text>
+            <MaterialIcons name="gavel" size={22} color={palette.tint} />
+            <ThemedText style={styles.menuText}>Legal & Privacy</ThemedText>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#bbb" />
+          <MaterialIcons
+            name="chevron-right"
+            size={22}
+            color={scheme === "dark" ? "#666" : "#bbb"}
+          />
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -203,8 +211,5 @@ const styles = StyleSheet.create({
   },
   menuLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   menuText: { fontSize: 16 },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#e5e5e5",
-  },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#e5e5e5" },
 });

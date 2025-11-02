@@ -1,15 +1,17 @@
 import TermsContent from "@/components/TermsContent";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
-    Dimensions,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const TERMS_KEY = "terms_accepted";
@@ -17,6 +19,8 @@ const TERMS_DATE_KEY = "terms_accepted_at";
 
 export default function TermsPopup() {
   const [visible, setVisible] = useState(false);
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   useEffect(() => {
     const checkTerms = async () => {
@@ -47,13 +51,26 @@ export default function TermsPopup() {
                 Platform.OS === "ios"
                   ? screenHeight * 0.92
                   : screenHeight * 0.94,
+              backgroundColor: palette.card,
             },
           ]}
         >
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Terms & Conditions</Text>
-            <Text style={styles.headerSubtitle}>Please read carefully</Text>
+          <View
+            style={[
+              styles.header,
+              {
+                backgroundColor: palette.surface,
+                borderBottomColor: palette.border,
+              },
+            ]}
+          >
+            <ThemedText type="defaultSemiBold" style={styles.headerTitle}>
+              Terms & Conditions
+            </ThemedText>
+            <ThemedText style={styles.headerSubtitle}>
+              Please read carefully
+            </ThemedText>
           </View>
 
           {/* Scrollable Content */}
@@ -66,9 +83,21 @@ export default function TermsPopup() {
           </ScrollView>
 
           {/* Fixed Button */}
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.button} onPress={handleAccept}>
-              <Text style={styles.buttonText}>I Agree</Text>
+          <View
+            style={[
+              styles.footer,
+              { backgroundColor: palette.card, borderTopColor: palette.border },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: palette.primary }]}
+              onPress={handleAccept}
+            >
+              <ThemedText
+                style={[styles.buttonText, { color: palette.onPrimary }]}
+              >
+                I Agree
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -137,9 +166,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+  buttonText: { fontSize: 16, fontWeight: "600" },
 });

@@ -1,10 +1,11 @@
 // components/CardForm.tsx
 import AppButton from "@/components/AppButton";
+import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
-import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, StyleSheet, TextInput, View } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 import { BANK_OPTIONS } from "../../../constants/banks";
 
@@ -140,10 +141,12 @@ export default function CardForm({
 
   return (
     <View style={styles.form}>
-      {infoText ? <Text style={styles.info}>{infoText}</Text> : null}
+      {infoText ? (
+        <ThemedText style={styles.info}>{infoText}</ThemedText>
+      ) : null}
 
       <View style={styles.field}>
-        <Text style={styles.label}>Bank</Text>
+        <ThemedText style={styles.label}>Bank</ThemedText>
         <DropDownPicker
           open={bankOpen}
           setOpen={setBankOpen}
@@ -153,12 +156,27 @@ export default function CardForm({
             setBank(v || "");
           }}
           items={[
-            ...BANK_OPTIONS.slice().sort((a,b) => a.label.localeCompare(b.label)),
-            {label: "Other", value: "OTHER"},
+            ...BANK_OPTIONS.slice().sort((a, b) =>
+              a.label.localeCompare(b.label)
+            ),
+            { label: "Other", value: "OTHER" },
           ]}
           placeholder="Select a Bank"
-          style={{borderColor: "#CCC", minHeight: 50}}
-          dropDownContainerStyle={{ borderColor: "#CCC" }}
+          style={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            minHeight: 50,
+          }}
+          dropDownContainerStyle={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+          }}
+          textStyle={{ color: theme.text }}
+          placeholderStyle={{ color: theme.icon }}
+          labelStyle={{ color: theme.text }}
+          listItemLabelStyle={{ color: theme.text }}
+          selectedItemLabelStyle={{ color: theme.tint }}
+          listItemContainerStyle={{ backgroundColor: theme.card }}
           listMode="SCROLLVIEW"
           disableBorderRadius={false}
           zIndex={5000}
@@ -167,10 +185,18 @@ export default function CardForm({
 
       {bank === "OTHER" ? (
         <View style={styles.field}>
-          <Text style={styles.label}>Bank Name</Text>
+          <ThemedText style={styles.label}>Bank Name</ThemedText>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text,
+              },
+            ]}
             placeholder="Enter bank name"
+            placeholderTextColor={theme.icon}
             value={customBank}
             onChangeText={setCustomBank}
           />
@@ -178,10 +204,18 @@ export default function CardForm({
       ) : null}
 
       <View style={styles.field}>
-        <Text style={styles.label}>Card Number</Text>
+        <ThemedText style={styles.label}>Card Number</ThemedText>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            },
+          ]}
           placeholder="Enter card number"
+          placeholderTextColor={theme.icon}
           value={formatCardNumberForDisplay(cardNumber)}
           onChangeText={(text) => {
             const digitsOnly = text.replace(/[^0-9]/g, "").slice(0, 19);
@@ -193,25 +227,39 @@ export default function CardForm({
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Card Holder</Text>
+        <ThemedText style={styles.label}>Card Holder</ThemedText>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            },
+          ]}
           placeholder="Enter card holder name"
+          placeholderTextColor={theme.icon}
           value={cardHolder}
           onChangeText={setCardHolder}
         />
       </View>
 
       <View style={styles.field}>
-        <Text style={styles.label}>Expiry</Text>
+        <ThemedText style={styles.label}>Expiry</ThemedText>
         <TextInput
           style={[
             styles.input,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            },
             expiryDigits.length === 4 && !isExpiryValid
               ? styles.inputError
               : null,
           ]}
           placeholder="MM/YY"
+          placeholderTextColor={theme.icon}
           value={formatExpiryForDisplay(expiry)}
           onChangeText={(text) => {
             const prevDisplay = formatExpiryForDisplay(expiry);
@@ -232,7 +280,9 @@ export default function CardForm({
           keyboardType="number-pad"
         />
         {expiryDigits.length === 4 && !isExpiryValid ? (
-          <Text style={styles.errorText}>Expiry date is in the past.</Text>
+          <ThemedText style={styles.errorText}>
+            Expiry date is in the past.
+          </ThemedText>
         ) : null}
       </View>
 
@@ -240,11 +290,19 @@ export default function CardForm({
         style={styles.field}
         onLayout={(e) => onCvvLayout?.(e.nativeEvent.layout.y)}
       >
-        <Text style={styles.label}>CVV</Text>
+        <ThemedText style={styles.label}>CVV</ThemedText>
         <TextInput
           ref={setCvvRef}
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              color: theme.text,
+            },
+          ]}
           placeholder="CVV"
+          placeholderTextColor={theme.icon}
           value={cvv}
           keyboardType="numeric"
           onChangeText={(text) => {
@@ -268,7 +326,7 @@ export default function CardForm({
 }
 
 const styles = StyleSheet.create({
-  form: { marginTop: 20 },
+  form: { marginTop: 8 },
   info: { marginBottom: 16, color: "#666", fontSize: 14, textAlign: "center" },
   field: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: "600", marginBottom: 6 },

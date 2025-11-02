@@ -4,7 +4,13 @@ import Hero from "@/components/Hero";
 import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -38,7 +44,8 @@ export default function ScanScreen() {
     (async () => {
       const { status } = await Camera.getCameraPermissionsAsync();
       if (status !== "granted") {
-        const { status: reqStatus } = await Camera.requestCameraPermissionsAsync();
+        const { status: reqStatus } =
+          await Camera.requestCameraPermissionsAsync();
         setHasPermission(reqStatus === "granted");
       } else {
         setHasPermission(true);
@@ -50,7 +57,7 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       console.log("ScanScreen focused, resuming camera");
-      setCaptureDisabled(false)
+      setCaptureDisabled(false);
       cameraRef.current?.resumePreview?.();
 
       return () => {
@@ -97,48 +104,45 @@ export default function ScanScreen() {
   if (!hasPermission)
     return (
       <View style={styles.container}>
-        <Text style={{ textAlign: "center", marginTop: 20 }}>No access to camera</Text>
+        <Text style={{ textAlign: "center", marginTop: 20 }}>
+          No access to camera
+        </Text>
       </View>
     );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={{alignSelf: "stretch"}}>
-        <Hero
-          title="Capture Card"
-          subtitle="Align card within the guid"
-          tone="dark"
-          surfaceColor="#000"
+      <View style={{ alignSelf: "stretch" }}>
+        <Hero title="Capture Card" subtitle="Align card within the guid" />
+      </View>
+      {/* Always keep camera mounted */}
+      <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
+
+      {/* Fixed rectangle guide */}
+      <View
+        style={[
+          styles.guide,
+          {
+            top: guideY,
+            left: guideX,
+            width: guideWidth,
+            height: guideHeight,
+          },
+        ]}
+        pointerEvents="none"
+      />
+
+      <View style={styles.bottomContainer}>
+        <Text style={styles.sideText}>
+          {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
+        </Text>
+        <AppButton
+          title="Capture"
+          onPress={handleCapture}
+          disabled={captureDisabled}
         />
       </View>
-        {/* Always keep camera mounted */}
-        <CameraView ref={cameraRef} style={styles.camera} facing={facing} />
-
-        {/* Fixed rectangle guide */}
-        <View
-          style={[
-            styles.guide,
-            {
-              top: guideY,
-              left: guideX,
-              width: guideWidth,
-              height: guideHeight,
-            },
-          ]}
-          pointerEvents="none"
-        />
-
-        <View style={styles.bottomContainer}>
-          <Text style={styles.sideText}>
-            {side === "front" ? "Capture Front of Card" : "Capture Back of Card"}
-          </Text>
-          <AppButton
-            title="Capture"
-            onPress={handleCapture}
-            disabled={captureDisabled}
-          />
-        </View>
-      </SafeAreaView>
+    </SafeAreaView>
   );
 }
 

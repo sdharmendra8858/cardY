@@ -1,3 +1,5 @@
+import { ThemedText } from "@/components/themed-text";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -5,7 +7,6 @@ import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   FlatList,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
@@ -24,6 +25,8 @@ const AVATARS = AVATAR_CATALOG;
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const [name, setName] = useState<string>(DEFAULT_PROFILE.name);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>(
     AVATARS[0]?.id
@@ -73,8 +76,10 @@ export default function EditProfileScreen() {
     AVATARS[0]?.source;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+    >
+      <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <View style={styles.previewContainer}>
           <View style={styles.previewAvatarWrap}>
             <Image
@@ -83,21 +88,26 @@ export default function EditProfileScreen() {
               contentFit="cover"
             />
           </View>
-          <Text style={styles.previewName}>{name || "Your name"}</Text>
+          <ThemedText style={styles.previewName}>
+            {name || "Your name"}
+          </ThemedText>
         </View>
 
-        <Text style={styles.label}>Display name</Text>
+        <ThemedText style={styles.label}>Display name</ThemedText>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder="Enter your name"
-          style={styles.input}
+          style={[
+            styles.input,
+            { backgroundColor: palette.card, borderColor: palette.border },
+          ]}
           maxLength={40}
         />
 
-        <Text style={[styles.label, { marginTop: 16 }]}>
+        <ThemedText style={[styles.label, { marginTop: 16 }]}>
           Choose your avatar
-        </Text>
+        </ThemedText>
         <FlatList
           data={AVATARS}
           keyExtractor={(item) => item.id}
@@ -111,6 +121,10 @@ export default function EditProfileScreen() {
                 onPress={() => setSelectedAvatarId(item.id)}
                 style={[
                   styles.avatarWrap,
+                  {
+                    backgroundColor: palette.card,
+                    borderColor: palette.border,
+                  },
                   isSelected && styles.avatarWrapSelected,
                 ]}
               >
@@ -170,7 +184,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#11181C",
   },
-  label: { fontSize: 14, color: "#374151", marginBottom: 8 },
+  label: { fontSize: 14, marginBottom: 8 },
   input: {
     backgroundColor: "#fff",
     borderRadius: 12,

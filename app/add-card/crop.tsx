@@ -1,5 +1,7 @@
 // app/add-card/crop.tsx
 import Hero from "@/components/Hero";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -27,6 +29,8 @@ type CropBox = { x: number; y: number; width: number; height: number };
 export default function CropScreen() {
   const router = useRouter();
   const navigation = useNavigation();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
   const screenWidth = Dimensions.get("window").width;
   const screenHeight = Dimensions.get("window").height;
 
@@ -217,13 +221,11 @@ export default function CropScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <Hero
-        title="Adjust Your Card"
-        subtitle="Resize the crop box precisely"
-        tone="dark"
-        surfaceColor="#000"
-      />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
+      edges={["top"]}
+    >
+      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely" />
 
       {uri && (
         <View
@@ -286,8 +288,13 @@ export default function CropScreen() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.cropButton} onPress={handleCrop}>
-        <Text style={styles.cropText}>Crop & Preview</Text>
+      <TouchableOpacity
+        style={[styles.cropButton, { backgroundColor: palette.primary }]}
+        onPress={handleCrop}
+      >
+        <Text style={[styles.cropText, { color: palette.onPrimary }]}>
+          Crop & Preview
+        </Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

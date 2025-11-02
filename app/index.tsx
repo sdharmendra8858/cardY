@@ -2,22 +2,30 @@ import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
+import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
+import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useThemeController } from "@/context/ThemeContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
 import {
   getCards as secureGetCards,
   removeCard as secureRemoveCards,
 } from "@/utils/secureStorage";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Switch, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const { showAlert } = useAlert();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
+  const { toggle, override } = useThemeController();
   const [cards, setCards] = useState<
     {
       id: string;
@@ -88,7 +96,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      edges={["top", "bottom"]}
+    >
       {/* Profile Section */}
       <View style={styles.profileContainer}>
         <Pressable onPress={() => router.push("/profile")}>
@@ -98,17 +109,64 @@ export default function HomeScreen() {
             contentFit="cover"
           />
         </Pressable>
-        <View style={styles.profileText}>
-          <Text style={styles.greeting}>Hello,</Text>
-          <Text style={styles.name}>{profileName}</Text>
+        <View
+          style={[
+            styles.profileText,
+            {
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+            },
+          ]}
+        >
+          <View>
+            <ThemedText style={styles.greeting}>Hello,</ThemedText>
+            <ThemedText type="title" style={styles.name}>
+              {profileName}
+            </ThemedText>
+          </View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: palette.card,
+              borderRadius: 24,
+              paddingHorizontal: 10,
+              paddingVertical: 4,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: palette.border,
+              overflow: "hidden",
+            }}
+          >
+            <MaterialIcons
+              name={scheme === "dark" ? "dark-mode" : "light-mode"}
+              size={16}
+              color={palette.tint}
+              style={{ marginRight: 6 }}
+            />
+            <Switch
+              value={scheme === "dark"}
+              onValueChange={() => toggle()}
+              trackColor={{ false: palette.border, true: palette.primary }}
+              thumbColor={scheme === "dark" ? palette.onPrimary : "#fff"}
+              ios_backgroundColor={palette.border}
+              style={{
+                transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }],
+                marginVertical: -2,
+              }}
+            />
+          </View>
         </View>
       </View>
 
-      <Text style={styles.title}>Your Cards</Text>
+      <ThemedText type="title" style={styles.title}>
+        Your Cards
+      </ThemedText>
       <InfoBox
         message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
         type="warning"
-        style={{marginHorizontal: 16}}
+        style={{ marginHorizontal: 16 }}
       />
 
       {cards.length === 0 ? (

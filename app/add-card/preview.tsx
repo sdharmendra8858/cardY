@@ -1,5 +1,8 @@
 import Hero from "@/components/Hero";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -8,7 +11,6 @@ import {
   Image,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,6 +20,8 @@ export default function PreviewScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { showAlert } = useAlert();
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Preview Card" });
@@ -582,47 +586,71 @@ export default function PreviewScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
+      edges={["top"]}
+    >
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={{ alignSelf: "stretch", marginBottom: 20 }}>
           <Hero
             title="Preview & Extract"
             subtitle="Confirm images, then Extract"
-            tone="dark"
-            surfaceColor="#000"
           />
         </View>
         {/* FRONT SECTION */}
         <View style={styles.cardSection}>
-          <Text style={styles.sectionTitle}>Front of Card</Text>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+            Front of Card
+          </ThemedText>
           {frontImage ? (
             <Image
               source={{ uri: frontImage }}
-              style={styles.cardImage}
+              style={[styles.cardImage, { borderColor: palette.border }]}
               resizeMode="contain"
             />
           ) : (
-            <View style={[styles.cardImage, styles.placeholder]}>
-              <Text style={styles.message}>No front image captured yet</Text>
+            <View
+              style={[
+                styles.cardImage,
+                styles.placeholder,
+                {
+                  backgroundColor: scheme === "dark" ? "#111" : "#fafafa",
+                  borderColor: palette.border,
+                },
+              ]}
+            >
+              <ThemedText style={styles.message}>
+                No front image captured yet
+              </ThemedText>
             </View>
           )}
         </View>
 
         {/* BACK SECTION */}
         <View style={styles.cardSection}>
-          <Text style={styles.sectionTitle}>Back of Card</Text>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+            Back of Card
+          </ThemedText>
           {backImage ? (
             <Image
               source={{ uri: backImage }}
-              style={styles.cardImage}
+              style={[styles.cardImage, { borderColor: palette.border }]}
               resizeMode="contain"
             />
           ) : (
             <TouchableOpacity
-              style={styles.captureBackButtonContainer}
+              style={[
+                styles.captureBackButtonContainer,
+                {
+                  backgroundColor: scheme === "dark" ? "#111" : "#fafafa",
+                  borderColor: palette.border,
+                },
+              ]}
               onPress={captureBack}
             >
-              <Text style={styles.captureBackButtonText}>Capture Back</Text>
+              <ThemedText style={styles.captureBackButtonText}>
+                Capture Back
+              </ThemedText>
             </TouchableOpacity>
           )}
         </View>
@@ -631,14 +659,18 @@ export default function PreviewScreen() {
         <View style={styles.buttonContainer}>
           {frontImage && backImage && (
             <TouchableOpacity
-              style={[styles.button, styles.ocrButton]}
+              style={[styles.button, { backgroundColor: palette.primary }]}
               onPress={extractCardDetails}
               disabled={isProcessing}
             >
               {isProcessing ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={palette.onPrimary} />
               ) : (
-                <Text style={styles.buttonText}>Extract Text</Text>
+                <ThemedText
+                  style={[styles.buttonText, { color: palette.onPrimary }]}
+                >
+                  Extract Text
+                </ThemedText>
               )}
             </TouchableOpacity>
           )}
@@ -654,7 +686,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
     marginBottom: 6,
   },
   cardImage: {
@@ -672,15 +703,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  message: { color: "#fff", fontSize: 14, textAlign: "center" },
+  message: { fontSize: 14, textAlign: "center" },
   captureBackButtonContainer: {
     height: 250,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#111",
     borderRadius: 8,
+    borderWidth: 1,
   },
-  captureBackButtonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  captureBackButtonText: { fontSize: 16, fontWeight: "bold" },
   textContainer: {
     backgroundColor: "rgba(255, 255, 255, 0.9)",
     margin: 10,
@@ -702,7 +734,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   button: { padding: 12, borderRadius: 8, minWidth: 120, alignItems: "center" },
-  ocrButton: { backgroundColor: "#007AFF" },
   saveButton: { backgroundColor: "#34C759" },
-  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  buttonText: { fontWeight: "bold", fontSize: 16 },
 });

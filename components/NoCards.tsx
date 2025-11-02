@@ -1,36 +1,54 @@
 // components/NoCards.tsx
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
 import { FC } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
-const NoCards: FC<{ message?: string }> = ({ message = "No cards listed yet." }) => {
+const NoCards: FC<{ message?: string }> = ({
+  message = "No cards listed yet.",
+}) => {
   const router = useRouter();
 
+  const scheme = useColorScheme() ?? "light";
+  const palette = Colors[scheme];
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: palette.surface }]}>
       {/* SVG Illustration */}
-      <Svg width={200} height={200} viewBox="0 0 64 64" style={{ marginBottom: 24 }}>
+      <Svg
+        width={200}
+        height={200}
+        viewBox="0 0 64 64"
+        style={{ marginBottom: 24 }}
+      >
         {/* Background rectangle with rounded corners */}
         <Rect
-            x={2}
-            y={12}
-            width={60}
-            height={40}
-            fill="#4b7bec"
-            stroke="#fff"
-            strokeWidth={2}
-            rx={4} // rounded corners
+          x={2}
+          y={12}
+          width={60}
+          height={40}
+          fill={palette.primary}
+          stroke={palette.onPrimary}
+          strokeWidth={2}
+          rx={4} // rounded corners
         />
-        
+
         {/* Card lines */}
-        <Path d="M12 22h40v4H12zm0 30h40v4H12z" fill="#fff" />
+        <Path d="M12 22h40v4H12zm0 30h40v4H12z" fill={palette.onPrimary} />
       </Svg>
 
-      <Text style={styles.message}>{message}</Text>
+      <ThemedText style={styles.message}>{message}</ThemedText>
 
-      <Pressable style={styles.button} onPress={() => router.push("/add-card")}>
-        <Text style={styles.buttonText}>Add Your First Card</Text>
+      <Pressable
+        style={[styles.button, { backgroundColor: palette.primary }]}
+        onPress={() => router.push("/add-card")}
+      >
+        <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
+          Add Your First Card
+        </ThemedText>
       </Pressable>
     </View>
   );
@@ -49,18 +67,15 @@ const styles = StyleSheet.create({
   message: {
     fontSize: 20,
     fontWeight: "600",
-    color: "#333",
     textAlign: "center",
     marginBottom: 24,
   },
   button: {
-    backgroundColor: "#4b7bec",
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
   },
   buttonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
