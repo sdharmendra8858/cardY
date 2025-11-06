@@ -98,6 +98,15 @@ android {
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
         buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", "false"
         buildConfigField "boolean", "IS_EDGE_TO_EDGE_ENABLED", "true"
+
+        splits {
+            abi {
+                enable true
+                reset()
+                include "armeabi-v7a", "arm64-v8a"
+                universalApk false  // Don't build one big universal APK
+            }
+        }
     }
     signingConfigs {
         debug {

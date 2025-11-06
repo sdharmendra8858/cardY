@@ -4,7 +4,6 @@ import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -222,9 +221,6 @@ export default function CropScreen() {
         format: ImageManipulator.SaveFormat.JPEG,
       }
     );
-
-    //Delete the original raw capture; the cropped image is used next
-    FileSystem.deleteAsync(uri, {idempotent: true}).catch(() => {})
 
     router.push({
       pathname: "/add-card/preview",

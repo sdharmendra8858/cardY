@@ -21,7 +21,6 @@ import java.io.InputStream;
 import java.io.FileNotFoundException;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.Lifecycle;
-import java.io.File;
 
 public class PipCardActivity extends AppCompatActivity {
     private ImageView imageView;
@@ -170,22 +169,9 @@ public class PipCardActivity extends AppCompatActivity {
         try {
             Intent original = getIntent();
             String imageUriString = original != null ? original.getStringExtra("IMAGE_URI") : null;
-            if (imageUriString != null) {
-                if (imageUriString.startsWith("file://")) {
-                    Uri uri = Uri.parse(imageUriString);
-                    File f = new File(uri.getPath());
-                    try {
-                        if (f.exists()) {
-                            f.delete();
-                        }
-                    } catch (Exception ignored) {
-                    }
-                } else if (imageUriString.startsWith("content://")) {
-                    try {
-                        getContentResolver().delete(Uri.parse(imageUriString), null, null);
-                    } catch (Exception ignored) {
-                    }
-                }
+            if (imageUriString != null && imageUriString.startsWith("file://")) {
+                Uri uri = Uri.parse(imageUriString);
+                getContentResolver().delete(uri, null, null);
             }
         } catch (Exception ignored) {
         }

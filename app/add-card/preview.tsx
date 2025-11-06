@@ -6,7 +6,6 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
-import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -44,15 +43,6 @@ export default function PreviewScreen() {
   );
 
   const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (frontImage)
-        FileSystem.deleteAsync(frontImage, {idempotent: true}).catch(() => {});
-      if (backImage)
-        FileSystem.deleteAsync(backImage, {idempotent: true}).catch(() => {});
-    }
-  }, [frontImage, backImage])
 
   // ✅ Update images only when params change
   useEffect(() => {
