@@ -1,4 +1,4 @@
-package com.anonymous.cardy
+package com.redonelabs.cardywallet
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

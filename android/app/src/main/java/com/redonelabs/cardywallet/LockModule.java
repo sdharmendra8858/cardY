@@ -1,4 +1,4 @@
-package com.anonymous.cardy;
+package com.redonelabs.cardywallet;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
