@@ -47,8 +47,8 @@ export default function TermsContent() {
             </ThemedText>
           )}
           {"\n\n"}
-          Welcome to <ThemedText style={styles.bold}>Cardy</ThemedText> (“the
-          App”). By using Cardy, you agree to the following Terms & Conditions.
+          Welcome to <ThemedText style={styles.bold}>Cardy Wallet</ThemedText> (“the
+          App”). By using Cardy Wallet, you agree to the following Terms & Conditions.
           Please read them carefully before using the App.
         </ThemedText>
 
@@ -56,7 +56,7 @@ export default function TermsContent() {
           1. Purpose of the App
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          Cardy allows you to securely store and manage your personal card
+          Cardy Wallet allows you to securely store and manage your personal card
           details on your device. The App is designed for convenience and local
           use only — it does not upload, share, or transmit your data to any
           external server.
@@ -66,8 +66,8 @@ export default function TermsContent() {
           2. Data Storage & Security
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          • All card information and data you store within Cardy are saved
-          locally on your device.{"\n"}• Cardy does not use any form of cloud
+          • All card information and data you store within Cardy Wallet are saved
+          locally on your device.{"\n"}• Cardy Wallet does not use any form of cloud
           storage, external database, or online backup.{"\n"}• It is your
           responsibility to ensure your device remains secure, including
           enabling device locks (PIN, fingerprint, or pattern).
@@ -79,7 +79,7 @@ export default function TermsContent() {
           3. User Responsibility
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          By using Cardy, you agree to:{"\n"}• Keep your device secure and
+          By using Cardy Wallet, you agree to:{"\n"}• Keep your device secure and
           protected from unauthorized access.{"\n"}• Use the App only for
           lawful, personal purposes.{"\n"}• Avoid storing or sharing data that
           does not belong to you.{"\n\n"}
@@ -91,7 +91,7 @@ export default function TermsContent() {
           4. Limitations of Liability
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          While Cardy is built with care and attention to security, the App and
+          While Cardy Wallet is built with care and attention to security, the App and
           its developer(s) are not liable for:{"\n"}• Any loss, theft, or
           unauthorized access of data due to device compromise.{"\n"}• Any
           damages arising from misuse, loss of stored information, or reliance
@@ -104,12 +104,12 @@ export default function TermsContent() {
           5. Advertising and Monetization
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          In future updates, Cardy may display non-personalized advertisements
+          In future updates, Cardy Wallet may display non-personalized advertisements
           through Google AdMob or similar platforms. These ads will never appear
           on screens showing card details or other sensitive information.
           {"\n\n"}Such advertising services may collect limited,
           non-identifiable technical information (such as device type, operating
-          system, or general usage) to deliver ads effectively. Cardy will never
+          system, or general usage) to deliver ads effectively. Cardy Wallet will never
           share, upload, or transmit your stored card data for advertising
           purposes.
         </ThemedText>
@@ -131,7 +131,7 @@ export default function TermsContent() {
           at:{"\n"}
           📧 <ThemedText style={styles.bold}>support@cardy.app</ThemedText>
           {"\n\n"}
-          By using Cardy, you acknowledge that you have read, understood, and
+          By using Cardy Wallet, you acknowledge that you have read, understood, and
           agreed to these Terms & Conditions.
         </ThemedText>
       </View>

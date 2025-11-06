@@ -26,8 +26,8 @@ export default function SupportScreen() {
 
   const openEmail = () => {
     const email = "support@cardy.app";
-    const subject = encodeURIComponent("Support request for Cardy");
-    const body = encodeURIComponent("Hello Cardy team,\n\n");
+    const subject = encodeURIComponent("Support request for Cardy Wallet");
+    const body = encodeURIComponent("Hello Cardy Wallet team,\n\n");
     Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`);
   };
 
@@ -37,7 +37,7 @@ export default function SupportScreen() {
 
   const openFeedback = () => {
     const email = "support@cardy.app";
-    const subject = encodeURIComponent("Feedback for Cardy");
+    const subject = encodeURIComponent("Feedback for Cardy Wallet");
     Linking.openURL(`mailto:${email}?subject=${subject}`);
   };
 

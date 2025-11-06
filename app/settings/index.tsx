@@ -26,7 +26,7 @@ export default function SettingsScreen() {
   const [appLock, setAppLock] = useState(true);
   const [hideInfo, setHideInfo] = useState(true);
 
-  const STORAGE_KEY = "@cardy_settings";
+  const STORAGE_KEY = "@cardy_wallet_settings";
 
   // Load saved settings on startup
   useEffect(() => {
