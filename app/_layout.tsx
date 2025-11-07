@@ -21,7 +21,6 @@ import AuthRequired from "@/components/AuthRequired";
 import { Colors } from "@/constants/theme";
 import { ThemeOverrideProvider } from "@/context/ThemeContext";
 import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
-import * as FileSystem from "expo-file-system/legacy";
 import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
@@ -48,35 +47,6 @@ function AppShell() {
     });
     setAppIsActive(AppState.currentState === "active");
     return () => sub.remove();
-  }, []);
-
-  useEffect(() => {
-    const cleanup = async () => {
-      try {
-        const dir = FileSystem.cacheDirectory;
-        if (!dir) return;
-        const names = await FileSystem.readDirectoryAsync(dir);
-        const now = Date.now();
-        const staleMs = 10 * 60 * 1000; // 10 minutes
-        const interesting = [
-          "ReactNative-snapshot-image",
-          "ImageManipulator",
-          "Camera"
-        ];
-        await Promise.all(
-          names.map(async(name) => {
-            if (!interesting.some((p) => name.includes(p))) return;
-            const path = dir + name;
-            const info = await FileSystem.getInfoAsync(path);
-            if (!info.exists) return;
-            const mtime = info.modificationTime ?? 0;
-            if (!mtime || now - mtime > staleMs) {
-              await FileSystem.deleteAsync(path, {idempotent: true});
-            }
-          })
-        );
-      } catch {}
-    }
   }, []);
 
   // 🔒 Android system lock authentication

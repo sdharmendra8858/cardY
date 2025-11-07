@@ -6,27 +6,44 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import React, { useEffect, useState } from "react";
+import Slider from "@react-native-community/slider";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
+  NativeModules,
   ScrollView,
   StyleSheet,
   Switch,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+
+const { CacheModule } = NativeModules;
 
 export default function SettingsScreen() {
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+  
 
   // persistent state
   const [appLock, setAppLock] = useState(true);
-  const [hideInfo, setHideInfo] = useState(true);
+  const [cardLock, setCardLock] = useState(true);
+  const [cooldown, setCooldown] = useState(3);
 
-  const STORAGE_KEY = "@cardy_wallet_settings";
+  const fadeAnim = useRef(new Animated.Value(cardLock ? 1 : 0)).current;
+
+  const STORAGE_KEY = "@cardy_wall_settings";
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: cardLock ? 1 : 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [cardLock, fadeAnim]);
 
   // Load saved settings on startup
   useEffect(() => {
@@ -35,9 +52,15 @@ export default function SettingsScreen() {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (typeof parsed.appLock === "boolean") setAppLock(parsed.appLock);
-          if (typeof parsed.hideInfo === "boolean")
-            setHideInfo(parsed.hideInfo);
+
+          // Apply stored values (fallback to true)
+          setAppLock(parsed.appLock ?? true);
+          setCardLock(parsed.cardLock ?? true);
+          setCooldown(parsed.cooldown ?? 3);
+        } else {
+          // Initialize storage with defaults
+          const defaults = { appLock: true, cardLock: true, cooldown: 3 };
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
         }
       } catch (e) {
         console.error("Error loading settings:", e);
@@ -49,12 +72,13 @@ export default function SettingsScreen() {
   // Save settings whenever changed
   const saveSettings = async (updated: {
     appLock?: boolean;
-    hideInfo?: boolean;
+    cardLock?: boolean;
+    cooldown?: number;
   }) => {
     try {
       const current = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = current ? JSON.parse(current) : {};
-      const merged = { ...parsed, ...updated };
+      const merged = { appLock: true, cardLock: true, cooldown: 3, ...parsed, ...updated }; // default true baseline
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     } catch (e) {
       console.error("Error saving settings:", e);
@@ -67,9 +91,9 @@ export default function SettingsScreen() {
     saveSettings({ appLock: value });
   };
 
-  const handleHideInfoToggle = (value: boolean) => {
-    setHideInfo(value);
-    saveSettings({ hideInfo: value });
+  const handleCardLockToggle = (value: boolean) => {
+    setCardLock(value);
+    saveSettings({ cardLock: value });
   };
 
   // ---- Clear data handlers ----
@@ -103,13 +127,42 @@ export default function SettingsScreen() {
     });
   };
 
-  const handleClearCache = () => {
-    Toast.show({
-      type: "info",
-      text1: "Cache Cleared",
-      text2: "Temporary data has been removed.",
-    });
+  const handleClearCache = async () => {
+    try {
+      console.log("🧹 Clearing system cache via CacheModule...");
+      await CacheModule.clearAppCache();
+      Toast.show({
+        type: "success",
+        text1: "Cache Cleared",
+        text2: "System cache successfully removed.",
+      });
+    } catch (err) {
+      console.error("❌ Failed to clear cache:", err);
+      Toast.show({
+        type: "error",
+        text1: "Failed to Clear Cache",
+        text2: "An error occurred while clearing system cache.",
+      });
+    }     
   };
+  
+  // const handleClearCache = () => {
+  //   Toast.show({
+  //     type: "info",
+  //     text1: "Cache Cleared",
+  //     text2: "Temporary data has been removed.",
+  //   });
+  // };
+
+
+
+useEffect(() => {
+  Animated.timing(fadeAnim, {
+    toValue: cardLock ? 1 : 0,
+    duration: 250,
+    useNativeDriver: true,
+  }).start();
+}, [cardLock, fadeAnim]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -133,19 +186,101 @@ export default function SettingsScreen() {
               <ThemedText style={styles.label}>Enable App Lock</ThemedText>
               <Switch value={appLock} onValueChange={handleAppLockToggle} />
             </View>
-          </View>
-
-          {/* Section: Card Display */}
-          <View style={[styles.card, { backgroundColor: palette.card }]}>
-            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
-              Card Display
-            </ThemedText>
+            {/* 🆕 New: Card Lock */}
             <View style={styles.row}>
               <ThemedText style={styles.label}>
-                Hide Sensitive Info by Default
+                Require Auth to View Cards
               </ThemedText>
-              <Switch value={hideInfo} onValueChange={handleHideInfoToggle} />
+              <Switch value={cardLock} onValueChange={handleCardLockToggle} />
             </View>
+
+            <Animated.View style={{ opacity: fadeAnim }}>
+              {cardLock && (
+                <View
+                  style={{
+                    marginTop: 14,
+                    paddingHorizontal: 4,
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                    borderTopColor: scheme === "dark" ? "#333" : "#ddd",
+                    paddingTop: 10,
+                  }}
+                >
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={[
+                      styles.sectionTitle,
+                      { marginBottom: 6, paddingLeft: 2, opacity: 0.9 },
+                    ]}
+                  >
+                    Card View Cooldown ({cooldown}s)
+                  </ThemedText>
+
+                  <View
+                    style={{
+                      paddingHorizontal: 6,
+                      justifyContent: "center",
+                      alignItems: "stretch",
+                    }}
+                  >
+                    <Slider
+                      style={{
+                        width: "100%",
+                        height: 40,
+                        alignSelf: "center",
+                      }}
+                      value={cooldown}
+                      minimumValue={0}
+                      maximumValue={10}
+                      step={1}
+                      minimumTrackTintColor={palette.tint}
+                      maximumTrackTintColor={
+                        scheme === "dark" ? "rgba(255,255,255,0.2)" : "#ccc"
+                      }
+                      thumbTintColor={palette.tint}
+                      onValueChange={(val: number) => {
+                        setCooldown(val);
+                        saveSettings({ cooldown: val });
+                      }}
+                    />
+
+                    {/* Labels */}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        marginTop: -2,
+                        paddingHorizontal: 2,
+                      }}
+                    >
+                      <ThemedText style={{ fontSize: 12, opacity: 0.6 }}>0s</ThemedText>
+                      <ThemedText
+                        type="defaultSemiBold"
+                        style={{
+                          fontSize: 13,
+                          color: palette.tint,
+                          fontWeight: "600",
+                        }}
+                      >
+                        {cooldown}s
+                      </ThemedText>
+                      <ThemedText style={{ fontSize: 12, opacity: 0.6 }}>10s</ThemedText>
+                    </View>
+
+                    <ThemedText
+                      style={{
+                        fontSize: 12,
+                        marginTop: 6,
+                        opacity: 0.6,
+                        textAlign: "center",
+                        lineHeight: 16,
+                      }}
+                    >
+                      Adjust how long authentication stays valid after viewing a card
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+            </Animated.View>
           </View>
 
           {/* Section: Data Management */}
