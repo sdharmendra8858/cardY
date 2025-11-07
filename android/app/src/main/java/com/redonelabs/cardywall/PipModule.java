@@ -40,7 +40,6 @@ public class PipModule extends ReactContextBaseJavaModule {
     public void enterPipMode(String imageUri, String cardId) {
         Activity currentActivity = getCurrentActivity();
         if (currentActivity == null) {
-            Log.e("PipModule", "❌ Current activity is null, cannot start PiP.");
             return;
         }
 
@@ -58,10 +57,7 @@ public class PipModule extends ReactContextBaseJavaModule {
 
                 // ✅ Start the PiP activity
                 currentActivity.startActivity(intent);
-
-                Log.i("PipModule", "🎬 Launched PipCardActivity with image: " + imageUri + ", cardId=" + cardId);
             } catch (Exception e) {
-                Log.e("PipModule", "💥 Failed to start PiP activity", e);
             }
         } else {
             Log.w("PipModule", "⚠️ PiP not supported on this Android version");

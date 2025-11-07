@@ -210,9 +210,17 @@ export default function CropScreen() {
       height: Math.round(cropBox.height * scaleY),
     };
 
-    const result = await ImageManipulator.manipulateAsync(uri, [{ crop }], {
-      format: ImageManipulator.SaveFormat.JPEG,
-    });
+    const result = await ImageManipulator.manipulateAsync(
+      uri, 
+      [
+        { crop },
+        { resize: {width: 1200} }
+      ], 
+      {
+        compress: 0.7,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
 
     router.push({
       pathname: "/add-card/preview",

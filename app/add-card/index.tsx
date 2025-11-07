@@ -5,8 +5,9 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { addCard as secureAddCard } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
+import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,22 +20,76 @@ export default function AddCardScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("state", () => {
-      console.log(
-        "Current navigation stack:",
-        JSON.stringify(navigation.getState(), null, 2)
-      );
-    });
+  const clearImageDump = async () => {
+    try {
+      let deletedCount = 0;
+      let totalSizeDeleted = 0;
 
-    // Optional: log immediately
-    console.log(
-      "Initial navigation state:",
-      JSON.stringify(navigation.getState(), null, 2)
-    );
+      // Helper function to recursively delete image files in a directory
+      const deleteImagesInDir = async (dirPath: string) => {
+        try {
+          // Ensure directory path ends with /
+          const normalizedDir = dirPath.endsWith('/') ? dirPath : `${dirPath}/`;
+          const info = await FileSystem.getInfoAsync(normalizedDir);
+          if (!info.exists || !info.isDirectory) {
+            return;
+          }
 
-    return unsubscribe;
-  }, [navigation]);
+          const items = await FileSystem.readDirectoryAsync(normalizedDir);
+          
+          for (const item of items) {
+            const itemPath = `${normalizedDir}${item}`;
+            const itemInfo = await FileSystem.getInfoAsync(itemPath);
+            
+            if (itemInfo.exists) {
+              if (itemInfo.isDirectory) {
+                // Recursively check subdirectories
+                await deleteImagesInDir(itemPath);
+              } else {
+                // Check if it's an image file by extension
+                const lowerItem = item.toLowerCase();
+                const isImageExtension = 
+                  lowerItem.endsWith('.jpg') ||
+                  lowerItem.endsWith('.jpeg') ||
+                  lowerItem.endsWith('.png') ||
+                  lowerItem.endsWith('.heic') ||
+                  lowerItem.endsWith('.webp') ||
+                  lowerItem.endsWith('.heif');
+                
+                // Also check files without extensions, but only if they're in cache directory
+                // and are reasonably sized (likely image files, not system files)
+                const hasNoExtension = !lowerItem.includes('.');
+                const isInCache = normalizedDir.includes('Cache') || normalizedDir.includes('cache');
+                const isLikelyImage = hasNoExtension && isInCache && itemInfo.size && itemInfo.size > 10000; // > 10KB
+                
+                if (isImageExtension || isLikelyImage) {
+                  const size = itemInfo.size || 0;
+                  await FileSystem.deleteAsync(itemPath, { idempotent: true });
+                  deletedCount++;
+                  totalSizeDeleted += size;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Silently continue if directory doesn't exist or can't be read
+          console.warn(`⚠️ Could not process directory ${dirPath}:`, error);
+        }
+      };
+
+      // Clean cache directory (where expo-camera and expo-image-manipulator save files)
+      if (FileSystem.cacheDirectory) {
+        await deleteImagesInDir(FileSystem.cacheDirectory);
+      }
+
+      // Also check document directory for any image subdirectories
+      if (FileSystem.documentDirectory) {
+        await deleteImagesInDir(FileSystem.documentDirectory);
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to clear image dump:', error);
+    }
+  };
 
   const {
     defaultCardNumber,
@@ -59,7 +114,10 @@ export default function AddCardScreen() {
     infoText: string;
   }) => {
     try {
+      // Save card first
       await secureAddCard(card as any);
+      // Only clean up images after successful save
+      await clearImageDump();
     } catch (error) {
       throw error;
     }
@@ -80,8 +138,6 @@ export default function AddCardScreen() {
     cvv: string;
     infoText: string;
   }) => {
-    console.log("New card added:", card);
-
     // 1️⃣ Save the card info (you can use AsyncStorage, SQLite, or any state/store)
     saveCardLocally(card)
       .then(() => {

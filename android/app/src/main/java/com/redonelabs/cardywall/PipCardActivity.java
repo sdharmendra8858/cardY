@@ -33,11 +33,9 @@ public class PipCardActivity extends AppCompatActivity {
     @Override
     public void onPictureInPictureModeChanged(boolean isInPictureInPictureMode, Configuration newConfig) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig);
-        Log.d("PipCardActivity", "onPictureInPictureModeChanged: isInPiP=" + isInPictureInPictureMode);
         if (isInPictureInPictureMode) {
             wasInPip = true;
             pipExitCallbackReceived = false;
-            Log.d("PipCardActivity", "PiP event: ENTER");
         } else {
             // Exiting PiP: use Lifecycle state to classify expand vs close
             Lifecycle.State lifecycleState = getLifecycle().getCurrentState();
@@ -47,7 +45,6 @@ public class PipCardActivity extends AppCompatActivity {
             String cardId = original.getStringExtra("CARD_ID");
 
             if (isExpanded) {
-                Log.d("PipCardActivity", "PiP event: EXPAND to full-screen → redirecting");
                 pipExitCallbackReceived = true;
                 if (!hasNavigated) {
                     try {
@@ -65,7 +62,6 @@ public class PipCardActivity extends AppCompatActivity {
                     }
                 }
             } else {
-                Log.d("PipCardActivity", "PiP event: CLOSE (X pressed)");
                 // Ensure the PiP activity fully closes to avoid stuck transition states
                 try {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -93,8 +89,6 @@ public class PipCardActivity extends AppCompatActivity {
 
         if (imageUriString != null) {
             Uri imageUri = Uri.parse(imageUriString);
-            Log.d("PipCardActivity", "🖼 Received image: " + imageUriString);
-
             try {
                 InputStream inputStream = getContentResolver().openInputStream(imageUri);
                 Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
@@ -132,15 +126,12 @@ public class PipCardActivity extends AppCompatActivity {
     @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
-        Log.d("PipCardActivity", "onUserLeaveHint: attempting to enter PiP");
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !isInPictureInPictureMode()
                 && !pipRequested) {
             Rational aspectRatio = pipAspectRatio != null ? pipAspectRatio : new Rational(16, 9);
             PictureInPictureParams params = new PictureInPictureParams.Builder()
                     .setAspectRatio(aspectRatio)
                     .build();
-            Log.d("PipCardActivity", "Entering PiP with aspect ratio: " + aspectRatio.getNumerator() + ":"
-                    + aspectRatio.getDenominator());
             enterPictureInPictureMode(params);
             pipRequested = true;
         }
@@ -156,15 +147,11 @@ public class PipCardActivity extends AppCompatActivity {
             } catch (Exception ignored) {
             }
         }
-        Log.d("PipCardActivity", "onStop: finishing=" + isFinishing() + ", inPiP=" + inPip);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (wasInPip && !pipExitCallbackReceived) {
-            Log.d("PipCardActivity", "PiP event: CLOSE (PiP window dismissed)");
-        }
         // Best-effort cleanup of temporary image file if provided via file:// URI
         try {
             Intent original = getIntent();
@@ -175,6 +162,5 @@ public class PipCardActivity extends AppCompatActivity {
             }
         } catch (Exception ignored) {
         }
-        Log.d("PipCardActivity", "onDestroy: finishing=" + isFinishing());
     }
 }

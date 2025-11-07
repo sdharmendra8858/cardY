@@ -15,6 +15,7 @@ import {
 } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { StackActions, useNavigation } from "@react-navigation/native";
+import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -67,15 +68,19 @@ export default function CardDetailsScreen() {
 
       setRenderPipCard(false);
 
-      console.log("✅ Captured image:", frameUri);
       // Launch PiP with image directly, pass card id for return navigation
       // @ts-ignore - Native module method signature (imageUri, cardId)
       PipModule.enterPipMode(frameUri, id);
+
+      //Best-effort cleanup of the temp snapshot file after pip starts
+      setTimeout(() => {
+        FileSystem.deleteAsync(frameUri, {idempotent: true}).catch(() => {})
+      }, 1500)
     } catch (err) {
       setRenderPipCard(false);
       console.error("❌ Failed:", err);
     }
-  }, [card]);
+  }, [card, id]);
 
   useEffect(() => {
     navigation.setOptions({
