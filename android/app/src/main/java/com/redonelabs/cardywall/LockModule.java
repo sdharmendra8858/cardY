@@ -1,4 +1,4 @@
-package com.anonymous.cardy;
+package com.redonelabs.cardywall;
 
 import android.app.Activity;
 import android.app.KeyguardManager;
@@ -47,7 +47,7 @@ public class LockModule extends ReactContextBaseJavaModule implements ActivityEv
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (keyguardManager.isKeyguardSecure()) {
                 Intent intent = keyguardManager.createConfirmDeviceCredentialIntent(
-                        "Unlock Cardy", "Authenticate to continue");
+                        "Unlock Cardy Wall", "Authenticate to continue");
                 if (intent != null) {
                     lockPromise = promise;
                     activity.startActivityForResult(intent, LOCK_REQUEST_CODE);
