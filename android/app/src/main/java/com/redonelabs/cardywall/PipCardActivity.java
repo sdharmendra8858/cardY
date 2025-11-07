@@ -1,4 +1,4 @@
-package com.anonymous.cardy;
+package com.redonelabs.cardywall;
 
 import android.app.PictureInPictureParams;
 import android.os.Build;

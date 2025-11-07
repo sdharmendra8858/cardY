@@ -26,9 +26,9 @@ export default function PrivacyPolicyScreen() {
 
             <ThemedText style={styles.paragraph}>
               Thank you for using{" "}
-              <ThemedText style={styles.bold}>Cardy</ThemedText> (“the App”).
+              <ThemedText style={styles.bold}>Cardy Wall</ThemedText> (“the App”).
               Your privacy is important to us. This Privacy Policy explains how
-              Cardy handles your information and ensures your personal data
+              Cardy Wall handles your information and ensures your personal data
               remains safe.
             </ThemedText>
 
@@ -36,7 +36,7 @@ export default function PrivacyPolicyScreen() {
               1. Data Collection
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              Cardy does not collect, transmit, or share any personal
+              Cardy Wall does not collect, transmit, or share any personal
               information. The App operates entirely offline — no user data,
               card information, or personal identifiers are sent to any external
               server. We do not use analytics, tracking, or third-party SDKs
@@ -47,8 +47,8 @@ export default function PrivacyPolicyScreen() {
               2. Data Storage
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              • All data (such as card numbers or notes) you save in Cardy is
-              stored locally on your device.{"\n"}• Cardy does not automatically
+              • All data (such as card numbers or notes) you save in Cardy Wall is
+              stored locally on your device.{"\n"}• Cardy Wall does not automatically
               back up or sync your data to any cloud or server.{"\n"}• You have
               full control over your data — uninstalling the App permanently
               deletes all saved information.
@@ -58,7 +58,7 @@ export default function PrivacyPolicyScreen() {
               3. Security
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              • Cardy provides optional device lock authentication (PIN,
+              • Cardy Wall provides optional device lock authentication (PIN,
               fingerprint, or pattern) for viewing sensitive data.{"\n"}•
               Because data is stored only on your device, the security of your
               information depends on your device’s protection measures.{"\n"}•
@@ -69,14 +69,14 @@ export default function PrivacyPolicyScreen() {
               4. Advertising and Monetization
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              In future versions, Cardy may include non-personalized
+              In future versions, Cardy Wall may include non-personalized
               advertisements through Google AdMob or similar services. These ads
               will never appear on screens displaying sensitive card
               information.{"\n\n"}
               AdMob may collect limited, non-identifiable technical information
               (e.g., device model, OS version, ad performance data) to deliver
               ads effectively.{"\n\n"}
-              Cardy will never share or upload your stored data for advertising
+              Cardy Wall will never share or upload your stored data for advertising
               purposes.{"\n\n"}
               You can review Google’s privacy policy at:
               https://policies.google.com/privacy
@@ -86,7 +86,7 @@ export default function PrivacyPolicyScreen() {
               5. Children’s Privacy
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              Cardy is designed for general audiences and does not knowingly
+              Cardy Wall is designed for general audiences and does not knowingly
               collect data from children under 13. Since the App operates
               offline, no special parental consent is required.
             </ThemedText>
@@ -110,7 +110,7 @@ export default function PrivacyPolicyScreen() {
             </ThemedText>
 
             <ThemedText style={styles.paragraph}>
-              By using Cardy, you acknowledge that you have read and understood
+              By using Cardy Wall, you acknowledge that you have read and understood
               this Privacy Policy.
             </ThemedText>
           </View>
