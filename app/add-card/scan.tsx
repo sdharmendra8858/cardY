@@ -61,12 +61,10 @@ export default function ScanScreen() {
   // Resume/pause camera with screen focus
   useFocusEffect(
     useCallback(() => {
-      console.log("ScanScreen focused, resuming camera");
       setCaptureDisabled(false);
       cameraRef.current?.resumePreview?.();
 
       return () => {
-        console.log("ScanScreen lost focus, pausing camera");
         cameraRef.current?.pausePreview?.();
       };
     }, [])
@@ -76,12 +74,10 @@ export default function ScanScreen() {
   const handleCapture = async () => {
     if (!cameraRef.current) return;
     try {
-      console.log("Taking picture...");
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
         skipProcessing: true,
       });
-      console.log("Photo taken:", photo.uri);
 
       setCaptureDisabled(true);
 

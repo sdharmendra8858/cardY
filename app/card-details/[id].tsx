@@ -68,7 +68,6 @@ export default function CardDetailsScreen() {
 
       setRenderPipCard(false);
 
-      console.log("✅ Captured image:", frameUri);
       // Launch PiP with image directly, pass card id for return navigation
       // @ts-ignore - Native module method signature (imageUri, cardId)
       PipModule.enterPipMode(frameUri, id);
@@ -81,7 +80,7 @@ export default function CardDetailsScreen() {
       setRenderPipCard(false);
       console.error("❌ Failed:", err);
     }
-  }, [card]);
+  }, [card, id]);
 
   useEffect(() => {
     navigation.setOptions({

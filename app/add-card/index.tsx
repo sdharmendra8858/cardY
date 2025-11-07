@@ -7,7 +7,7 @@ import { addCard as secureAddCard } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect } from "react";
+import { useLayoutEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -67,7 +67,6 @@ export default function AddCardScreen() {
                   await FileSystem.deleteAsync(itemPath, { idempotent: true });
                   deletedCount++;
                   totalSizeDeleted += size;
-                  console.log(`🗑️ Deleted: ${itemPath} (${(size / 1024 / 1024).toFixed(2)} MB)`);
                 }
               }
             }
@@ -80,38 +79,17 @@ export default function AddCardScreen() {
 
       // Clean cache directory (where expo-camera and expo-image-manipulator save files)
       if (FileSystem.cacheDirectory) {
-        console.log('🧹 Cleaning cache directory:', FileSystem.cacheDirectory);
         await deleteImagesInDir(FileSystem.cacheDirectory);
       }
 
       // Also check document directory for any image subdirectories
       if (FileSystem.documentDirectory) {
-        console.log('🧹 Cleaning document directory:', FileSystem.documentDirectory);
         await deleteImagesInDir(FileSystem.documentDirectory);
       }
-
-      console.log(`🧹 Cleared image dump successfully. Deleted ${deletedCount} files, freed ${(totalSizeDeleted / 1024 / 1024).toFixed(2)} MB`);
     } catch (error) {
       console.warn('⚠️ Failed to clear image dump:', error);
     }
   };
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("state", () => {
-      console.log(
-        "Current navigation stack:",
-        JSON.stringify(navigation.getState(), null, 2)
-      );
-    });
-
-    // Optional: log immediately
-    console.log(
-      "Initial navigation state:",
-      JSON.stringify(navigation.getState(), null, 2)
-    );
-
-    return unsubscribe;
-  }, [navigation]);
 
   const {
     defaultCardNumber,
@@ -160,8 +138,6 @@ export default function AddCardScreen() {
     cvv: string;
     infoText: string;
   }) => {
-    console.log("New card added:", card);
-
     // 1️⃣ Save the card info (you can use AsyncStorage, SQLite, or any state/store)
     saveCardLocally(card)
       .then(() => {

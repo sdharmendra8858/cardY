@@ -165,16 +165,6 @@ export default function PreviewScreen() {
             blockIndex: bIdx,
             lineIndex: lIdx,
           };
-          console.log(
-            "Cleaned Line:",
-            cleaned,
-            "| bbox:",
-            prettyBBox(bbox),
-            "| block:",
-            bIdx,
-            "line:",
-            lIdx
-          );
           lines.push(item);
         }
       });
@@ -253,12 +243,6 @@ export default function PreviewScreen() {
             text: item.text,
             bbox: item.bbox,
           };
-          console.log(
-            "Matched cardNumber (Luhn) at line",
-            i,
-            item.text,
-            prettyBBox(item.bbox)
-          );
           break;
         } else if (!cardDetails.cardNumber) {
           cardDetails.cardNumber = candidate; // fallback
@@ -268,13 +252,6 @@ export default function PreviewScreen() {
             text: item.text,
             bbox: item.bbox,
           };
-          console.log(
-            "Matched cardNumber (no Luhn) at line",
-            i,
-            item.text,
-            prettyBBox(item.bbox)
-          );
-          // keep searching for Luhn-valid later lines
         }
       }
     }
@@ -310,12 +287,6 @@ export default function PreviewScreen() {
         text: lineObjs[chosen.i].text,
         bbox: lineObjs[chosen.i].bbox,
       };
-      console.log(
-        "Matched expiryDate at line",
-        chosen.i,
-        lineObjs[chosen.i].text,
-        prettyBBox(lineObjs[chosen.i].bbox)
-      );
     }
 
     // 3) CVV - look for "CVV" label then next numeric line, else fallback to standalone 3-4 digits near end
@@ -330,12 +301,6 @@ export default function PreviewScreen() {
             text: next,
             bbox: (lineObjs[i + 1] || {}).bbox,
           };
-          console.log(
-            "Matched CVV from next line at",
-            i + 1,
-            next,
-            prettyBBox((lineObjs[i + 1] || {}).bbox)
-          );
           break;
         }
       }
@@ -354,12 +319,6 @@ export default function PreviewScreen() {
             text: lineObjs[i].text,
             bbox: lineObjs[i].bbox,
           };
-          console.log(
-            "Matched CVV fallback at",
-            i,
-            lineObjs[i].text,
-            prettyBBox(lineObjs[i].bbox)
-          );
           break;
         }
       }
@@ -377,12 +336,6 @@ export default function PreviewScreen() {
             text: item.text,
             bbox: item.bbox,
           };
-          console.log(
-            "Matched issuerBank by whitelist at",
-            i,
-            item.text,
-            prettyBBox(item.bbox)
-          );
         }
       }
     }
@@ -401,12 +354,6 @@ export default function PreviewScreen() {
             text: item.text,
             bbox: item.bbox,
           };
-          console.log(
-            "Matched issuerBank by BANK keyword at",
-            i,
-            item.text,
-            prettyBBox(item.bbox)
-          );
           break;
         }
       }
@@ -452,12 +399,6 @@ export default function PreviewScreen() {
             text: lineObjs[i].text,
             bbox: lineObjs[i].bbox,
           };
-          console.log(
-            "Matched name (near card number) at",
-            i,
-            lineObjs[i].text,
-            prettyBBox(lineObjs[i].bbox)
-          );
           break;
         }
       }
@@ -472,12 +413,6 @@ export default function PreviewScreen() {
             text: lineObjs[i].text,
             bbox: lineObjs[i].bbox,
           };
-          console.log(
-            "Matched name (fallback) at",
-            i,
-            lineObjs[i].text,
-            prettyBBox(lineObjs[i].bbox)
-          );
           break;
         }
       }
@@ -537,11 +472,6 @@ export default function PreviewScreen() {
           combined.cardNumber = frontParsed.cardDetails.cardNumber;
       }
 
-      // Log matched lines for debugging
-      console.log("Front matched lines:", frontParsed.matchedLines);
-      console.log("Back matched lines:", backParsed.matchedLines);
-      console.log("Combined extracted details:", combined);
-
       await showAlert({
         title: "Card Details Extracted",
         message: "Review the extracted details in next screen.",
@@ -572,12 +502,6 @@ export default function PreviewScreen() {
       setIsProcessing(false);
     }
   };
-
-  // const saveCard = () => {
-  //   Alert.alert("Card Saved", "Your card has been saved successfully!", [
-  //     { text: "OK", onPress: () => router.push("/") },
-  //   ]);
-  // };
 
   const captureBack = () => {
     router.push({
