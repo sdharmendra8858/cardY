@@ -155,7 +155,7 @@ export default function ProfileScreen() {
             Appearance
           </ThemedText>
           <ThemedText style={{ fontSize: 12, opacity: 0.7 , marginTop:2 }}>
-            Choose how Cardy Wallet looks
+            Choose how Cardy Wall looks
           </ThemedText>
           <View style={[styles.themeRow, {marginTop: 12}]}>
             {[

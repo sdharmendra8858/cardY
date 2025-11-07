@@ -60,7 +60,7 @@ export default function AuthRequired({ onRetry }: AuthRequiredProps) {
                         color: palette.text
                     }}
                 >
-                    Unlock Cardy Wallet
+                    Unlock Cardy Wall
                 </Text>
                 <Text
                     style={{

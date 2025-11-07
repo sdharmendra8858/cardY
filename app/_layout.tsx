@@ -112,7 +112,7 @@ function AppShell() {
           animated
         />
         <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 12 }}>Unlocking Cardy Wallet...</Text>
+        <Text style={{ marginTop: 12 }}>Unlocking Cardy Wall...</Text>
       </View>
     );
   }

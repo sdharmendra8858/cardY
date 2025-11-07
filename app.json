@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "Cardy Wallet",
-    "slug": "cardy-wallet",
+    "name": "Cardy Wall",
+    "slug": "cardy-wall",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/credit-card.png",
-    "scheme": "cardywallet",
+    "scheme": "cardywall",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.redonelabs.cardywallet"
+      "bundleIdentifier": "com.redonelabs.cardywall"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,12 +19,12 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.redonelabs.cardywallet",
+      "package": "com.redonelabs.cardywall",
       "permissions": ["android.permission.CAMERA"],
       "intentFilters": [
         {
           "action": "VIEW",
-          "data": [{ "scheme": "cardywallet" }],
+          "data": [{ "scheme": "cardywall" }],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ]

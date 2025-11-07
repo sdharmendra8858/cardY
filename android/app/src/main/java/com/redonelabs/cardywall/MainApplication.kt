@@ -1,4 +1,4 @@
-package com.redonelabs.cardywallet
+package com.redonelabs.cardywall
 
 import android.app.Application
 import android.content.res.Configuration

@@ -1,4 +1,4 @@
-package com.redonelabs.cardywallet;
+package com.redonelabs.cardywall;
 
 import android.app.PictureInPictureParams;
 import android.os.Build;

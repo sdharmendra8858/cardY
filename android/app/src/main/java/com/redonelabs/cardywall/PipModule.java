@@ -1,4 +1,4 @@
-package com.redonelabs.cardywallet;
+package com.redonelabs.cardywall;
 
 import android.content.Intent;
 import com.facebook.react.bridge.ReactApplicationContext;

@@ -1,4 +1,4 @@
-package com.redonelabs.cardywallet;
+package com.redonelabs.cardywall;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

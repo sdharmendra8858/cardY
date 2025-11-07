@@ -1,4 +1,4 @@
-package com.redonelabs.cardywallet
+package com.redonelabs.cardywall
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
