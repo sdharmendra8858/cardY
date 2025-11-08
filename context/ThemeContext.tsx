@@ -16,7 +16,7 @@ type ThemeContextValue = {
   toggle: () => void;
 };
 
-const STORAGE_KEY = "@cardy_wallet_theme_override"; // "light" | "dark" | "system"
+const STORAGE_KEY = "@cardy_wall_theme_override"; // "light" | "dark" | "system"
 
 export const ThemeContext = createContext<ThemeContextValue>({
   override: null,

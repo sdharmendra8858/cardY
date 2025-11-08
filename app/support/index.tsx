@@ -25,7 +25,7 @@ export default function SupportScreen() {
   }, [navigation]);
 
   const openEmail = () => {
-    const email = "support@cardy.app";
+    const email = "support@redonelabs.in";
     const subject = encodeURIComponent("Support request for Cardy Wall");
     const body = encodeURIComponent("Hello Cardy Wall team,\n\n");
     Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`);
@@ -36,7 +36,7 @@ export default function SupportScreen() {
   };
 
   const openFeedback = () => {
-    const email = "support@cardy.app";
+    const email = "support@redonelabs.in";
     const subject = encodeURIComponent("Feedback for Cardy Wall");
     Linking.openURL(`mailto:${email}?subject=${subject}`);
   };
@@ -56,7 +56,7 @@ export default function SupportScreen() {
               <View style={styles.left}>
                 <MaterialIcons name="email" size={22} color={palette.tint} />
                 <ThemedText style={styles.label}>
-                  Email: support@cardy.app
+                  Email: support@redonelabs.in
                 </ThemedText>
               </View>
               <MaterialIcons

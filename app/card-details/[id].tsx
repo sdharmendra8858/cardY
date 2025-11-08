@@ -8,27 +8,28 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { authenticateUser } from "@/utils/LockScreen";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
   removeCard as secureRemoveCard,
 } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   NativeModules,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const { PipModule, LockModule } = NativeModules;
+const { PipModule } = NativeModules;
 
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
@@ -39,6 +40,9 @@ export default function CardDetailsScreen() {
   const [showNumber, setShowNumber] = useState(false);
   const [canUsePip, setCanUsePip] = useState(false);
   const [showCVV, setShowCVV] = useState(false);
+  const [cooldownActive, setCooldownActive] = useState(false);
+  const cooldownActiveRef = useRef(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pipCardRef = useRef<PipCardHandle | null>(null);
   const [renderPipCard, setRenderPipCard] = useState(false);
   const layoutResolveRef = useRef<null | (() => void)>(null);
@@ -139,33 +143,94 @@ export default function CardDetailsScreen() {
   };
 
   const handleDeviceLock = async () => {
+    console.log("👁 handleDeviceLock called");
+    console.log("➡️ Current showNumber:", showNumber);
+    console.log("➡️ Cooldown active (ref):", cooldownActiveRef.current);
+  
     try {
-      // if trying to hide number, no need for auth
+      // Hide case
       if (showNumber) {
+        console.log("🙈 Hiding card details");
         setShowNumber(false);
-        setCanUsePip(false);
         setShowCVV(false);
+        setCanUsePip(false);
         return;
       }
-
-      // 🔐 Trigger device lock (Android)
-      const success =
-        Platform.OS === "android" && LockModule
-          ? await LockModule.authenticateUser()
-          : true; // skip lock on iOS for now
-
-      if (success) {
-        // Unlock succeeded → show number + enable PiP
-        setShowCVV(true); // 👈 show CVV as well
+  
+      // Load settings
+      const saved = await AsyncStorage.getItem("@cardy_wall_settings");
+      const parsed = saved ? JSON.parse(saved) : {};
+      const cardLock = parsed.cardLock ?? true;
+      const cooldown = parsed.cooldown ?? 0;
+  
+      console.log("📦 Settings loaded ->", { cardLock, cooldown });
+  
+      // Auth disabled
+      if (!cardLock) {
+        console.log("🚫 Card lock disabled — showing instantly");
         setShowNumber(true);
+        setShowCVV(true);
         setCanUsePip(true);
+        return;
+      }
+  
+      // Cooldown still active
+      if (cooldownActiveRef.current) {
+        console.log("✅ Cooldown active, skipping auth");
+        setShowNumber(true);
+        setShowCVV(true);
+        setCanUsePip(true);
+        return;
+      }
+  
+      // Authentication required
+      console.log("🔐 Authenticating via LockScreen...");
+      const ok = await authenticateUser("card");
+      console.log("🔓 Auth result:", ok);
+  
+      if (ok) {
+        console.log("✅ Auth success — revealing details");
+        setShowNumber(true);
+        setShowCVV(true);
+        setCanUsePip(true);
+  
+        if (cooldown > 0) {
+          console.log(`🕓 Starting cooldown for ${cooldown} seconds`);
+          cooldownActiveRef.current = true;
+          setCooldownActive(true);
+  
+          // Clear previous timer
+          if (cooldownTimerRef.current) {
+            clearTimeout(cooldownTimerRef.current);
+            console.log("♻️ Cleared previous cooldown timer");
+          }
+  
+          cooldownTimerRef.current = setTimeout(() => {
+            console.log("⏱ Cooldown expired — will require auth again");
+            cooldownActiveRef.current = false;
+            setCooldownActive(false);
+            cooldownTimerRef.current = null;
+          }, cooldown * 1000);
+        } else {
+          console.log("⏱ Cooldown set to 0 — will require auth each time");
+        }
       } else {
-        console.log("❌ Authentication canceled");
+        console.log("❌ Auth canceled or failed");
       }
     } catch (err) {
-      console.error("Error during authentication:", err);
+      console.error("💥 Error in handleDeviceLock:", err);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+      setCooldownActive(false);
+    };
+  }, []);
 
   if (!card) {
     return <CardNotFound />;

@@ -30,8 +30,19 @@ public class LockModule extends ReactContextBaseJavaModule implements ActivityEv
         return "LockModule";
     }
 
+    /**
+     * Default authentication (for backward compatibility)
+     */
     @ReactMethod
     public void authenticateUser(Promise promise) {
+        authenticateUserWithMessage("Unlock Cardy Wall", "Authenticate to continue", promise);
+    }
+
+    /**
+     * Customizable authentication prompt
+     */
+    @ReactMethod
+    public void authenticateUserWithMessage(String title, String subtitle, Promise promise) {
         Activity activity = getCurrentActivity();
         if (activity == null) {
             promise.reject("NO_ACTIVITY", "No active activity found");
@@ -46,8 +57,7 @@ public class LockModule extends ReactContextBaseJavaModule implements ActivityEv
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (keyguardManager.isKeyguardSecure()) {
-                Intent intent = keyguardManager.createConfirmDeviceCredentialIntent(
-                        "Unlock Cardy Wall", "Authenticate to continue");
+                Intent intent = keyguardManager.createConfirmDeviceCredentialIntent(title, subtitle);
                 if (intent != null) {
                     lockPromise = promise;
                     activity.startActivityForResult(intent, LOCK_REQUEST_CODE);
@@ -55,7 +65,7 @@ public class LockModule extends ReactContextBaseJavaModule implements ActivityEv
                     promise.reject("NO_INTENT", "Unable to show lock screen");
                 }
             } else {
-                promise.resolve(true); // no lock setup
+                promise.resolve(true); // No device lock set
             }
         } else {
             promise.reject("UNSUPPORTED", "Device not supported");
@@ -76,5 +86,6 @@ public class LockModule extends ReactContextBaseJavaModule implements ActivityEv
 
     @Override
     public void onNewIntent(Intent intent) {
+        // Not used
     }
 }
