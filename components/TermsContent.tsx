@@ -29,9 +29,8 @@ export default function TermsContent() {
             day: "2-digit",
             month: "short",
             year: "numeric",
-            // hour: "2-digit",
-            hour12: true,
           })}
+
           {acceptedAt && (
             <ThemedText>
               {"\n"}
@@ -47,92 +46,124 @@ export default function TermsContent() {
             </ThemedText>
           )}
           {"\n\n"}
-          Welcome to <ThemedText style={styles.bold}>Cardy Wall</ThemedText> (“the
-          App”). By using Cardy Wall, you agree to the following Terms & Conditions.
-          Please read them carefully before using the App.
+          Welcome to <ThemedText style={styles.bold}>Cardy Wall</ThemedText> (“the App”).  
+          By downloading or using Cardy Wall, you agree to the following Terms & Conditions.  
+          Please read them carefully before continuing.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
           1. Purpose of the App
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          Cardy Wall allows you to securely store and manage your personal card
-          details on your device. The App is designed for convenience and local
-          use only — it does not upload, share, or transmit your data to any
-          external server.
+          Cardy Wall is a personal, secure digital wallet designed to help you
+          store and manage your physical card details directly on your device.
+          The App is intended for <ThemedText style={styles.bold}>offline use only</ThemedText> — no data you enter is
+          uploaded to external servers or shared with third parties.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
           2. Data Storage & Security
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          • All card information and data you store within Cardy Wall are saved
-          locally on your device.{"\n"}• Cardy Wall does not use any form of cloud
-          storage, external database, or online backup.{"\n"}• It is your
-          responsibility to ensure your device remains secure, including
-          enabling device locks (PIN, fingerprint, or pattern).
-          {"\n"}• The App may require device authentication to view sensitive
-          information such as card numbers or CVV.
+          • All card details (card number, holder name, expiry date, CVV, etc.)
+          are securely stored <ThemedText style={styles.bold}>locally on your device</ThemedText> using system-provided
+          encrypted storage mechanisms.{"\n"}
+          • Cardy Wall does <ThemedText style={styles.bold}>not</ThemedText> sync, back up, or transmit any stored data to
+          online services.{"\n"}
+          • Users are encouraged to protect their devices using screen locks,
+          biometric authentication, or passcodes to prevent unauthorized
+          access.{"\n"}
+          • When viewing or editing sensitive information, the App may prompt
+          for biometric authentication (e.g., fingerprint or Face ID) for your
+          protection.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
           3. User Responsibility
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          By using Cardy Wall, you agree to:{"\n"}• Keep your device secure and
-          protected from unauthorized access.{"\n"}• Use the App only for
-          lawful, personal purposes.{"\n"}• Avoid storing or sharing data that
-          does not belong to you.{"\n\n"}
-          You are solely responsible for the safety and confidentiality of your
-          stored information.
+          You are responsible for:{"\n"}
+          • Ensuring your device remains secure and protected from
+          unauthorized access.{"\n"}
+          • Using the App solely for <ThemedText style={styles.bold}>personal, lawful purposes</ThemedText>.{"\n"}
+          • Not sharing or storing cards that do not belong to you.{"\n"}
+          • Keeping your device software updated and avoiding use on rooted or
+          jailbroken devices that may compromise data security.{"\n\n"}
+          Cardy Wall and its developers are not responsible for data loss or
+          leakage resulting from device-level vulnerabilities or third-party
+          interference.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          4. Limitations of Liability
+          4. Privacy & Permissions
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          While Cardy Wall is built with care and attention to security, the App and
-          its developer(s) are not liable for:{"\n"}• Any loss, theft, or
-          unauthorized access of data due to device compromise.{"\n"}• Any
-          damages arising from misuse, loss of stored information, or reliance
-          on the App.{"\n\n"}
-          The App is provided on an “as is” and “as available” basis without
-          warranties of any kind.
+          Cardy Wall may request certain permissions to provide its features, such
+          as access to the camera for scanning card details. These permissions
+          are used <ThemedText style={styles.bold}>only</ThemedText> for their intended purpose and are never used to
+          collect or transmit your personal data.{"\n\n"}
+          The App does not require or access your internet connection for core
+          features like adding or viewing cards.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          5. Advertising and Monetization
+          5. Limitations of Liability
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          In future updates, Cardy Wall may display non-personalized advertisements
-          through Google AdMob or similar platforms. These ads will never appear
-          on screens showing card details or other sensitive information.
-          {"\n\n"}Such advertising services may collect limited,
-          non-identifiable technical information (such as device type, operating
-          system, or general usage) to deliver ads effectively. Cardy Wall will never
-          share, upload, or transmit your stored card data for advertising
-          purposes.
+          While Cardy Wall uses secure storage and best practices to protect your
+          information, it cannot guarantee absolute protection against all
+          risks. The App and its developer(s) are not liable for:{"\n"}
+          • Data loss due to device reset, uninstallation, or corruption.{"\n"}
+          • Unauthorized access resulting from weak device security.{"\n"}
+          • Damages or losses resulting from misuse or third-party actions.{"\n\n"}
+          The App is provided “as is,” without any warranties or guarantees,
+          express or implied.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          6. Modifications & Updates
+          6. Advertising and Monetization
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          We may update or modify these Terms & Conditions at any time to
-          reflect improvements, new features, or legal requirements. The latest
-          version will always be available within the App.
+          Future versions of Cardy Wall may include <ThemedText style={styles.bold}>non-intrusive,
+          non-personalized advertisements</ThemedText> using third-party ad networks such
+          as Google AdMob.{"\n"}
+          • Ads will never appear on screens displaying sensitive information.{"\n"}
+          • Card data will <ThemedText style={styles.bold}>never</ThemedText> be shared, sold, or transmitted for
+          advertising purposes.{"\n"}
+          • You may see optional offers or promotional cards relevant to your
+          region, which will remain fully user-controlled.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          7. Contact
+          7. Updates, Changes & Termination
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          If you have any questions, suggestions, or feedback, please contact us
-          at:{"\n"}
-          📧 <ThemedText style={styles.bold}>support@cardy.app</ThemedText>
-          {"\n\n"}
-          By using Cardy Wall, you acknowledge that you have read, understood, and
-          agreed to these Terms & Conditions.
+          We may periodically update or modify these Terms & Conditions to
+          comply with evolving privacy standards, improve functionality, or
+          introduce new features. The updated terms will take effect
+          immediately upon publication within the App.{"\n\n"}
+          Continued use of Cardy Wall after an update constitutes acceptance of
+          the revised Terms.
+        </ThemedText>
+
+        <ThemedText type="defaultSemiBold" style={styles.heading}>
+          8. Governing Law
+        </ThemedText>
+        <ThemedText style={styles.paragraph}>
+          These Terms shall be governed by and construed in accordance with the
+          laws of India. Any disputes arising from or relating to Cardy Wall will
+          be subject to the jurisdiction of Indian courts.
+        </ThemedText>
+
+        <ThemedText type="defaultSemiBold" style={styles.heading}>
+          9. Contact Information
+        </ThemedText>
+        <ThemedText style={styles.paragraph}>
+          For questions, concerns, or feedback, reach out to:{"\n"}
+          📧 <ThemedText style={styles.bold}>support@redonelabs.in</ThemedText>{"\n"}
+          🏢 RedOne Labs, Bengaluru, India.{"\n\n"}
+          By continuing to use Cardy Wall, you confirm that you have read,
+          understood, and agreed to these Terms & Conditions.
         </ThemedText>
       </View>
     </ScrollView>
