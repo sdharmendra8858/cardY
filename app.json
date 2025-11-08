@@ -4,7 +4,7 @@
     "slug": "cardy-wall",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/credit-card.png",
+    "icon": "./assets/images/cc-round.png",
     "scheme": "cardywall",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/credit-card.png",
+        "foregroundImage": "./assets/images/cc.png",
         "monochromeImage": "./assets/images/credit-card-mono.png"
       },
       "edgeToEdgeEnabled": true,
@@ -34,7 +34,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/credit-card.png",
+          "image": "./assets/images/cc.png",
           // "imageWidth": 200,
           // "resizeMode": "contain",
           "backgroundColor": "#ffffff",
