@@ -1,21 +1,21 @@
-export function maskAndFormatCardNumber(cardNumber: string) {
+// utils/mask.ts
+import { formatCardNumber } from "./formatCardNumber";
+
+/**
+ * Masks all digits except the last 4,
+ * but uses the same visual grouping as formatCardNumber.
+ */
+export function maskAndFormatCardNumber(cardNumber: string): string {
   if (!cardNumber || typeof cardNumber !== "string") {
-    throw new Error("Invalid card number");
+    return "";
   }
 
-  const lastFour = cardNumber.slice(-4); // Get the last 4 digits
-  let masked = "";
+  const clean = cardNumber.replace(/\D/g, "");
+  const visibleCount = 4;
+  const maskedArray = clean
+    .split("")
+    .map((d, i) => (i < clean.length - visibleCount ? "x" : d));
 
-  if (cardNumber.length === 16) {
-    // Mask and format for 16-digit card
-    masked = "xxxx xxxx xxxx " + lastFour;
-  } else if (cardNumber.length === 14) {
-    // Mask and format for 14-digit card
-    masked = "xxxx xxxxxx " + lastFour;
-  } else {
-    masked = "xxxx xxxx xxxx " + lastFour; // Default to 16-digit format
-    // throw new Error("Unsupported card number length");
-  }
-
-  return masked;
+  const maskedString = maskedArray.join("");
+  return formatCardNumber(maskedString);
 }
