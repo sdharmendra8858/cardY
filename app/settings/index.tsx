@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { authenticateUser } from "@/utils/LockScreen";
 import Slider from "@react-native-community/slider";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -85,15 +86,52 @@ export default function SettingsScreen() {
     }
   };
 
-  // ---- Toggle handlers (with save calls) ----
-  const handleAppLockToggle = (value: boolean) => {
+  const handleAppLockToggle = async (value: boolean) => {
+    if (!value) {
+      const verified = await authenticateUser("app", {
+        title: "Confirm App Lock Change",
+        subtitle: "Authenticate to disable App Lock for Cardy Wall",
+      });
+      if (!verified) {
+        Toast.show({
+          type: "error",
+          text1: "Authentication Failed",
+          text2: "App Lock remains enabled for your safety.",
+        });
+        return;
+      }
+    }
+  
     setAppLock(value);
     saveSettings({ appLock: value });
+    Toast.show({
+      type: "success",
+      text1: value ? "App Lock Enabled" : "App Lock Disabled",
+    });
   };
 
-  const handleCardLockToggle = (value: boolean) => {
+  const handleCardLockToggle = async (value: boolean) => {
+    if (!value) {
+      const verified = await authenticateUser("card", {
+        title: "Disable Card Lock",
+        subtitle: "Authenticate to stop requiring verification for viewing cards",
+      });
+      if (!verified) {
+        Toast.show({
+          type: "error",
+          text1: "Authentication Failed",
+          text2: "Card Lock remains active.",
+        });
+        return;
+      }
+    }
+  
     setCardLock(value);
     saveSettings({ cardLock: value });
+    Toast.show({
+      type: "success",
+      text1: value ? "Card Lock Enabled" : "Card Lock Disabled",
+    });
   };
 
   // ---- Clear data handlers ----
