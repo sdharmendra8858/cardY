@@ -1,6 +1,7 @@
-// PipCard.tsx
+import { formatCardNumber } from "@/utils/formatCardNumber";
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -10,13 +11,9 @@ import {
 import { captureRef } from "react-native-view-shot";
 
 export type PipCardHandle = {
-  /**
-   * Captures the visual contents of the card and returns a file URI string.
-   * Example: "file:///data/user/0/.../snapshot.png"
-   */
   captureSnapshot: (options?: {
     format?: "png" | "jpg" | "webm";
-    quality?: number; // 0..1 (only for jpg)
+    quality?: number;
   }) => Promise<string>;
 };
 
@@ -30,7 +27,7 @@ type CardData = {
 
 type Props = {
   card?: CardData;
-  showNumber?: boolean; // kept for compatibility but ignored (no masking)
+  showNumber?: boolean;
   style?: ViewStyle;
 };
 
@@ -38,23 +35,17 @@ const PipCard = forwardRef<PipCardHandle, Props>(
   ({ card, showNumber = false, style }, ref) => {
     const containerRef = useRef<View | null>(null);
 
-    // Expose captureSnapshot to parent via ref
     useImperativeHandle(
       ref,
       () => ({
         captureSnapshot: async (options = {}) => {
-          if (!containerRef.current) {
-            throw new Error("PipCard ref not set");
-          }
-
-          // Default options
+          if (!containerRef.current) throw new Error("PipCard ref not set");
           const { format = "png", quality = 0.9 } = options;
 
-          // captureRef returns a file:// URI by default on native
           const uri = await captureRef(containerRef.current as View, {
             format,
             quality,
-            result: "tmpfile", // returns a file path
+            result: "tmpfile",
           });
 
           return uri as string;
@@ -64,7 +55,7 @@ const PipCard = forwardRef<PipCardHandle, Props>(
     );
 
     const bank = card?.bank ?? "Bank";
-    const cardNumber = card?.cardNumber ?? "0000000000000000"; // no masking
+    const cardNumber = card?.cardNumber ?? "0000000000000000";
     const cardHolder = card?.cardHolder ?? "CARD HOLDER";
     const expiry = card?.expiry ?? "MM/YY";
     const cardType = card?.type ?? "";
@@ -74,7 +65,9 @@ const PipCard = forwardRef<PipCardHandle, Props>(
         <Text style={styles.bankName}>{bank}</Text>
 
         <View style={styles.cardNumberRow}>
-          <Text style={styles.cardNumber}>{cardNumber}</Text>
+          <Text style={styles.cardNumber}>
+            {formatCardNumber(cardNumber)}
+          </Text>
         </View>
 
         <View style={styles.cardInfoRow}>
@@ -95,7 +88,6 @@ const PipCard = forwardRef<PipCardHandle, Props>(
 );
 
 PipCard.displayName = "PipCard";
-
 export default PipCard;
 
 const styles = StyleSheet.create({
@@ -111,31 +103,55 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
-  },
+  } as ViewStyle,
+
   bankName: {
     color: "white",
     fontSize: 16,
     marginBottom: 20,
     fontWeight: "600",
-  },
+  } as TextStyle,
+
   cardNumberRow: {
     marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   } as ViewStyle,
+
   cardNumber: {
     color: "white",
     fontSize: 22,
-    letterSpacing: 2,
+    letterSpacing: -2,
     lineHeight: 26,
+    fontFamily: Platform.select({
+      ios: "Menlo",
+      android: "monospace",
+    }),
   } as TextStyle,
+
   cardInfoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   } as ViewStyle,
-  label: { color: "white", fontSize: 12 } as TextStyle,
-  info: { color: "white", fontSize: 16, fontWeight: "bold" } as TextStyle,
+
+  label: {
+    color: "white",
+    fontSize: 12,
+  } as TextStyle,
+
+  info: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    letterSpacing: -1,
+    lineHeight: 22,
+    fontFamily: Platform.select({
+      ios: "Menlo",
+      android: "monospace",
+    }),
+  } as TextStyle,
+
   cardType: {
     color: "white",
     fontSize: 14,
