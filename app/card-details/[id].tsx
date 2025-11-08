@@ -9,6 +9,7 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authenticateUser } from "@/utils/LockScreen";
+import { formatCardNumber } from "@/utils/formatCardNumber";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
@@ -17,17 +18,20 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StackActions, useNavigation } from "@react-navigation/native";
+import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   NativeModules,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const { PipModule } = NativeModules;
 
@@ -39,7 +43,7 @@ export default function CardDetailsScreen() {
   const [card, setCard] = useState<any>(null);
   const [showNumber, setShowNumber] = useState(false);
   const [canUsePip, setCanUsePip] = useState(false);
-  const [showCVV, setShowCVV] = useState(false);
+  // const [showCVV, setShowCVV] = useState(false);
   const [cooldownActive, setCooldownActive] = useState(false);
   const cooldownActiveRef = useRef(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -143,16 +147,11 @@ export default function CardDetailsScreen() {
   };
 
   const handleDeviceLock = async () => {
-    console.log("👁 handleDeviceLock called");
-    console.log("➡️ Current showNumber:", showNumber);
-    console.log("➡️ Cooldown active (ref):", cooldownActiveRef.current);
-  
     try {
       // Hide case
       if (showNumber) {
-        console.log("🙈 Hiding card details");
         setShowNumber(false);
-        setShowCVV(false);
+        // setShowCVV(false);
         setCanUsePip(false);
         return;
       }
@@ -163,62 +162,70 @@ export default function CardDetailsScreen() {
       const cardLock = parsed.cardLock ?? true;
       const cooldown = parsed.cooldown ?? 0;
   
-      console.log("📦 Settings loaded ->", { cardLock, cooldown });
-  
       // Auth disabled
       if (!cardLock) {
-        console.log("🚫 Card lock disabled — showing instantly");
         setShowNumber(true);
-        setShowCVV(true);
+        // setShowCVV(true);
         setCanUsePip(true);
         return;
       }
   
       // Cooldown still active
       if (cooldownActiveRef.current) {
-        console.log("✅ Cooldown active, skipping auth");
         setShowNumber(true);
-        setShowCVV(true);
+        // setShowCVV(true);
         setCanUsePip(true);
         return;
       }
   
       // Authentication required
-      console.log("🔐 Authenticating via LockScreen...");
       const ok = await authenticateUser("card");
-      console.log("🔓 Auth result:", ok);
   
       if (ok) {
-        console.log("✅ Auth success — revealing details");
         setShowNumber(true);
-        setShowCVV(true);
+        // setShowCVV(true);
         setCanUsePip(true);
   
         if (cooldown > 0) {
-          console.log(`🕓 Starting cooldown for ${cooldown} seconds`);
           cooldownActiveRef.current = true;
           setCooldownActive(true);
   
           // Clear previous timer
           if (cooldownTimerRef.current) {
             clearTimeout(cooldownTimerRef.current);
-            console.log("♻️ Cleared previous cooldown timer");
           }
   
           cooldownTimerRef.current = setTimeout(() => {
-            console.log("⏱ Cooldown expired — will require auth again");
             cooldownActiveRef.current = false;
             setCooldownActive(false);
             cooldownTimerRef.current = null;
           }, cooldown * 1000);
-        } else {
-          console.log("⏱ Cooldown set to 0 — will require auth each time");
         }
       } else {
         console.log("❌ Auth canceled or failed");
       }
     } catch (err) {
       console.error("💥 Error in handleDeviceLock:", err);
+    }
+  };
+
+  const handleCopy = async () => {
+    if (!card?.cardNumber) return;
+    try {
+      await Clipboard.setStringAsync(card.cardNumber);
+      Toast.show({
+        type: "success",
+        text1: "Copied to clipboard",
+        text2: "Card number copied successfully",
+        visibilityTime: 1500,
+      });
+    } catch (err) {
+      console.error("Copy failed:", err);
+      Toast.show({
+        type: "error",
+        text1: "Failed to copy",
+        text2: "Something went wrong. Try again.",
+      });
     }
   };
 
@@ -266,19 +273,31 @@ export default function CardDetailsScreen() {
 
             {/* Card Number with Eye Icon */}
             <View style={styles.cardNumberRow}>
-              <ThemedText
-                style={[styles.cardNumber, { color: palette.onPrimary }]}
-              >
-                {showNumber
-                  ? card.cardNumber
-                  : maskAndFormatCardNumber(card.cardNumber)}
-              </ThemedText>
+              <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                <ThemedText
+                  style={[styles.cardNumber, { color: palette.onPrimary }]}
+                >
+                  {showNumber
+                    ? formatCardNumber(card.cardNumber)
+                    : maskAndFormatCardNumber(card.cardNumber)}
+                </ThemedText>
+
+                <Pressable
+                  onPress={showNumber ? handleCopy : undefined}
+                  hitSlop={10}
+                  disabled={!showNumber}
+                  style={{ marginLeft: 8, opacity: showNumber ? 1 : 0.4 }}
+                >
+                  <Ionicons name="copy-outline" size={20} color="#fff" />
+                </Pressable>
+              </View>
+
               <Pressable onPress={handleDeviceLock} hitSlop={10}>
                 <Ionicons
                   name={!showNumber ? "eye-off" : "eye"}
                   size={22}
                   color="#fff"
-                  style={{ marginTop: 2 }}
+                  style={{ marginLeft: 12 }}
                 />
               </Pressable>
             </View>
@@ -290,7 +309,9 @@ export default function CardDetailsScreen() {
               </View>
               <View>
                 <ThemedText style={styles.label}>Expiry</ThemedText>
-                <ThemedText style={styles.info}>{card.expiry}</ThemedText>
+                <ThemedText style={styles.info}>
+                  {showNumber ? card.expiry : "xx/xx"}
+                </ThemedText>
               </View>
             </View>
 
@@ -317,7 +338,7 @@ export default function CardDetailsScreen() {
                   },
                 ]}
               >
-                {showCVV ? card.cvv : "XXX"}
+                {showNumber ? "xxx" : card.cvv}
               </ThemedText>
             </View>
           </View>
@@ -398,7 +419,16 @@ const styles = StyleSheet.create({
   },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
-  info: { color: "white", fontSize: 16, fontWeight: "bold" },
+    info: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    letterSpacing: -1,
+    fontFamily: Platform.select({
+      ios: "Menlo",
+      android: "monospace",
+    }),
+  },
   cardType: { color: "white", fontSize: 14, textAlign: "right", marginTop: 10 },
 
   cardBack: {
@@ -427,8 +457,12 @@ const styles = StyleSheet.create({
   },
   cardNumber: {
     fontSize: 22,
-    letterSpacing: 2,
+    letterSpacing: -2,
     lineHeight: 26,
+    fontFamily: Platform.select({
+      ios: "Menlo",
+      android: "monospace",
+    }),
   },
   pipIconButton: {
     position: "absolute",
