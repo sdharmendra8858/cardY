@@ -346,7 +346,7 @@ useEffect(() => {
 
           {/* Footer */}
           <View style={styles.footer}>
-            <ThemedText style={styles.version}>Version 1.0.0</ThemedText>
+            <ThemedText style={styles.version}>Version 1.0.1</ThemedText>
           </View>
 
           {/* Future Ad Section */}
