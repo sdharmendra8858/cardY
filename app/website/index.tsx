@@ -5,7 +5,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation } from "expo-router";
 import React, { useLayoutEffect } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function WebsiteComingSoonScreen() {
@@ -13,14 +13,25 @@ export default function WebsiteComingSoonScreen() {
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Website" });
   }, [navigation]);
+
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+
+  const handleOpenWebsite = async () => {
+    const url = "https://redonelabs.in";
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      alert("Unable to open website. Please visit redonelabs.in manually.");
+    }
+  };
 
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Website" subtitle="Coming soon" />
+      <Hero title="Website" subtitle="Visit our site" />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -35,12 +46,20 @@ export default function WebsiteComingSoonScreen() {
             >
               <MaterialIcons name="public" size={36} color={palette.tint} />
             </View>
+
             <ThemedText type="title" style={styles.title}>
-              Coming Soon
+              Visit Our Website
             </ThemedText>
             <ThemedText style={styles.subtitle}>
-              We’re building our website experience. Stay tuned!
+              Tap below to open our official website for more information.
             </ThemedText>
+
+            <TouchableOpacity
+              onPress={handleOpenWebsite}
+              style={[styles.button, { backgroundColor: palette.tint }]}
+            >
+              <ThemedText style={styles.buttonText}>Open Website</ThemedText>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -52,7 +71,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
     paddingHorizontal: 16,
     paddingTop: 12,
   },
@@ -61,11 +79,21 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#eaf6ff",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
   title: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
-  subtitle: { fontSize: 14, textAlign: "center" },
+  subtitle: { fontSize: 14, textAlign: "center", marginBottom: 16 },
+  button: {
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 24,
+    marginTop: 12,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
 });
