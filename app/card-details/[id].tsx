@@ -82,7 +82,7 @@ export default function CardDetailsScreen() {
 
       //Best-effort cleanup of the temp snapshot file after pip starts
       setTimeout(() => {
-        FileSystem.deleteAsync(frameUri, {idempotent: true}).catch(() => {})
+        FileSystem.deleteAsync(frameUri, { idempotent: true }).catch(() => { })
       }, 1500)
     } catch (err) {
       setRenderPipCard(false);
@@ -155,13 +155,13 @@ export default function CardDetailsScreen() {
         setCanUsePip(false);
         return;
       }
-  
+
       // Load settings
       const saved = await AsyncStorage.getItem("@cardy_wall_settings");
       const parsed = saved ? JSON.parse(saved) : {};
       const cardLock = parsed.cardLock ?? true;
       const cooldown = parsed.cooldown ?? 0;
-  
+
       // Auth disabled
       if (!cardLock) {
         setShowNumber(true);
@@ -169,7 +169,7 @@ export default function CardDetailsScreen() {
         setCanUsePip(true);
         return;
       }
-  
+
       // Cooldown still active
       if (cooldownActiveRef.current) {
         setShowNumber(true);
@@ -177,24 +177,24 @@ export default function CardDetailsScreen() {
         setCanUsePip(true);
         return;
       }
-  
+
       // Authentication required
       const ok = await authenticateUser("card");
-  
+
       if (ok) {
         setShowNumber(true);
         // setShowCVV(true);
         setCanUsePip(true);
-  
+
         if (cooldown > 0) {
           cooldownActiveRef.current = true;
           setCooldownActive(true);
-  
+
           // Clear previous timer
           if (cooldownTimerRef.current) {
             clearTimeout(cooldownTimerRef.current);
           }
-  
+
           cooldownTimerRef.current = setTimeout(() => {
             cooldownActiveRef.current = false;
             setCooldownActive(false);
@@ -247,7 +247,7 @@ export default function CardDetailsScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Card Details" subtitle="View and manage this card" />
+      <Hero title="Card Details" subtitle="View and manage this card" showBackButton={true} />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Card Front */}
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
   },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between" },
   label: { color: "white", fontSize: 12 },
-    info: {
+  info: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",

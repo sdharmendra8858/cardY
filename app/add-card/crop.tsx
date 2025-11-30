@@ -233,7 +233,7 @@ export default function CropScreen() {
       style={[styles.container, { backgroundColor: palette.background }]}
       edges={["top"]}
     >
-      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely" />
+      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely"  showBackButton={true} />
 
       {uri && (
         <View

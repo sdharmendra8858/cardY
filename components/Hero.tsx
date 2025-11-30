@@ -1,8 +1,10 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useRouter } from "expo-router";
 import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type HeroProps = {
   title: string;
@@ -10,6 +12,7 @@ type HeroProps = {
   imageSource?: any;
   tone?: "light" | "dark";
   surfaceColor?: string;
+  showBackButton?: boolean;
 };
 
 export default function Hero({
@@ -18,8 +21,10 @@ export default function Hero({
   imageSource,
   tone,
   surfaceColor,
+  showBackButton = false,
 }: HeroProps) {
   const systemScheme = useColorScheme();
+  const router = useRouter();
   const isDark = tone ? tone === "dark" : systemScheme === "dark";
   const titleColor = useThemeColor({}, "text");
   const subtitleColor = isDark ? Colors.dark.icon : Colors.light.icon;
@@ -27,9 +32,20 @@ export default function Hero({
   const overlapBg =
     surfaceColor ?? (isDark ? Colors.dark.surface : Colors.light.surface);
 
+  const showBack = showBackButton && Platform.OS === "ios";
+
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]}>
-      <View style={styles.textContainer}>
+      {showBack && (
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="chevron-left" size={28} color={titleColor} />
+        </TouchableOpacity>
+      )}
+      <View style={[styles.textContainer, showBack && styles.textWithBack]}>
         <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
         {subtitle ? (
           <Text style={[styles.subtitle, { color: subtitleColor }]}>
@@ -55,9 +71,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     position: "relative",
   },
+  backButton: {
+    marginRight: 8,
+    marginLeft: -4,
+  },
+  textContainer: { flex: 1, paddingRight: 12 },
+  textWithBack: { paddingLeft: 0 },
   light: { backgroundColor: "#eaf6ff" },
   dark: { backgroundColor: "#0a2540" },
-  textContainer: { flex: 1, paddingRight: 12 },
   title: { fontSize: 22, fontWeight: "800" },
   titleLight: { color: "#0a2540" },
   titleDark: { color: "#fff" },

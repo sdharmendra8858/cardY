@@ -14,7 +14,7 @@ export default function TermsScreen() {
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
       edges={["top", "bottom"]}
     >
-      <Hero title="Terms & Conditions" subtitle="Please read carefully" />
+      <Hero title="Terms & Conditions" subtitle="Please read carefully"  showBackButton={true} />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <TermsContent />
       </View>

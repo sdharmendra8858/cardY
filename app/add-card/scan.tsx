@@ -121,6 +121,7 @@ export default function ScanScreen() {
           title="Capture Card" 
           subtitle="Align card within the guid" 
           surfaceColor="transparent"
+          showBackButton={true}
         />
       </View>
       {/*Camera with overlay helper text */}

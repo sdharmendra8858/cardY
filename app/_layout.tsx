@@ -166,9 +166,7 @@ function AppShell() {
     <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <AlertProvider>
-          <Stack screenOptions={{ headerShown: Platform.OS === "ios" }}>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-          </Stack>
+          <Stack screenOptions={{ headerShown: false }} />
           <TermsPopup />
           <StatusBar
             style={barStyle}

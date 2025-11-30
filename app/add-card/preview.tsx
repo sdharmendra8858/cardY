@@ -521,6 +521,7 @@ export default function PreviewScreen() {
             title="Preview & Extract"
             subtitle="Confirm images, then Extract"
             surfaceColor={palette.surface}
+            showBackButton={true}
           />
         </View>
         <View 

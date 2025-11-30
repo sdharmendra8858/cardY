@@ -31,7 +31,7 @@ export default function WebsiteComingSoonScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Website" subtitle="Visit our site" />
+      <Hero title="Website" subtitle="Visit our site" showBackButton={true} />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -58,7 +58,7 @@ export default function WebsiteComingSoonScreen() {
               onPress={handleOpenWebsite}
               style={[styles.button, { backgroundColor: palette.tint }]}
             >
-              <ThemedText style={styles.buttonText}>Open Website</ThemedText>
+              <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>Open Website</ThemedText>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -94,6 +94,5 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
   },
 });

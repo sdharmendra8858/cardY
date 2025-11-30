@@ -7,7 +7,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { getAvatarById } from "../../constants/avatars";
 import { Colors } from "../../constants/theme";
 import { DEFAULT_PROFILE, getProfile } from "../../utils/profileStorage";
@@ -50,12 +51,19 @@ export default function ProfileScreen() {
   );
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: palette.surface }]}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      showsVerticalScrollIndicator={false}
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.surface}]}
     >
       <View style={styles.profileHeader}>
+      {Platform.OS === "ios" && (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+            </TouchableOpacity>
+          )}
         <View style={styles.avatarContainer}>
           <Image
             source={avatarSource}
@@ -233,15 +241,15 @@ export default function ProfileScreen() {
             })}
           </View>
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f2f2f2" },
+  safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
   profileHeader: {
     alignItems: "center",
-    marginVertical: 32,
+    marginVertical: 16,
     padding: 0,
     backgroundColor: "transparent",
     borderRadius: 0,
@@ -312,5 +320,12 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     minHeight: 64,
   },
-  themeOptionInner: { alignItems: "center", justifyContent: "center" }
+  themeOptionInner: { alignItems: "center", justifyContent: "center" },
+  backButton: {
+    position: "absolute",
+    top: 0,
+    left: 8,
+    zIndex: 10,
+    padding: 4,
+  },
 });
