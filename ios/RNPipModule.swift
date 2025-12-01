@@ -17,13 +17,13 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
     // MARK: - Properties
     var pipController: AVPictureInPictureController?
     var playerLayer: AVPlayerLayer?
-    var player: AVQueuePlayer?
-    var playerLooper: AVPlayerLooper?
+    var player: AVPlayer?
     var pipContainerView: UIView?
     private var observedPlayerItem: AVPlayerItem?
 
     // Use a static variable for KVO context (avoids Swift exclusive-access issues)
     private static var playerItemContext = 0
+    private static var playerRateContext = 0
 
     // MARK: - RCTBridgeModule
     public static func moduleName() -> String! {
@@ -113,8 +113,14 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         NSLog("📱 [PipModule] Setting up player...")
         let asset = AVAsset(url: videoUrl)
         let playerItem = AVPlayerItem(asset: asset)
-        self.player = AVQueuePlayer(playerItem: playerItem)
-        self.playerLooper = AVPlayerLooper(player: self.player!, templateItem: playerItem)
+        self.player = AVPlayer(playerItem: playerItem)
+        self.player?.actionAtItemEnd = .pause
+        self.player?.isMuted = true
+        self.player?.volume = 0.0
+        
+        // Disable all external playback controls
+        self.player?.allowsExternalPlayback = false
+        self.player?.preventsDisplaySleepDuringVideoPlayback = false
 
         self.playerLayer = AVPlayerLayer(player: self.player)
         self.playerLayer?.videoGravity = .resizeAspectFill
@@ -166,7 +172,11 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         if let playerLayer = self.playerLayer {
             self.pipController = AVPictureInPictureController(playerLayer: playerLayer)
             self.pipController?.delegate = self
-            NSLog("✅ [PipModule] PiP controller initialized")
+            
+            // Disable playback controls in PiP window
+            self.pipController?.requiresLinearPlayback = true
+            
+            NSLog("✅ [PipModule] PiP controller initialized (controls disabled)")
         } else {
             NSLog("❌ [PipModule] playerLayer missing")
             return
@@ -189,15 +199,20 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         if Thread.isMainThread {
             self.observedPlayerItem = playerItem
             playerItem.addObserver(self, forKeyPath: "status", options: [.initial, .new], context: &Self.playerItemContext)
+            // Observe player rate to prevent playback
+            self.player?.addObserver(self, forKeyPath: "rate", options: [.new], context: &Self.playerRateContext)
         } else {
             DispatchQueue.main.sync {
                 self.observedPlayerItem = playerItem
                 playerItem.addObserver(self, forKeyPath: "status", options: [.initial, .new], context: &Self.playerItemContext)
+                // Observe player rate to prevent playback
+                self.player?.addObserver(self, forKeyPath: "rate", options: [.new], context: &Self.playerRateContext)
             }
         }
 
-        NSLog("📱 [PipModule] Starting playback (will wait for readyToPlay to start PiP)...")
-        self.player?.play()
+        self.player?.pause()
+        self.player?.seek(to: CMTime.zero)
+        NSLog("📱 [PipModule] Player prepared and paused (ready for PiP)")
     }
 
     // MARK: - Video creation (image -> short mp4)
@@ -302,6 +317,17 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
 
     // MARK: - Observe player item status (KVO)
     public override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        // Handle player rate changes to prevent playback
+        if context == &Self.playerRateContext {
+            if keyPath == "rate", let player = object as? AVPlayer {
+                if player.rate > 0 {
+                    NSLog("⚠️ [PipModule] Player tried to play, forcing pause")
+                    player.pause()
+                }
+            }
+            return
+        }
+        
         // Only handle our context pointer
         guard context == &Self.playerItemContext else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
@@ -346,12 +372,15 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         // Stop playback
         self.player?.pause()
 
-        // Remove KVO observer safely on main thread
+        // Remove KVO observers safely on main thread
         if Thread.isMainThread {
             if let currentItem = self.observedPlayerItem {
                 NSLog("📱 [PipModule] Removing KVO observer from playerItem")
                 currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
                 self.observedPlayerItem = nil
+            }
+            if let player = self.player {
+                player.removeObserver(self, forKeyPath: "rate", context: &Self.playerRateContext)
             }
         } else {
             DispatchQueue.main.sync {
@@ -359,6 +388,9 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
                     NSLog("📱 [PipModule] Removing KVO observer from playerItem")
                     currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
                     self.observedPlayerItem = nil
+                }
+                if let player = self.player {
+                    player.removeObserver(self, forKeyPath: "rate", context: &Self.playerRateContext)
                 }
             }
         }
@@ -372,7 +404,6 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         self.player = nil
         self.playerLayer = nil
         self.pipController = nil
-        self.playerLooper = nil
 
         // Deactivate audio session
         do {
@@ -388,5 +419,9 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
             currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
             self.observedPlayerItem = nil
         }
+        if let player = self.player {
+            player.removeObserver(self, forKeyPath: "rate", context: &Self.playerRateContext)
+        }
     }
 }
+
