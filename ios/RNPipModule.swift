@@ -2,8 +2,7 @@
 //  RNPipModule.swift
 //  CardyWall
 //
-//  Created by ChatGPT on your request.
-//  Paste this file into ios/CardyWall/Modules/RNPipModule.swift
+//  Updated: uses static KVO context to avoid Swift exclusive-access crash.
 //
 
 import Foundation
@@ -21,26 +20,10 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
     var player: AVQueuePlayer?
     var playerLooper: AVPlayerLooper?
     var pipContainerView: UIView?
-    private var playerItemContext: UnsafeMutableRawPointer
     private var observedPlayerItem: AVPlayerItem?
 
-    // MARK: - Init / Deinit
-    override public init() {
-        // Allocate a unique pointer to use as KVO context
-        self.playerItemContext = UnsafeMutableRawPointer.allocate(byteCount: MemoryLayout<Int>.size, alignment: MemoryLayout<Int>.alignment)
-        super.init()
-    }
-
-    deinit {
-        // Ensure we remove observer if still present
-        if let currentItem = self.observedPlayerItem {
-            // Use try/catch style to avoid crash if already removed
-            currentItem.removeObserver(self, forKeyPath: "status", context: playerItemContext)
-            self.observedPlayerItem = nil
-        }
-        // Free allocated pointer
-        playerItemContext.deallocate()
-    }
+    // Use a static variable for KVO context (avoids Swift exclusive-access issues)
+    private static var playerItemContext = 0
 
     // MARK: - RCTBridgeModule
     public static func moduleName() -> String! {
@@ -60,13 +43,11 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         // Robust URL parsing for local files and URLs
         var url: URL?
         if imageUri.hasPrefix("file://") {
-            // remove file:// and use fileURLWithPath
             let path = imageUri.replacingOccurrences(of: "file://", with: "")
             url = URL(fileURLWithPath: path)
         } else if let u = URL(string: imageUri), u.scheme != nil {
             url = u
         } else {
-            // fallback: treat as a local path
             url = URL(fileURLWithPath: imageUri)
         }
 
@@ -79,7 +60,6 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
             do {
                 NSLog("📱 [PipModule] Loading image data from: %@", fileUrl.path)
 
-                // Check existence/readability
                 let fileManager = FileManager.default
                 if !fileManager.fileExists(atPath: fileUrl.path) {
                     NSLog("❌ [PipModule] File does not exist at path: %@", fileUrl.path)
@@ -204,9 +184,17 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
 
         // Observe readiness of player item
         NSLog("📱 [PipModule] Adding KVO observer for playerItem.status")
-        // Add observer on the playerItem, storing the observed item for removal later
-        playerItem.addObserver(self, forKeyPath: "status", options: [.initial, .new], context: playerItemContext)
-        self.observedPlayerItem = playerItem
+
+        // Ensure addObserver and assignment happen on main thread to avoid races
+        if Thread.isMainThread {
+            self.observedPlayerItem = playerItem
+            playerItem.addObserver(self, forKeyPath: "status", options: [.initial, .new], context: &Self.playerItemContext)
+        } else {
+            DispatchQueue.main.sync {
+                self.observedPlayerItem = playerItem
+                playerItem.addObserver(self, forKeyPath: "status", options: [.initial, .new], context: &Self.playerItemContext)
+            }
+        }
 
         NSLog("📱 [PipModule] Starting playback (will wait for readyToPlay to start PiP)...")
         self.player?.play()
@@ -315,7 +303,7 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
     // MARK: - Observe player item status (KVO)
     public override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         // Only handle our context pointer
-        guard context == playerItemContext else {
+        guard context == &Self.playerItemContext else {
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
             return
         }
@@ -358,11 +346,21 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
         // Stop playback
         self.player?.pause()
 
-        // Remove KVO observer safely
-        if let currentItem = self.observedPlayerItem {
-            NSLog("📱 [PipModule] Removing KVO observer from playerItem")
-            currentItem.removeObserver(self, forKeyPath: "status", context: playerItemContext)
-            self.observedPlayerItem = nil
+        // Remove KVO observer safely on main thread
+        if Thread.isMainThread {
+            if let currentItem = self.observedPlayerItem {
+                NSLog("📱 [PipModule] Removing KVO observer from playerItem")
+                currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
+                self.observedPlayerItem = nil
+            }
+        } else {
+            DispatchQueue.main.sync {
+                if let currentItem = self.observedPlayerItem {
+                    NSLog("📱 [PipModule] Removing KVO observer from playerItem")
+                    currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
+                    self.observedPlayerItem = nil
+                }
+            }
         }
 
         // Remove player layer and container
@@ -381,6 +379,14 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             NSLog("⚠️ [PipModule] error deactivating audio session: %@", error.localizedDescription)
+        }
+    }
+
+    deinit {
+        // Ensure KVO removed
+        if let currentItem = self.observedPlayerItem {
+            currentItem.removeObserver(self, forKeyPath: "status", context: &Self.playerItemContext)
+            self.observedPlayerItem = nil
         }
     }
 }

@@ -58,9 +58,14 @@ export default function CardDetailsScreen() {
   }, [id]);
 
   const openPip = useCallback(async () => {
-    if (!card) return;
+    console.log("🔘 PiP button pressed");
+    if (!card) {
+      console.log("❌ No card data");
+      return;
+    }
 
     try {
+      console.log("📸 Mounting PipCard for snapshot...");
       // Mount off-screen and wait for layout
       setRenderPipCard(true);
       await new Promise<void>((resolve) => {
@@ -69,16 +74,28 @@ export default function CardDetailsScreen() {
       // No time-based delay
 
       if (!pipCardRef.current) throw new Error("Pip card ref not mounted");
+      console.log("📸 Capturing snapshot...");
       const frameUri = await pipCardRef.current.captureSnapshot({
         format: "png",
         quality: 1,
       });
+      console.log("✅ Snapshot captured:", frameUri);
 
       setRenderPipCard(false);
 
       // Launch PiP with image directly, pass card id for return navigation
       // @ts-ignore - Native module method signature (imageUri, cardId)
-      PipModule.enterPipMode(frameUri, id);
+      if (PipModule && PipModule.enterPipMode) {
+        console.log("🚀 Calling PipModule.enterPipMode...");
+        PipModule.enterPipMode(frameUri, id);
+      } else {
+        console.error("❌ PipModule is not available", NativeModules);
+        Toast.show({
+          type: "error",
+          text1: "PiP Unavailable",
+          text2: "Native module not loaded. Please rebuild the app.",
+        });
+      }
 
       //Best-effort cleanup of the temp snapshot file after pip starts
       setTimeout(() => {
@@ -86,7 +103,7 @@ export default function CardDetailsScreen() {
       }, 1500)
     } catch (err) {
       setRenderPipCard(false);
-      console.error("❌ Failed:", err);
+      console.error("❌ Failed to open PiP:", err);
     }
   }, [card, id]);
 

@@ -10,6 +10,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -269,8 +270,8 @@ export default function PreviewScreen() {
           tag: item.text.includes("THRU")
             ? "THRU"
             : item.text.includes("FROM")
-            ? "FROM"
-            : undefined,
+              ? "FROM"
+              : undefined,
         });
       else {
         const all = item.text.match(/\b(0[1-9]|1[0-2])\/(?:\d{2}|\d{4})\b/g);
@@ -435,10 +436,10 @@ export default function PreviewScreen() {
       setIsProcessing(true);
 
       const results = await Promise.all([
-        frontImage
+        frontImage && Platform.OS !== 'ios'
           ? TextRecognition.recognize(frontImage)
           : Promise.resolve(null),
-        backImage
+        backImage && Platform.OS !== 'ios'
           ? TextRecognition.recognize(backImage)
           : Promise.resolve(null),
       ]);
@@ -524,8 +525,8 @@ export default function PreviewScreen() {
             showBackButton={true}
           />
         </View>
-        <View 
-          style={[styles.cardWrapper, {backgroundColor: palette.surface}]}
+        <View
+          style={[styles.cardWrapper, { backgroundColor: palette.surface }]}
         >
           {/* FRONT SECTION */}
           <View style={styles.cardSection}>
@@ -589,7 +590,7 @@ export default function PreviewScreen() {
         </View>
 
         {/* Buttons */}
-        <BottomActions style={{bottom: 12}}>
+        <BottomActions style={{ bottom: 12 }}>
           {frontImage && backImage ? (
             <AppButton
               title={isProcessing ? "Processing..." : "Extract text"}
@@ -597,7 +598,7 @@ export default function PreviewScreen() {
               fullWidth
               disabled={isProcessing}
             />
-           ) : null}
+          ) : null}
         </BottomActions>
       </ScrollView>
     </SafeAreaView>
@@ -607,10 +608,10 @@ export default function PreviewScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   cardWrapper: { paddingTop: 0 },
-  cardSection: { 
-    marginTop: 12, 
+  cardSection: {
+    marginTop: 12,
     marginBottom: 12,
-    paddingHorizontal: 12 
+    paddingHorizontal: 12
   },
   sectionTitle: {
     fontSize: 18,
