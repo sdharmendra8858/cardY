@@ -1,6 +1,6 @@
 // utils/LockScreen.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NativeModules, Platform } from "react-native";
+import { NativeModules } from "react-native";
 
 const { LockModule } = NativeModules;
 const STORAGE_KEY = "@cardy_wall_settings";
@@ -13,10 +13,19 @@ export async function authenticateUser(
     const saved = await AsyncStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : {};
 
-    const appLock = parsed.appLock ?? false;
-    const cardLock = parsed.cardLock ?? false;
+    const appLock = parsed.appLock ?? true;
+    const cardLock = parsed.cardLock ?? true;
     const shouldLock = context === "app" ? appLock : cardLock;
-    if (!shouldLock) return true;
+    
+    if (!shouldLock) {
+      return true;
+    }
+
+    // Check if module is available
+    if (!LockModule) {
+      console.error("   ❌ LockModule not found! Available modules:", Object.keys(NativeModules));
+      return true; // Fallback to allow access
+    }
 
     // Default titles
     const defaultTitle =
@@ -29,18 +38,18 @@ export async function authenticateUser(
     const title = options?.title ?? defaultTitle;
     const subtitle = options?.subtitle ?? defaultSubtitle;
 
-    if (Platform.OS === "android" && LockModule) {
-      const result =
-        typeof LockModule.authenticateUserWithMessage === "function"
-          ? await LockModule.authenticateUserWithMessage(title, subtitle)
-          : await LockModule.authenticateUser();
+    try {
+      const result = typeof LockModule.authenticateUserWithMessage === "function"
+        ? await LockModule.authenticateUserWithMessage(title, subtitle)
+        : await LockModule.authenticateUser();
+      
       return result;
+    } catch (error) {
+      console.error("   ❌ Authentication error:", error);
+      return false;
     }
-
-    // fallback (e.g., iOS)
-    return true;
   } catch (err) {
-    console.warn("LockScreen error:", err);
+    console.error("❌ [LockScreen] Unexpected error:", err);
     return false;
   }
 }
