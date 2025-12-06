@@ -264,7 +264,12 @@ export default function CardDetailsScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Card Details" subtitle="View and manage this card" showBackButton={true} />
+      <Hero
+        title="Card Details"
+        subtitle="View and manage this card"
+        showBackButton={true}
+        onBack={() => navigation.dispatch(StackActions.popToTop())}
+      />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Card Front */}

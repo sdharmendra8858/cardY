@@ -3,7 +3,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import React from "react";
 import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type HeroProps = {
@@ -13,6 +12,7 @@ type HeroProps = {
   tone?: "light" | "dark";
   surfaceColor?: string;
   showBackButton?: boolean;
+  onBack?: () => void;
 };
 
 export default function Hero({
@@ -22,6 +22,7 @@ export default function Hero({
   tone,
   surfaceColor,
   showBackButton = false,
+  onBack,
 }: HeroProps) {
   const systemScheme = useColorScheme();
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function Hero({
     <View style={[styles.container, { backgroundColor: containerBg }]}>
       {showBack && (
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={onBack || (() => router.back())}
           style={styles.backButton}
           activeOpacity={0.7}
         >
