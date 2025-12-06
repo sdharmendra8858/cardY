@@ -5,18 +5,18 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import TextRecognition from "@react-native-ml-kit/text-recognition";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+// @ts-ignore
+import TextRecognition from "@react-native-ml-kit/text-recognition";
 
 export default function PreviewScreen() {
   const router = useRouter();
@@ -436,10 +436,10 @@ export default function PreviewScreen() {
       setIsProcessing(true);
 
       const results = await Promise.all([
-        frontImage && Platform.OS !== 'ios'
+        frontImage
           ? TextRecognition.recognize(frontImage)
           : Promise.resolve(null),
-        backImage && Platform.OS !== 'ios'
+        backImage
           ? TextRecognition.recognize(backImage)
           : Promise.resolve(null),
       ]);
