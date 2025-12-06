@@ -347,10 +347,10 @@ public class PipModule: NSObject, RCTBridgeModule, AVPictureInPictureControllerD
             NotificationCenter.default.post(name: Notification.Name("PipModuleDidRequestRestore"), object: nil, userInfo: ["cardId": cardId])
 
             if let encoded = cardId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-               let url = URL(string: "cardy://card-details?cardId=\(encoded)"),
+               let url = URL(string: "cardywall://card-details/\(encoded)"),
                UIApplication.shared.canOpenURL(url) {
                 UIApplication.shared.open(url, options: [:], completionHandler: { success in
-                    NSLog("📱 [PipModule] attempted openURL cardy:// result: \(success)")
+                    NSLog("📱 [PipModule] attempted openURL cardywall:// result: \(success)")
                 })
             }
         }
