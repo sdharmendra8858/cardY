@@ -14,7 +14,7 @@ export default function PrivacyPolicyScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Privacy Policy" subtitle="Your privacy matters" />
+      <Hero title="Privacy Policy" subtitle="Your privacy matters" showBackButton={true} />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}

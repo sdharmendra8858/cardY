@@ -8,7 +8,7 @@ import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useLayoutEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
@@ -22,8 +22,6 @@ export default function AddCardScreen() {
 
   const clearImageDump = async () => {
     try {
-      let deletedCount = 0;
-      let totalSizeDeleted = 0;
 
       // Helper function to recursively delete image files in a directory
       const deleteImagesInDir = async (dirPath: string) => {
@@ -36,11 +34,11 @@ export default function AddCardScreen() {
           }
 
           const items = await FileSystem.readDirectoryAsync(normalizedDir);
-          
+
           for (const item of items) {
             const itemPath = `${normalizedDir}${item}`;
             const itemInfo = await FileSystem.getInfoAsync(itemPath);
-            
+
             if (itemInfo.exists) {
               if (itemInfo.isDirectory) {
                 // Recursively check subdirectories
@@ -48,25 +46,22 @@ export default function AddCardScreen() {
               } else {
                 // Check if it's an image file by extension
                 const lowerItem = item.toLowerCase();
-                const isImageExtension = 
+                const isImageExtension =
                   lowerItem.endsWith('.jpg') ||
                   lowerItem.endsWith('.jpeg') ||
                   lowerItem.endsWith('.png') ||
                   lowerItem.endsWith('.heic') ||
                   lowerItem.endsWith('.webp') ||
                   lowerItem.endsWith('.heif');
-                
+
                 // Also check files without extensions, but only if they're in cache directory
                 // and are reasonably sized (likely image files, not system files)
                 const hasNoExtension = !lowerItem.includes('.');
                 const isInCache = normalizedDir.includes('Cache') || normalizedDir.includes('cache');
                 const isLikelyImage = hasNoExtension && isInCache && itemInfo.size && itemInfo.size > 10000; // > 10KB
-                
+
                 if (isImageExtension || isLikelyImage) {
-                  const size = itemInfo.size || 0;
                   await FileSystem.deleteAsync(itemPath, { idempotent: true });
-                  deletedCount++;
-                  totalSizeDeleted += size;
                 }
               }
             }
@@ -155,7 +150,7 @@ export default function AddCardScreen() {
       style={[styles.container, { backgroundColor: palette.surface }]}
       edges={["top", "bottom"]}
     >
-      <Hero title="Add a new Card" subtitle="Scan or enter details manually" />
+      <Hero title="Add a new Card" subtitle="Scan or enter details manually" showBackButton={true} />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -164,6 +159,7 @@ export default function AddCardScreen() {
         extraHeight={120}
         extraScrollHeight={120}
         showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={() => Keyboard.dismiss()}
       >
         {!hideScanButton ? (
           <>

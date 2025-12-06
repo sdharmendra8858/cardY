@@ -45,7 +45,7 @@ export default function SupportScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Support" subtitle="We’re here to help" />
+      <Hero title="Support" subtitle="We’re here to help" showBackButton={true} />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           contentContainerStyle={{ paddingBottom: 40 }}

@@ -6,9 +6,12 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   FlatList,
+  Keyboard,
+  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -79,94 +82,108 @@ export default function EditProfileScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <View style={[styles.container, { backgroundColor: palette.surface }]}>
-        <View style={styles.previewContainer}>
-          <View style={[styles.previewAvatarWrap,{
-            backgroundColor: palette.card,
-            borderColor: palette.tint,
-            shadowColor: palette.tint
-          }]}>
-            <Image
-              source={selectedSource}
-              style={styles.previewAvatar}
-              contentFit="cover"
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={[styles.container, { backgroundColor: palette.surface }]}>
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backButton}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.previewContainer}>
+            <View style={[styles.previewAvatarWrap, {
+              backgroundColor: palette.card,
+              borderColor: palette.tint,
+              shadowColor: palette.tint
+            }]}>
+              <Image
+                source={selectedSource}
+                style={styles.previewAvatar}
+                contentFit="cover"
+              />
+            </View>
+            <ThemedText style={styles.previewName}>
+              {name || "Your name"}
+            </ThemedText>
+          </View>
+
+          <ThemedText style={styles.label}>Display name</ThemedText>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="Enter your name"
+            style={[
+              styles.input,
+              {
+                backgroundColor: palette.card,
+                borderColor: palette.border,
+                color: palette.text
+              },
+            ]}
+            placeholderTextColor={palette.icon}
+            maxLength={30}
+          />
+          <ThemedText style={[styles.characterCount, { color: palette.icon }]}>
+            {name.length}/30 characters
+          </ThemedText>
+
+          <ThemedText style={[styles.label, { marginTop: 16 }]}>
+            Choose your avatar
+          </ThemedText>
+          <FlatList
+            data={AVATARS}
+            keyExtractor={(item) => item.id}
+            numColumns={3}
+            columnWrapperStyle={{ gap: 12 }}
+            renderItem={({ item }: { item: { id: string; source: any } }) => {
+              const isSelected = item.id === selectedAvatarId;
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedAvatarId(item.id)}
+                  style={[
+                    styles.avatarWrap,
+                    {
+                      backgroundColor: palette.card,
+                      borderColor: palette.border,
+                    },
+                    isSelected && [
+                      styles.avatarWrapSelected,
+                      { borderColor: palette.tint, shadowColor: palette.tint }
+                    ],
+                  ]}
+                >
+                  <Image
+                    source={item.source}
+                    style={styles.avatar}
+                    contentFit="cover"
+                  />
+                  {isSelected ? (
+                    <View style={[styles.check, { backgroundColor: palette.primary }]}>
+                      <MaterialIcons
+                        name="check"
+                        size={16}
+                        color={palette.onPrimary}
+                      />
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            }}
+          />
+
+          <View style={styles.footer}>
+            <AppButton
+              title={saving ? "Saving..." : "Save"}
+              onPress={onSave}
+              fullWidth
             />
           </View>
-          <ThemedText style={styles.previewName}>
-            {name || "Your name"}
-          </ThemedText>
         </View>
-
-        <ThemedText style={styles.label}>Display name</ThemedText>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          style={[
-            styles.input,
-            { 
-              backgroundColor: palette.card, 
-              borderColor: palette.border, 
-              color: palette.text 
-            },
-          ]}
-          placeholderTextColor={palette.icon}
-          maxLength={40}
-        />
-
-        <ThemedText style={[styles.label, { marginTop: 16 }]}>
-          Choose your avatar
-        </ThemedText>
-        <FlatList
-          data={AVATARS}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          columnWrapperStyle={{ gap: 12 }}
-          renderItem={({ item }: { item: { id: string; source: any } }) => {
-            const isSelected = item.id === selectedAvatarId;
-            return (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setSelectedAvatarId(item.id)}
-                style={[
-                  styles.avatarWrap,
-                  {
-                    backgroundColor: palette.card,
-                    borderColor: palette.border,
-                  },
-                  isSelected && [
-                    styles.avatarWrapSelected,
-                    { borderColor: palette.tint, shadowColor: palette.tint }
-                  ],
-                ]}
-              >
-                <Image
-                  source={item.source}
-                  style={styles.avatar}
-                  contentFit="cover"
-                />
-                {isSelected ? (
-                  <View style={[styles.check, {backgroundColor: palette.primary}]}>
-                    <MaterialIcons 
-                      name="check" 
-                      size={16} 
-                      color={palette.onPrimary} 
-                    />
-                  </View>
-                ) : null}
-              </TouchableOpacity>
-            );
-          }}
-        />
-
-        <View style={styles.footer}>
-          <AppButton
-            title={saving ? "Saving..." : "Save"}
-            onPress={onSave}
-            fullWidth
-          />
-        </View>
-      </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -174,6 +191,13 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
   container: { flex: 1, backgroundColor: "#f2f2f2", padding: 16 },
+  backButton: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    zIndex: 10,
+    padding: 4,
+  },
   previewContainer: {
     alignItems: "center",
     marginBottom: 12,
@@ -200,6 +224,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   label: { fontSize: 14, marginBottom: 8 },
+  characterCount: {
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+    textAlign: 'right',
+  },
   input: {
     backgroundColor: "#fff",
     borderRadius: 12,

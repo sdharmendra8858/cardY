@@ -34,9 +34,9 @@ function AppShell() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(Platform.OS !== "android"); // bypass on iOS for now
-  const [checked, setChecked] = useState(Platform.OS !== "android");
+  const [checked, setChecked] = useState(false);
   const barStyle = colorScheme === "dark" ? "light" : "dark";
-  const barBg = 
+  const barBg =
     colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
   const [appIsActive, setAppIsActive] = useState(
     AppState.currentState === "active"
@@ -64,18 +64,18 @@ function AppShell() {
           "Camera"
         ];
         await Promise.all(
-          names.map(async(name) => {
+          names.map(async (name) => {
             if (!interesting.some((p) => name.includes(p))) return;
             const path = dir + name;
             const info = await FileSystem.getInfoAsync(path);
             if (!info.exists) return;
             const mtime = info.modificationTime ?? 0;
             if (!mtime || now - mtime > staleMs) {
-              await FileSystem.deleteAsync(path, {idempotent: true});
+              await FileSystem.deleteAsync(path, { idempotent: true });
             }
           })
         );
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -157,27 +157,27 @@ function AppShell() {
           translucent={false}
           animated
         />
-        <AuthRequired onRetry={handleRetryAuth}/>
+        <AuthRequired onRetry={handleRetryAuth} />
       </>
     );
   }
 
   return (
-      <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <SafeAreaProvider>
-          <AlertProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-            <TermsPopup />
-            <StatusBar
-              style={barStyle}
-              backgroundColor={barBg}
-              translucent={false}
-              animated
-            />
-            <Toast position="bottom" visibilityTime={3000} />
-          </AlertProvider>
-        </SafeAreaProvider>
-      </NavThemeProvider>
+    <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <SafeAreaProvider>
+        <AlertProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+          <TermsPopup />
+          <StatusBar
+            style={barStyle}
+            backgroundColor={barBg}
+            translucent={false}
+            animated
+          />
+          <Toast position="bottom" visibilityTime={3000} />
+        </AlertProvider>
+      </SafeAreaProvider>
+    </NavThemeProvider>
   );
 }
 

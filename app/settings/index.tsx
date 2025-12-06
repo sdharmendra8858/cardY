@@ -27,7 +27,7 @@ export default function SettingsScreen() {
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
-  
+
 
   // persistent state
   const [appLock, setAppLock] = useState(true);
@@ -101,7 +101,7 @@ export default function SettingsScreen() {
         return;
       }
     }
-  
+
     setAppLock(value);
     saveSettings({ appLock: value });
     Toast.show({
@@ -125,7 +125,7 @@ export default function SettingsScreen() {
         return;
       }
     }
-  
+
     setCardLock(value);
     saveSettings({ cardLock: value });
     Toast.show({
@@ -181,9 +181,9 @@ export default function SettingsScreen() {
         text1: "Failed to Clear Cache",
         text2: "An error occurred while clearing system cache.",
       });
-    }     
+    }
   };
-  
+
   // const handleClearCache = () => {
   //   Toast.show({
   //     type: "info",
@@ -194,19 +194,20 @@ export default function SettingsScreen() {
 
 
 
-useEffect(() => {
-  Animated.timing(fadeAnim, {
-    toValue: cardLock ? 1 : 0,
-    duration: 250,
-    useNativeDriver: true,
-  }).start();
-}, [cardLock, fadeAnim]);
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: cardLock ? 1 : 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [cardLock, fadeAnim]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <Hero
         title="Settings"
         subtitle="Manage privacy, security, and preferences"
+        showBackButton={true}
       />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
