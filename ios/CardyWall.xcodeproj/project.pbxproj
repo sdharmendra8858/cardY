@@ -10,9 +10,11 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		166AF8882A163AA8C9DA121B /* libPods-CardyWall.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 28399196369C2AFD6F4503B3 /* libPods-CardyWall.a */; };
 		1AEAD2EF5B981B5484CD08B4 /* RNPipModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 60C42A8674DF46D81F8D8A59 /* RNPipModuleBridge.m */; };
+		1DFDB468FC5515D3A15ADCAC /* RNLockModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 80C3C659A85ABC5ABB53CACC /* RNLockModuleBridge.m */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		8CEDE2B765560D803561E67C /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3BB9EB474DB1BAB9E1EB51E /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		CB3A72B99B84DD60DEF68807 /* RNLockModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4DA837552721D8467E2558B /* RNLockModule.swift */; };
 		E83F75B80F048FCE278FB04D /* RNPipModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 702A56676DD3320C5C5C55D9 /* RNPipModule.swift */; };
 		EBAB81A0A972689934D75EB4 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 46ED121EC938BEE07982283C /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
@@ -28,9 +30,11 @@
 		46ED121EC938BEE07982283C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = CardyWall/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		60C42A8674DF46D81F8D8A59 /* RNPipModuleBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RNPipModuleBridge.m; sourceTree = "<group>"; };
 		702A56676DD3320C5C5C55D9 /* RNPipModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RNPipModule.swift; sourceTree = "<group>"; };
+		80C3C659A85ABC5ABB53CACC /* RNLockModuleBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RNLockModuleBridge.m; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = CardyWall/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C3BB9EB474DB1BAB9E1EB51E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-CardyWall/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		D4DA837552721D8467E2558B /* RNLockModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RNLockModule.swift; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CardyWall/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* CardyWall-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CardyWall-Bridging-Header.h"; path = "CardyWall/CardyWall-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -106,6 +110,8 @@
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				82D47415A6FD202C2F4FEF69 /* Pods */,
 				E916C2E311C0C2AA29F89D52 /* ExpoModulesProviders */,
+				D4DA837552721D8467E2558B /* RNLockModule.swift */,
+				80C3C659A85ABC5ABB53CACC /* RNLockModuleBridge.m */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -348,6 +354,8 @@
 				8CEDE2B765560D803561E67C /* ExpoModulesProvider.swift in Sources */,
 				1AEAD2EF5B981B5484CD08B4 /* RNPipModuleBridge.m in Sources */,
 				E83F75B80F048FCE278FB04D /* RNPipModule.swift in Sources */,
+				CB3A72B99B84DD60DEF68807 /* RNLockModule.swift in Sources */,
+				1DFDB468FC5515D3A15ADCAC /* RNLockModuleBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -384,7 +392,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.redonelabs.cardywall;
-				PRODUCT_NAME = "CardyWall";
+				PRODUCT_NAME = CardyWall;
 				SWIFT_OBJC_BRIDGING_HEADER = "CardyWall/CardyWall-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -418,7 +426,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.redonelabs.cardywall;
-				PRODUCT_NAME = "CardyWall";
+				PRODUCT_NAME = CardyWall;
 				SWIFT_OBJC_BRIDGING_HEADER = "CardyWall/CardyWall-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
