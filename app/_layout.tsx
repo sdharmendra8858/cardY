@@ -7,7 +7,7 @@ import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, AppState, Platform, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Text, View } from "react-native";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
@@ -33,7 +33,7 @@ export const unstable_settings = {
 function AppShell() {
   const colorScheme = useColorScheme();
   const router = useRouter();
-  const [authenticated, setAuthenticated] = useState(Platform.OS !== "android"); // bypass on iOS for now
+  const [authenticated, setAuthenticated] = useState(false);
   const [checked, setChecked] = useState(false);
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
@@ -79,14 +79,9 @@ function AppShell() {
     }
   }, []);
 
-  // 🔒 Android system lock authentication
+  // 🔒 Biometric authentication for both Android and iOS
   useEffect(() => {
     if (checked) return; // already handled
-    if (Platform.OS !== "android") {
-      setChecked(true);
-      SplashScreen.hideAsync();
-      return;
-    }
     if (!appIsActive) return;
 
     (async () => {

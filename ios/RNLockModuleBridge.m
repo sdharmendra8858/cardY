@@ -1,4 +1,4 @@
-// ios/CardyWall/Modules/RNLockModuleBridge.m
+// ios/RNLockModuleBridge.m
 
 #import <React/RCTBridgeModule.h>
 

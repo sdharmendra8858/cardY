@@ -114,7 +114,7 @@ export default function SettingsScreen() {
     if (!value) {
       const verified = await authenticateUser("card", {
         title: "Disable Card Lock",
-        subtitle: "Authenticate to stop requiring verification for viewing cards",
+        subtitle: "Authenticate to disable card verification",
       });
       if (!verified) {
         Toast.show({
