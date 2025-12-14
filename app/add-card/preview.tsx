@@ -6,8 +6,9 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
+import { StackActions, useNavigation } from "@react-navigation/native";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import {
   ScrollView,
@@ -518,7 +519,7 @@ export default function PreviewScreen() {
       style={[styles.container, { backgroundColor: palette.surface }]}
       edges={["top"]}
     >
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 180 }}>
         <View style={{ alignSelf: "stretch", marginBottom: 0 }}>
           <Hero
             title="Preview & Extract"
@@ -594,13 +595,29 @@ export default function PreviewScreen() {
         {/* Buttons */}
         <BottomActions style={{ bottom: 12 }}>
           {frontImage && backImage ? (
+            <>
+              <AppButton
+                title={isProcessing ? "Processing..." : "Extract text"}
+                onPress={extractCardDetails}
+                fullWidth
+                disabled={isProcessing}
+              />
+              <View style={{ height: 10 }} />
+              <AppButton
+                title="Back to Home"
+                variant="secondary"
+                onPress={() => navigation.dispatch(StackActions.popToTop())}
+                fullWidth
+              />
+            </>
+          ) : (
             <AppButton
-              title={isProcessing ? "Processing..." : "Extract text"}
-              onPress={extractCardDetails}
+              title="Back to Home"
+              variant="secondary"
+              onPress={() => navigation.dispatch(StackActions.popToTop())}
               fullWidth
-              disabled={isProcessing}
             />
-          ) : null}
+          )}
         </BottomActions>
       </ScrollView>
     </SafeAreaView>

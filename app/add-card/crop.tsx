@@ -5,8 +5,9 @@ import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
+import { StackActions, useNavigation } from "@react-navigation/native";
 import * as ImageManipulator from "expo-image-manipulator";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, {
   useCallback,
   useEffect,
@@ -300,6 +301,13 @@ export default function CropScreen() {
 
       <BottomActions style={{ bottom: 12 }}>
         <AppButton title="Crop & Preview" onPress={handleCrop} fullWidth />
+        <View style={{ height: 10 }} />
+        <AppButton
+          title="Back to Home"
+          variant="secondary"
+          onPress={() => navigation.dispatch(StackActions.popToTop())}
+          fullWidth
+        />
       </BottomActions>
     </SafeAreaView>
   );
