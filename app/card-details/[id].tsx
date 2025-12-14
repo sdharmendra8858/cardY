@@ -5,6 +5,7 @@ import Hero from "@/components/Hero";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
 import { ThemedText } from "@/components/themed-text";
+import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -176,7 +177,7 @@ export default function CardDetailsScreen() {
       }
 
       // Load settings
-      const saved = await AsyncStorage.getItem("@cardy_wall_settings");
+      const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
       const parsed = saved ? JSON.parse(saved) : {};
       const cardLock = parsed.cardLock ?? true;
       const cooldown = parsed.cooldown ?? 0;
