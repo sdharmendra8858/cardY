@@ -10,6 +10,7 @@ import org.json.JSONObject;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.view.View;
+import android.view.WindowManager;
 import android.util.Log;
 import android.net.Uri;
 import android.os.Handler;
@@ -78,6 +79,7 @@ public class PipCardActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
 
         imageView = new ImageView(this);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);

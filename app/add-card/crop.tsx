@@ -4,6 +4,7 @@ import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import React, {
@@ -27,6 +28,7 @@ import {
 type CropBox = { x: number; y: number; width: number; height: number };
 
 export default function CropScreen() {
+  useScreenProtection();
   const router = useRouter();
   const navigation = useNavigation();
   const scheme = useColorScheme() ?? "light";
@@ -211,11 +213,11 @@ export default function CropScreen() {
     };
 
     const result = await ImageManipulator.manipulateAsync(
-      uri, 
+      uri,
       [
         { crop },
-        { resize: {width: 1200} }
-      ], 
+        { resize: { width: 1200 } }
+      ],
       {
         compress: 0.7,
         format: ImageManipulator.SaveFormat.JPEG,
@@ -233,7 +235,7 @@ export default function CropScreen() {
       style={[styles.container, { backgroundColor: palette.background }]}
       edges={["top"]}
     >
-      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely"  showBackButton={true} />
+      <Hero title="Adjust Your Card" subtitle="Resize the crop box precisely" showBackButton={true} />
 
       {uri && (
         <View
@@ -296,8 +298,8 @@ export default function CropScreen() {
         </View>
       )}
 
-      <BottomActions style={{bottom: 12}}>
-        <AppButton title="Crop & Preview" onPress={handleCrop} fullWidth/>
+      <BottomActions style={{ bottom: 12 }}>
+        <AppButton title="Crop & Preview" onPress={handleCrop} fullWidth />
       </BottomActions>
     </SafeAreaView>
   );

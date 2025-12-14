@@ -4,6 +4,7 @@ import BottomActions from "@/components/BottomActions";
 import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useFocusEffect } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -22,6 +23,7 @@ const CARD_ASPECT_RATIO = 85.6 / 53.98; // Debit card (width / height)
 const SCREEN_BUFFER = 20;
 
 export default function ScanScreen() {
+  useScreenProtection();
   const router = useRouter();
   const { frontUri } = useLocalSearchParams<{ frontUri?: string }>();
   const [side] = useState<"front" | "back">(frontUri ? "back" : "front");
@@ -112,14 +114,14 @@ export default function ScanScreen() {
     );
 
   return (
-    <SafeAreaView 
-      style={[styles.container, {backgroundColor: palette.background}]} 
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
       edges={["top"]}
     >
       <View style={{ alignSelf: "stretch" }}>
-        <Hero 
-          title="Capture Card" 
-          subtitle="Align card within the guid" 
+        <Hero
+          title="Capture Card"
+          subtitle="Align card within the guid"
           surfaceColor="transparent"
           showBackButton={true}
         />

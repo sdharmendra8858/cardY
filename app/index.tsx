@@ -7,6 +7,7 @@ import { getAvatarById } from "@/constants/avatars";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
 import {
@@ -20,6 +21,7 @@ import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
+  useScreenProtection();
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -38,7 +40,7 @@ export default function HomeScreen() {
   const [profileName, setProfileName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
-      DEFAULT_PROFILE.avatarUrl
+    DEFAULT_PROFILE.avatarUrl
   );
 
   const fetchCards = async () => {
