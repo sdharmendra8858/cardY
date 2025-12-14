@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TERMS_KEY = "terms_accepted";
 const TERMS_DATE_KEY = "terms_accepted_at";
@@ -39,6 +40,8 @@ export default function TermsPopup() {
 
   const screenHeight = Dimensions.get("window").height;
 
+  const insets = useSafeAreaInsets();
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
@@ -52,6 +55,7 @@ export default function TermsPopup() {
                   ? screenHeight * 0.92
                   : screenHeight * 0.94,
               backgroundColor: palette.card,
+              paddingBottom: insets.bottom,
             },
           ]}
         >
@@ -150,7 +154,8 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E5E5",
     backgroundColor: "#fff",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 14,
+    paddingBottom: 14, // Minimum padding from button to bottom (will be additive if not handled carefully, but container padding is safer)
   },
   button: {
     backgroundColor: "#000",

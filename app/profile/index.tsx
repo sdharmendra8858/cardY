@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const [name, setName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
-      DEFAULT_PROFILE.avatarUrl
+    DEFAULT_PROFILE.avatarUrl
   );
 
   const navigation = useNavigation();
@@ -52,18 +52,18 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: palette.surface}]}
+      style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
       <View style={styles.profileHeader}>
-      {Platform.OS === "ios" && (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="chevron-left" size={32} color={palette.text} />
-            </TouchableOpacity>
-          )}
+        {Platform.OS === "ios" && (
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+          </TouchableOpacity>
+        )}
         <View style={styles.avatarContainer}>
           <Image
             source={avatarSource}
@@ -159,87 +159,87 @@ export default function ProfileScreen() {
       </View>
 
       <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
-          <ThemedText style={{fontSize: 16, fontWeight: "700"}}>
-            Appearance
-          </ThemedText>
-          <ThemedText style={{ fontSize: 12, opacity: 0.7 , marginTop:2 }}>
-            Choose how Cardy Wall looks
-          </ThemedText>
-          <View style={[styles.themeRow, {marginTop: 12}]}>
-            {[
-              {
-                id: "system",
-                label: "System",
-                value: null,
-                icon: "phone-android",
-              },
-              {
-                id: "light",
-                label: "Light",
-                value: "light",
-                icon: "brightness-7",
-              },
-              {
-                id: "dark",
-                label: "Dark",
-                value: "dark",
-                icon: "brightness-4",
-              }
-            ].map((opt) => {
-              const selected = (override ?? "system") === (opt.value ?? "system");
-              const iconColor = selected ? palette.onPrimary : palette.tint;
-              return (
-                <TouchableOpacity 
-                  key={opt.id}
-                  accessibilityRole="button"
-                  onPress={() => setOverride(opt.value as any)}
-                  activeOpacity={0.85}
-                  style={[
-                    styles.themeOption,
-                    {
+        <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>
+          Appearance
+        </ThemedText>
+        <ThemedText style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+          Choose how Cardy Wall looks
+        </ThemedText>
+        <View style={[styles.themeRow, { marginTop: 12 }]}>
+          {[
+            {
+              id: "system",
+              label: "System",
+              value: null,
+              icon: "phone-android",
+            },
+            {
+              id: "light",
+              label: "Light",
+              value: "light",
+              icon: "brightness-7",
+            },
+            {
+              id: "dark",
+              label: "Dark",
+              value: "dark",
+              icon: "brightness-4",
+            }
+          ].map((opt) => {
+            const selected = (override ?? "system") === (opt.value ?? "system");
+            const iconColor = selected ? palette.onPrimary : palette.tint;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                accessibilityRole="button"
+                onPress={() => setOverride(opt.value as any)}
+                activeOpacity={0.85}
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: selected
+                      ? palette.primary
+                      : palette.surface,
+                    borderColor: selected ? palette.primary : palette.border,
+                  },
+                ]}
+              >
+                <View style={styles.themeOptionInner}>
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      alignItems: "center",
+                      justifyContent: "center",
                       backgroundColor: selected
-                        ? palette.primary
-                        : palette.surface,
-                      borderColor: selected ? palette.primary : palette.border,
-                    },
-                  ]}
-                >
-                  <View style={styles.themeOptionInner}>
-                    <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: selected
-                          ? "rgba(255,255,255,0.2)"
-                          : scheme === "dark"
+                        ? "rgba(255,255,255,0.2)"
+                        : scheme === "dark"
                           ? "rgba(255,255,255,0.06)"
                           : "rgba(0,0,0,0.06)",
-                          marginBottom: 6,
-                      }}
-                    >
-                      <MaterialIcons 
-                        name={opt.icon as any}
-                        size={18}
-                        color={iconColor}
-                      />
-                    </View>
-                    <ThemedText
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: selected ? palette.onPrimary : palette.text,
-                      }}
-                    >
-                      {opt.label}
-                    </ThemedText>
+                      marginBottom: 6,
+                    }}
+                  >
+                    <MaterialIcons
+                      name={opt.icon as any}
+                      size={18}
+                      color={iconColor}
+                    />
                   </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  <ThemedText
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: selected ? palette.onPrimary : palette.text,
+                    }}
+                  >
+                    {opt.label}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 24, fontWeight: "bold" },
   menuCard: {
     marginTop: 8,
+    marginHorizontal: 20,
     paddingHorizontal: 12,
     paddingVertical: 4,
     backgroundColor: "#fff",
