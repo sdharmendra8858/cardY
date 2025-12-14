@@ -2,9 +2,8 @@ import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Constants from "expo-constants";
 import { useNavigation, useRouter } from "expo-router";
-import { Colors } from "../../constants/theme";
-
 import React, { useLayoutEffect } from "react";
 import {
   Linking,
@@ -14,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Colors } from "../../constants/theme";
 
 export default function SupportScreen() {
   const navigation = useNavigation();
@@ -104,7 +104,9 @@ export default function SupportScreen() {
           </View>
 
           <View style={styles.footer}>
-            <ThemedText style={styles.version}>Version 1.0.1</ThemedText>
+            <ThemedText style={styles.version}>
+              Version {Constants.expoConfig?.version ?? "1.0.0"}
+            </ThemedText>
           </View>
         </ScrollView>
       </View>

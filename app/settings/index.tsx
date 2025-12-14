@@ -9,11 +9,13 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authenticateUser } from "@/utils/LockScreen";
 import Slider from "@react-native-community/slider";
+import Constants from "expo-constants";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   NativeModules,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   TouchableOpacity,
@@ -350,9 +352,34 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Section: General */}
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              General
+            </ThemedText>
+
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  await Share.share({
+                    message:
+                      "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://play.google.com/store/apps/details?id=com.redonelabs.cardywall",
+                  });
+                } catch (error) {
+                  console.error("Error sharing app:", error);
+                }
+              }}
+              style={styles.touchRow}
+            >
+              <ThemedText style={styles.label}>Share App</ThemedText>
+            </TouchableOpacity>
+          </View>
+
           {/* Footer */}
           <View style={styles.footer}>
-            <ThemedText style={styles.version}>Version 1.0.1</ThemedText>
+            <ThemedText style={styles.version}>
+              Version {Constants.expoConfig?.version ?? "1.0.0"}
+            </ThemedText>
           </View>
 
           {/* Future Ad Section */}
