@@ -1,3 +1,5 @@
+import AdBanner from "@/components/AdBanner";
+import InterstitialAd, { showInterstitialAd } from "@/components/InterstitialAd";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -33,6 +35,7 @@ export default function EditProfileScreen() {
   const [selectedAvatarId, setSelectedAvatarId] = useState<string>(
     AVATARS[0]?.id
   );
+  const [originalAvatarId, setOriginalAvatarId] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   useLayoutEffect(() => {
@@ -43,20 +46,30 @@ export default function EditProfileScreen() {
     (async () => {
       const profile = await getProfile();
       setName(profile.name);
+      let avatarId = AVATARS[0]?.id;
       if (profile.avatarId && AVATARS.some((a) => a.id === profile.avatarId)) {
-        setSelectedAvatarId(profile.avatarId);
+        avatarId = profile.avatarId;
       } else if (profile.avatarUrl) {
         const found = AVATARS.find((a) => a.source === profile.avatarUrl);
-        setSelectedAvatarId(found?.id ?? AVATARS[0]?.id);
-      } else {
-        setSelectedAvatarId(AVATARS[0]?.id);
+        avatarId = found?.id ?? AVATARS[0]?.id;
       }
+      setSelectedAvatarId(avatarId);
+      setOriginalAvatarId(avatarId); // Store original for comparison
     })();
   }, []);
+
+  // Handle avatar selection - ad is already preloaded on screen mount
+  const handleAvatarSelect = (avatarId: string) => {
+    setSelectedAvatarId(avatarId);
+    console.log('Avatar selected:', avatarId);
+  };
 
   async function onSave() {
     if (saving) return;
     setSaving(true);
+
+    const avatarChanged = selectedAvatarId !== originalAvatarId;
+
     try {
       const selected =
         AVATARS.find((a) => a.id === selectedAvatarId) ?? AVATARS[0];
@@ -67,7 +80,31 @@ export default function EditProfileScreen() {
         avatarId: selected.id,
         avatarUrl,
       });
-      router.back();
+
+      // Only show ad if avatar actually changed
+      if (avatarChanged) {
+        try {
+          // Show ad before navigation (blocking)
+          await showInterstitialAd(
+            () => {
+              console.log('Avatar update: Interstitial ad closed, navigating back');
+              router.back();
+            },
+            () => {
+              console.log('Avatar update: Interstitial ad failed, navigating back anyway');
+              router.back();
+            },
+            3000 // 3 second timeout for ad loading
+          );
+        } catch (error) {
+          console.warn("Failed to show interstitial ad:", error);
+          // Still navigate back even if ad fails
+          router.back();
+        }
+      } else {
+        // No avatar change, just navigate back
+        router.back();
+      }
     } finally {
       setSaving(false);
     }
@@ -140,7 +177,7 @@ export default function EditProfileScreen() {
               return (
                 <TouchableOpacity
                   activeOpacity={0.8}
-                  onPress={() => setSelectedAvatarId(item.id)}
+                  onPress={() => handleAvatarSelect(item.id)}
                   style={[
                     styles.avatarWrap,
                     {
@@ -171,6 +208,7 @@ export default function EditProfileScreen() {
               );
             }}
           />
+          <AdBanner />
 
           <View style={styles.footer}>
             <AppButton
@@ -181,6 +219,9 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Preload interstitial ad on screen mount for faster display */}
+      <InterstitialAd />
     </SafeAreaView>
   );
 }

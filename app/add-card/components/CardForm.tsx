@@ -43,6 +43,7 @@ interface CardFormProps {
   onCvvFocus?: () => void;
   setCvvRef?: (ref: TextInput | null) => void;
   onCvvLayout?: (y: number) => void;
+  disabled?: boolean;
 }
 
 function formatCardNumberForDisplay(raw: string): string {
@@ -148,6 +149,7 @@ export default function CardForm({
   onCvvFocus,
   setCvvRef,
   onCvvLayout,
+  disabled = false,
 }: CardFormProps) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -512,7 +514,7 @@ export default function CardForm({
         onPress={handleSubmit}
         fullWidth
         variant="primary"
-        disabled={!isFormComplete}
+        disabled={!isFormComplete || disabled}
       />
     </View>
   );

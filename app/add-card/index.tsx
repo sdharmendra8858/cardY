@@ -1,6 +1,7 @@
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
+import InterstitialAd, { showInterstitialAd } from "@/components/InterstitialAd";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -9,7 +10,7 @@ import { addCard as secureAddCard } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,6 +23,7 @@ export default function AddCardScreen() {
   const navigation = useNavigation();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+  const [isSaving, setIsSaving] = useState(false);
 
   const clearImageDump = async () => {
     try {
@@ -129,23 +131,42 @@ export default function AddCardScreen() {
     router.push("/add-card/scan");
   };
 
-  const handleManualAdd = (card: {
+  const handleManualAdd = async (card: {
     cardNumber: string;
     cardHolder: string;
     expiry: string;
     cvv: string;
     infoText: string;
   }) => {
-    // 1️⃣ Save the card info (you can use AsyncStorage, SQLite, or any state/store)
-    saveCardLocally(card)
-      .then(() => {
-        // 2️⃣ Navigate to home screen after saving
-        navigation.dispatch(StackActions.popToTop());
-      })
-      .catch((err) => {
-        console.error("Failed to save card:", err);
-        alert("Failed to save card info. Please try again.");
-      });
+    if (isSaving) return; // Prevent double submission
+
+    setIsSaving(true);
+
+    try {
+      // 1️⃣ Save the card info
+      await saveCardLocally(card);
+
+      // 2️⃣ Navigate immediately to home screen (don't wait for ad)
+      navigation.dispatch(StackActions.popToTop());
+
+      // 3️⃣ Show interstitial ad after a short delay (non-blocking)
+      // This allows the navigation to complete first
+      setTimeout(() => {
+        showInterstitialAd(
+          () => console.log('Interstitial ad closed'),
+          () => console.log('Interstitial ad failed or was skipped'),
+          2000 // 2 second timeout for faster UX
+        ).catch((error) => {
+          console.warn("Failed to show interstitial ad:", error);
+        });
+      }, 300); // Small delay to ensure navigation completes
+
+    } catch (err) {
+      console.error("Failed to save card:", err);
+      alert("Failed to save card info. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -192,6 +213,7 @@ export default function AddCardScreen() {
           defaultCardHolder={defaultCardHolder}
           defaultExpiry={defaultExpiry}
           defaultCvv={defaultCvv}
+          disabled={isSaving}
         />
 
         {hideScanButton && (
@@ -206,6 +228,9 @@ export default function AddCardScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
+
+      {/* Preload interstitial ad for faster loading */}
+      <InterstitialAd />
     </SafeAreaView>
   );
 }

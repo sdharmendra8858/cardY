@@ -51,8 +51,6 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/cc.png",
-          // "imageWidth": 200,
-          // "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#000000"
@@ -71,6 +69,12 @@
           "ios": {
             "deploymentTarget": "15.1"
           }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-4699580064236799~8493755965"
         }
       ]
     ],

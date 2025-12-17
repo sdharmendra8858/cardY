@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import NativeAd from "@/components/NativeAd";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -108,6 +109,11 @@ export default function SupportScreen() {
               Version {Constants.expoConfig?.version ?? "1.0.0"}
             </ThemedText>
           </View>
+
+          {/* Native Ad Section - Below Version Info */}
+          <View style={styles.adSection}>
+            <NativeAd />
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -145,4 +151,8 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: "#e5e5e5" },
   footer: { alignItems: "center", marginTop: 10 },
   version: { fontSize: 12, opacity: 0.6 },
+  adSection: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
 });

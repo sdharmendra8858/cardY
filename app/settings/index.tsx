@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import NativeAd from "@/components/NativeAd";
 import { useAlert } from "@/context/AlertContext";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -382,6 +383,11 @@ export default function SettingsScreen() {
             </ThemedText>
           </View>
 
+          {/* Native Ad Section - Below Version Info */}
+          <View style={styles.adSection}>
+            <NativeAd />
+          </View>
+
           {/* Future Ad Section */}
           {/* 
           <View style={styles.adContainer}>
@@ -457,6 +463,10 @@ const styles = StyleSheet.create({
   version: {
     fontSize: 12,
     opacity: 0.6,
+  },
+  adSection: {
+    marginTop: 16,
+    marginBottom: 8,
   },
   adContainer: {
     alignItems: "center",

@@ -1,4 +1,5 @@
 // app/profile/index.tsx
+import AdBanner from "@/components/AdBanner";
 import { ThemedText } from "@/components/themed-text";
 import { useThemeController } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -54,191 +55,195 @@ export default function ProfileScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <View style={styles.profileHeader}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons name="chevron-left" size={32} color={palette.text} />
-        </TouchableOpacity>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={avatarSource}
-            style={styles.avatar}
-            contentFit="cover"
-          />
+      <View style={{ flex: 1 }}>
+        <View style={styles.profileHeader}>
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push({ pathname: "/profile/edit" })}
-            style={[styles.editIcon, { backgroundColor: palette.tint }]}
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
           >
-            <MaterialIcons name="edit" size={18} color={palette.onPrimary} />
+            <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+          </TouchableOpacity>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={avatarSource}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => router.push({ pathname: "/profile/edit" })}
+              style={[styles.editIcon, { backgroundColor: palette.tint }]}
+            >
+              <MaterialIcons name="edit" size={18} color={palette.onPrimary} />
+            </TouchableOpacity>
+          </View>
+          <ThemedText type="title" style={styles.name}>
+            {name}
+          </ThemedText>
+        </View>
+
+        <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push("/settings")}
+          >
+            <View style={styles.menuLeft}>
+              <MaterialIcons name="settings" size={22} color={palette.tint} />
+              <ThemedText style={styles.menuText}>Settings</ThemedText>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={22}
+              color={scheme === "dark" ? "#666" : "#bbb"}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            activeOpacity={0.7}
+            onPress={() => router.push("/support")}
+          >
+            <View style={styles.menuLeft}>
+              <MaterialIcons
+                name="support-agent"
+                size={22}
+                color={palette.tint}
+              />
+              <ThemedText style={styles.menuText}>Support</ThemedText>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={22}
+              color={scheme === "dark" ? "#666" : "#bbb"}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push({ pathname: "/settings/TermsScreen" })}
+          >
+            <View style={styles.menuLeft}>
+              <MaterialIcons name="description" size={22} color={palette.tint} />
+              <ThemedText style={styles.menuText}>Terms & Conditions</ThemedText>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={22}
+              color={scheme === "dark" ? "#666" : "#bbb"}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() =>
+              router.push({ pathname: "/settings/PrivacyPolicyScreen" })
+            }
+          >
+            <View style={styles.menuLeft}>
+              <MaterialIcons name="gavel" size={22} color={palette.tint} />
+              <ThemedText style={styles.menuText}>Legal & Privacy</ThemedText>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={22}
+              color={scheme === "dark" ? "#666" : "#bbb"}
+            />
           </TouchableOpacity>
         </View>
-        <ThemedText type="title" style={styles.name}>
-          {name}
-        </ThemedText>
-      </View>
 
-      <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => router.push("/settings")}
-        >
-          <View style={styles.menuLeft}>
-            <MaterialIcons name="settings" size={22} color={palette.tint} />
-            <ThemedText style={styles.menuText}>Settings</ThemedText>
-          </View>
-          <MaterialIcons
-            name="chevron-right"
-            size={22}
-            color={scheme === "dark" ? "#666" : "#bbb"}
-          />
-        </TouchableOpacity>
-
-        <View style={[styles.divider, { backgroundColor: palette.border }]} />
-
-        <TouchableOpacity
-          style={styles.menuRow}
-          activeOpacity={0.7}
-          onPress={() => router.push("/support")}
-        >
-          <View style={styles.menuLeft}>
-            <MaterialIcons
-              name="support-agent"
-              size={22}
-              color={palette.tint}
-            />
-            <ThemedText style={styles.menuText}>Support</ThemedText>
-          </View>
-          <MaterialIcons
-            name="chevron-right"
-            size={22}
-            color={scheme === "dark" ? "#666" : "#bbb"}
-          />
-        </TouchableOpacity>
-
-        <View style={[styles.divider, { backgroundColor: palette.border }]} />
-
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() => router.push({ pathname: "/settings/TermsScreen" })}
-        >
-          <View style={styles.menuLeft}>
-            <MaterialIcons name="description" size={22} color={palette.tint} />
-            <ThemedText style={styles.menuText}>Terms & Conditions</ThemedText>
-          </View>
-          <MaterialIcons
-            name="chevron-right"
-            size={22}
-            color={scheme === "dark" ? "#666" : "#bbb"}
-          />
-        </TouchableOpacity>
-
-        <View style={[styles.divider, { backgroundColor: palette.border }]} />
-
-        <TouchableOpacity
-          style={styles.menuRow}
-          onPress={() =>
-            router.push({ pathname: "/settings/PrivacyPolicyScreen" })
-          }
-        >
-          <View style={styles.menuLeft}>
-            <MaterialIcons name="gavel" size={22} color={palette.tint} />
-            <ThemedText style={styles.menuText}>Legal & Privacy</ThemedText>
-          </View>
-          <MaterialIcons
-            name="chevron-right"
-            size={22}
-            color={scheme === "dark" ? "#666" : "#bbb"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
-        <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>
-          Appearance
-        </ThemedText>
-        <ThemedText style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-          Choose how Cardy Wall looks
-        </ThemedText>
-        <View style={[styles.themeRow, { marginTop: 12 }]}>
-          {[
-            {
-              id: "system",
-              label: "System",
-              value: null,
-              icon: "phone-android",
-            },
-            {
-              id: "light",
-              label: "Light",
-              value: "light",
-              icon: "brightness-7",
-            },
-            {
-              id: "dark",
-              label: "Dark",
-              value: "dark",
-              icon: "brightness-4",
-            }
-          ].map((opt) => {
-            const selected = (override ?? "system") === (opt.value ?? "system");
-            const iconColor = selected ? palette.onPrimary : palette.tint;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                accessibilityRole="button"
-                onPress={() => setOverride(opt.value as any)}
-                activeOpacity={0.85}
-                style={[
-                  styles.themeOption,
-                  {
-                    backgroundColor: selected
-                      ? palette.primary
-                      : palette.surface,
-                    borderColor: selected ? palette.primary : palette.border,
-                  },
-                ]}
-              >
-                <View style={styles.themeOptionInner}>
-                  <View
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      alignItems: "center",
-                      justifyContent: "center",
+        <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
+          <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>
+            Appearance
+          </ThemedText>
+          <ThemedText style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+            Choose how Cardy Wall looks
+          </ThemedText>
+          <View style={[styles.themeRow, { marginTop: 12 }]}>
+            {[
+              {
+                id: "system",
+                label: "System",
+                value: null,
+                icon: "phone-android",
+              },
+              {
+                id: "light",
+                label: "Light",
+                value: "light",
+                icon: "brightness-7",
+              },
+              {
+                id: "dark",
+                label: "Dark",
+                value: "dark",
+                icon: "brightness-4",
+              }
+            ].map((opt) => {
+              const selected = (override ?? "system") === (opt.value ?? "system");
+              const iconColor = selected ? palette.onPrimary : palette.tint;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  accessibilityRole="button"
+                  onPress={() => setOverride(opt.value as any)}
+                  activeOpacity={0.85}
+                  style={[
+                    styles.themeOption,
+                    {
                       backgroundColor: selected
-                        ? "rgba(255,255,255,0.2)"
-                        : scheme === "dark"
-                          ? "rgba(255,255,255,0.06)"
-                          : "rgba(0,0,0,0.06)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    <MaterialIcons
-                      name={opt.icon as any}
-                      size={18}
-                      color={iconColor}
-                    />
+                        ? palette.primary
+                        : palette.surface,
+                      borderColor: selected ? palette.primary : palette.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.themeOptionInner}>
+                    <View
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: selected
+                          ? "rgba(255,255,255,0.2)"
+                          : scheme === "dark"
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(0,0,0,0.06)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <MaterialIcons
+                        name={opt.icon as any}
+                        size={18}
+                        color={iconColor}
+                      />
+                    </View>
+                    <ThemedText
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: selected ? palette.onPrimary : palette.text,
+                      }}
+                    >
+                      {opt.label}
+                    </ThemedText>
                   </View>
-                  <ThemedText
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: selected ? palette.onPrimary : palette.text,
-                    }}
-                  >
-                    {opt.label}
-                  </ThemedText>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </View>
+
+      <AdBanner />
     </SafeAreaView>
   );
 }
