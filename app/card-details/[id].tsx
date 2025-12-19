@@ -8,8 +8,9 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { authenticateUser } from "@/utils/LockScreen";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { formatCardNumber } from "@/utils/formatCardNumber";
+import { authenticateUser } from "@/utils/LockScreen";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   getCards as secureGetCards,
@@ -38,6 +39,7 @@ const { PipModule } = NativeModules;
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
   const { id } = useLocalSearchParams<{ id: string }>();
+  useScreenProtection();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [card, setCard] = useState<any>(null);

@@ -3,6 +3,7 @@ import InfoBox from "@/components/InfoBox";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { addCard as secureAddCard } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
@@ -15,6 +16,7 @@ import CardForm from "./components/CardForm";
 import ScanButton from "./components/ScanButton";
 
 export default function AddCardScreen() {
+  useScreenProtection();
   const router = useRouter();
   const navigation = useNavigation();
   const scheme = useColorScheme() ?? "light";

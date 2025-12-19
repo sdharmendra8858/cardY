@@ -5,6 +5,7 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 
 export default function PreviewScreen() {
+  useScreenProtection();
   const router = useRouter();
   const navigation = useNavigation();
   const { showAlert } = useAlert();
