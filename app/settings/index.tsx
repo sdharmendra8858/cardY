@@ -4,15 +4,18 @@ import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/themed-text";
+import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authenticateUser } from "@/utils/LockScreen";
 import Slider from "@react-native-community/slider";
+import Constants from "expo-constants";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   NativeModules,
   ScrollView,
+  Share,
   StyleSheet,
   Switch,
   TouchableOpacity,
@@ -30,13 +33,13 @@ export default function SettingsScreen() {
 
 
   // persistent state
-  const [appLock, setAppLock] = useState(true);
-  const [cardLock, setCardLock] = useState(true);
+  const [appLock, setAppLock] = useState(false);
+  const [cardLock, setCardLock] = useState(false);
   const [cooldown, setCooldown] = useState(3);
 
   const fadeAnim = useRef(new Animated.Value(cardLock ? 1 : 0)).current;
 
-  const STORAGE_KEY = "@cardy_wall_settings";
+  const STORAGE_KEY = SECURITY_SETTINGS_KEY;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -54,14 +57,18 @@ export default function SettingsScreen() {
         if (saved) {
           const parsed = JSON.parse(saved);
 
-          // Apply stored values (fallback to true)
-          setAppLock(parsed.appLock ?? true);
-          setCardLock(parsed.cardLock ?? true);
+          // Apply stored values (fallback to false)
+          setAppLock(parsed.appLock ?? false);
+          setCardLock(parsed.cardLock ?? false);
           setCooldown(parsed.cooldown ?? 3);
         } else {
           // Initialize storage with defaults
-          const defaults = { appLock: true, cardLock: true, cooldown: 3 };
+          const defaults = { appLock: false, cardLock: false, cooldown: 3 };
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+          // Ensure state matches defaults
+          setAppLock(false);
+          setCardLock(false);
+          setCooldown(3);
         }
       } catch (e) {
         console.error("Error loading settings:", e);
@@ -79,7 +86,7 @@ export default function SettingsScreen() {
     try {
       const current = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = current ? JSON.parse(current) : {};
-      const merged = { appLock: true, cardLock: true, cooldown: 3, ...parsed, ...updated }; // default true baseline
+      const merged = { appLock: false, cardLock: false, cooldown: 3, ...parsed, ...updated }; // default true baseline
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     } catch (e) {
       console.error("Error saving settings:", e);
@@ -345,9 +352,34 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Section: General */}
+          <View style={[styles.card, { backgroundColor: palette.card }]}>
+            <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
+              General
+            </ThemedText>
+
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  await Share.share({
+                    message:
+                      "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://play.google.com/store/apps/details?id=com.redonelabs.cardywall",
+                  });
+                } catch (error) {
+                  console.error("Error sharing app:", error);
+                }
+              }}
+              style={styles.touchRow}
+            >
+              <ThemedText style={styles.label}>Share App</ThemedText>
+            </TouchableOpacity>
+          </View>
+
           {/* Footer */}
           <View style={styles.footer}>
-            <ThemedText style={styles.version}>Version 1.0.1</ThemedText>
+            <ThemedText style={styles.version}>
+              Version {Constants.expoConfig?.version ?? "1.0.0"}
+            </ThemedText>
           </View>
 
           {/* Future Ad Section */}

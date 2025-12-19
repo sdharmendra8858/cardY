@@ -4,6 +4,7 @@ import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
+import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -14,6 +15,7 @@ import {
   getCards as secureGetCards,
   removeCard as secureRemoveCards,
 } from "@/utils/secureStorage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
@@ -42,6 +44,25 @@ export default function HomeScreen() {
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
     DEFAULT_PROFILE.avatarUrl
   );
+
+  const [isAppLockEnabled, setIsAppLockEnabled] = useState(true);
+  const [isCardLockEnabled, setIsCardLockEnabled] = useState(true);
+
+  const checkSecuritySettings = async () => {
+    try {
+      const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setIsAppLockEnabled(parsed.appLock ?? false);
+        setIsCardLockEnabled(parsed.cardLock ?? false);
+      } else {
+        setIsAppLockEnabled(false);
+        setIsCardLockEnabled(false);
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const fetchCards = async () => {
     try {
@@ -73,6 +94,7 @@ export default function HomeScreen() {
     useCallback(() => {
       fetchCards();
       fetchProfile();
+      checkSecuritySettings();
     }, [])
   );
 
@@ -127,6 +149,47 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
+
+      {(!isAppLockEnabled || !isCardLockEnabled) && (
+        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+          <View
+            style={{
+              backgroundColor: "#FFF4E5",
+              borderRadius: 12,
+              padding: 12,
+              borderWidth: 1,
+              borderColor: "#FFE0B2",
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+              <ThemedText style={{ fontSize: 18, marginRight: 8 }}>🛡️</ThemedText>
+              <ThemedText type="defaultSemiBold" style={{ color: "#E65100" }}>
+                Security Recommendation
+              </ThemedText>
+            </View>
+            <ThemedText style={{ color: "#BF360C", marginBottom: 12, fontSize: 13 }}>
+              {!isAppLockEnabled && !isCardLockEnabled
+                ? "App Lock and Card Lock are disabled. Enable them to secure your data."
+                : !isAppLockEnabled
+                  ? "App Lock is disabled. Enable it to prevent unauthorized access."
+                  : "Card Lock is disabled. Enable it to protect card details."}
+            </ThemedText>
+            <Pressable
+              onPress={() => router.push("/settings")}
+              style={{
+                backgroundColor: "#E65100",
+                paddingVertical: 8,
+                borderRadius: 8,
+                alignItems: "center",
+              }}
+            >
+              <ThemedText style={{ color: "white", fontWeight: "bold", fontSize: 13 }}>
+                Enable Security Features
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {cards.length !== 0 && (
         <View>

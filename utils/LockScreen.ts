@@ -1,9 +1,10 @@
 // utils/LockScreen.tsx
+import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeModules } from "react-native";
 
 const { LockModule } = NativeModules;
-const STORAGE_KEY = "@cardy_wall_settings";
+const STORAGE_KEY = SECURITY_SETTINGS_KEY;
 
 export async function authenticateUser(
   context: "app" | "card" = "app",
@@ -13,8 +14,8 @@ export async function authenticateUser(
     const saved = await AsyncStorage.getItem(STORAGE_KEY);
     const parsed = saved ? JSON.parse(saved) : {};
 
-    const appLock = parsed.appLock ?? true;
-    const cardLock = parsed.cardLock ?? true;
+    const appLock = parsed.appLock ?? false;
+    const cardLock = parsed.cardLock ?? false;
     const shouldLock = context === "app" ? appLock : cardLock;
     
     if (!shouldLock) {
