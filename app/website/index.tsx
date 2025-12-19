@@ -1,4 +1,5 @@
 import Hero from "@/components/Hero";
+import NativeAd from "@/components/NativeAd";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -61,6 +62,11 @@ export default function WebsiteComingSoonScreen() {
               <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>Open Website</ThemedText>
             </TouchableOpacity>
           </View>
+
+          {/* Native Ad Section */}
+          <View style={styles.adSection}>
+            <NativeAd />
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -94,5 +100,10 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  adSection: {
+    marginTop: 32,
+    marginBottom: 16,
+    alignItems: 'center',
   },
 });
