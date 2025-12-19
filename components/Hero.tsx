@@ -3,7 +3,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColor } from "@/hooks/use-theme-color";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type HeroProps = {
   title: string;
@@ -33,7 +33,7 @@ export default function Hero({
   const overlapBg =
     surfaceColor ?? (isDark ? Colors.dark.surface : Colors.light.surface);
 
-  const showBack = showBackButton && Platform.OS === "ios";
+  const showBack = showBackButton;
 
   return (
     <View style={[styles.container, { backgroundColor: containerBg }]}>

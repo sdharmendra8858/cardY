@@ -7,7 +7,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useState } from "react";
-import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getAvatarById } from "../../constants/avatars";
 import { Colors } from "../../constants/theme";
@@ -55,15 +55,13 @@ export default function ProfileScreen() {
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
       <View style={styles.profileHeader}>
-        {Platform.OS === "ios" && (
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="chevron-left" size={32} color={palette.text} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+        </TouchableOpacity>
         <View style={styles.avatarContainer}>
           <Image
             source={avatarSource}

@@ -7,12 +7,11 @@ import React, { useEffect, useLayoutEffect, useState } from "react";
 import {
   FlatList,
   Keyboard,
-  Platform,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppButton from "../../components/AppButton";
@@ -84,15 +83,13 @@ export default function EditProfileScreen() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.container, { backgroundColor: palette.surface }]}>
-          {Platform.OS === "ios" && (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backButton}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="chevron-left" size={32} color={palette.text} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons name="chevron-left" size={32} color={palette.text} />
+          </TouchableOpacity>
           <View style={styles.previewContainer}>
             <View style={[styles.previewAvatarWrap, {
               backgroundColor: palette.card,

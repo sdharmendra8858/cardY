@@ -242,7 +242,7 @@ export default function HomeScreen() {
           <AppButton
             title="Add New Card"
             fullWidth
-            style={{ marginHorizontal: 16 }}
+            style={{ marginHorizontal: 16, marginBottom: 16 }}
           />
         </Link>
       )}

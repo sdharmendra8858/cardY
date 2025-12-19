@@ -378,12 +378,7 @@ export default function CardDetailsScreen() {
             variant="danger"
             onPress={handleDelete}
           />
-          <View style={{ height: 10 }} />
-          <AppButton
-            title="Back to Home"
-            variant="secondary"
-            onPress={() => navigation.dispatch(StackActions.popToTop())}
-          />
+
         </View>
       </View>
 

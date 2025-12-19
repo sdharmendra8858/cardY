@@ -5,9 +5,9 @@ import Hero from "@/components/Hero";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { useFocusEffect } from "@react-navigation/native";
+import { StackActions, useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Camera, CameraType, CameraView } from "expo-camera";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   useCallback,
   useEffect,
@@ -157,6 +157,13 @@ export default function ScanScreen() {
           title="Capture"
           onPress={handleCapture}
           disabled={captureDisabled}
+          fullWidth
+        />
+        <View style={{ height: 10 }} />
+        <AppButton
+          title="Back to Home"
+          variant="secondary"
+          onPress={() => navigation.dispatch(StackActions.popToTop())}
           fullWidth
         />
       </BottomActions>

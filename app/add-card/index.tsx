@@ -1,3 +1,4 @@
+import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
 import { ThemedText } from "@/components/themed-text";
@@ -192,6 +193,18 @@ export default function AddCardScreen() {
           defaultExpiry={defaultExpiry}
           defaultCvv={defaultCvv}
         />
+
+        {hideScanButton && (
+          <>
+            <View style={{ height: 16 }} />
+            <AppButton
+              title="Back to Home"
+              variant="secondary"
+              onPress={() => navigation.dispatch(StackActions.popToTop())}
+              fullWidth
+            />
+          </>
+        )}
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );
