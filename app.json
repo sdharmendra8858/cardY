@@ -76,7 +76,9 @@
         {
           "androidAppId": "ca-app-pub-4699580064236799~8493755965"
         }
-      ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
