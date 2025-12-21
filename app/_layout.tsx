@@ -13,6 +13,7 @@ import Toast from "react-native-toast-message";
 
 import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from "@/context/AlertContext";
+import { CardProvider } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -161,15 +162,17 @@ function AppShell() {
     <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <AlertProvider>
-          <Stack screenOptions={{ headerShown: false }} />
-          <TermsPopup />
-          <StatusBar
-            style={barStyle}
-            backgroundColor={barBg}
-            translucent={false}
-            animated
-          />
-          <Toast position="bottom" visibilityTime={3000} />
+          <CardProvider>
+            <Stack screenOptions={{ headerShown: false }} />
+            <TermsPopup />
+            <StatusBar
+              style={barStyle}
+              backgroundColor={barBg}
+              translucent={false}
+              animated
+            />
+            <Toast position="bottom" visibilityTime={3000} />
+          </CardProvider>
         </AlertProvider>
       </SafeAreaProvider>
     </NavThemeProvider>

@@ -9,6 +9,11 @@ type Card = {
   expiry: string;
   cvv?: string;
   cardName?: string;
+  cardKind?: "credit" | "debit"; // Credit or Debit
+  cobrandName?: string; // e.g., "Amazon Pay", "Flipkart", "Swiggy"
+  cardUser?: "self" | "other"; // Who owns/uses the card
+  dominantColor?: string; // Hex color code for card theme
+  bank?: string; // Bank name
 };
 
 export async function getCards(): Promise<Card[]> {
