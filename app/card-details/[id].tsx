@@ -243,6 +243,13 @@ export default function CardDetailsScreen() {
     } catch (err) { console.error(err); }
   };
 
+  const handleShare = useCallback(() => {
+    router.push({
+      pathname: "/share-card/share",
+      params: { cardId: id },
+    });
+  }, [router, id]);
+
   useEffect(() => {
     return () => {
       if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
@@ -392,6 +399,12 @@ export default function CardDetailsScreen() {
                 <Ionicons name="contract" size={24} color="white" />
               </View>
               <ThemedText style={styles.actionLabel}>PiP</ThemedText>
+            </Pressable>
+            <Pressable style={styles.actionButton} onPress={handleShare}>
+              <View style={[styles.actionIconWrapper, { backgroundColor: palette.tint }]}>
+                <Ionicons name="share-social-outline" size={24} color="white" />
+              </View>
+              <ThemedText style={styles.actionLabel}>Share</ThemedText>
             </Pressable>
             <Pressable style={[styles.actionButton, (!showNumber || flipped) && { opacity: 0.5 }]} onPress={handleEdit} disabled={!showNumber || flipped}>
               <View style={[styles.actionIconWrapper, { backgroundColor: palette.secondary }]}>
