@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   StyleSheet,
   TextInput,
+  TouchableOpacity,
   View
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -25,6 +26,30 @@ import Visa from "@/assets/icons/cards/visa.svg";
 import { CARD_TYPES } from "@/constants/cardTypes";
 import { containsProfanity } from "@/utils/profanityFilter";
 
+// Constants for new dropdown options
+const CARD_KIND_OPTIONS = [
+  { label: "Credit Card", value: "credit" },
+  { label: "Debit Card", value: "debit" },
+];
+
+const CARD_USER_OPTIONS = [
+  { label: "Self", value: "self" },
+  { label: "Other (Family/Friend)", value: "other" },
+];
+
+const COLOR_PALETTE = [
+  "#2563eb", // Blue
+  "#dc2626", // Red
+  "#16a34a", // Green
+  "#ca8a04", // Yellow
+  "#9333ea", // Purple
+  "#c2410c", // Orange
+  "#0891b2", // Cyan
+  "#be185d", // Pink
+  "#374151", // Gray
+  "#000000", // Black
+];
+
 interface CardFormProps {
   onSubmit: (card: {
     id: string;
@@ -34,16 +59,26 @@ interface CardFormProps {
     cvv: string;
     infoText: string;
     bank?: string;
+    cardKind?: "credit" | "debit";
+    cobrandName?: string;
+    cardUser?: "self" | "other";
+    dominantColor?: string;
   }) => void;
   defaultCardNumber?: string;
   defaultCardHolder?: string;
   defaultExpiry?: string;
   defaultCvv?: string;
+  defaultBank?: string;
+  defaultCardKind?: "credit" | "debit";
+  defaultCobrandName?: string;
+  defaultCardUser?: "self" | "other";
+  defaultDominantColor?: string;
   infoText?: string;
   onCvvFocus?: () => void;
   setCvvRef?: (ref: TextInput | null) => void;
   onCvvLayout?: (y: number) => void;
   disabled?: boolean;
+  isEditMode?: boolean;
 }
 
 function formatCardNumberForDisplay(raw: string): string {
@@ -91,53 +126,6 @@ function formatExpiryForDisplay(raw: string): string {
   return `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
 }
 
-// function isExpiryNotPast(raw: string): boolean {
-//   const d = (raw || "").replace(/[^0-9]/g, "");
-//   if (d.length < 4) return false;
-
-//   const mm = parseInt(d.slice(0, 2), 10);
-//   const yy = parseInt(d.slice(2), 10);
-//   const now = new Date();
-
-//   const currentMonth = now.getMonth() + 1;
-//   const currentYearYY = now.getFullYear() % 100;
-//   const maxYearYY = (now.getFullYear() + 10) % 100; // 🔹 Upper limit (+10 years)
-
-//   // 🔸 Reject invalid months (e.g., 00 or 15)
-//   if (mm < 1 || mm > 12) return false;
-
-//   // 🔸 Reject years too far in the future
-//   if (yy > maxYearYY) return false;
-
-//   // 🔸 Reject past years
-//   if (yy < currentYearYY) return false;
-
-//   // 🔸 For the current year, ensure month isn't in the past
-//   if (yy === currentYearYY && mm < currentMonth) return false;
-
-//   return true;
-// }
-
-function isExpiryValid(raw: string): boolean {
-  const d = (raw || "").replace(/[^0-9]/g, "");
-  if (d.length < 4) return false;
-
-  const mm = parseInt(d.slice(0, 2), 10);
-  const yy = parseInt(d.slice(2), 10);
-  if (mm < 1 || mm > 12) return false;
-
-  const now = new Date();
-  const currentYearYY = now.getFullYear() % 100;
-  const maxYearYY = (now.getFullYear() + 10) % 100;
-
-  // ✅ Reject years in the past or too far in future
-  if (yy < currentYearYY || yy > maxYearYY) return false;
-
-  // ✅ If same year, check month
-  if (yy === currentYearYY && mm < now.getMonth() + 1) return false;
-
-  return true;
-}
 
 export default function CardForm({
   onSubmit,
@@ -145,11 +133,17 @@ export default function CardForm({
   defaultCardHolder = "",
   defaultExpiry = "",
   defaultCvv = "",
+  defaultBank = "",
+  defaultCardKind,
+  defaultCobrandName = "",
+  defaultCardUser,
+  defaultDominantColor,
   infoText,
   onCvvFocus,
   setCvvRef,
   onCvvLayout,
   disabled = false,
+  isEditMode = false,
 }: CardFormProps) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -159,19 +153,30 @@ export default function CardForm({
   const [cardHolder, setCardHolder] = useState(defaultCardHolder);
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [cvv, setCvv] = useState(defaultCvv);
-  const [bank, setBank] = useState("");
+  const [bank, setBank] = useState(defaultBank);
   const [customBank, setCustomBank] = useState("");
   const [bankOpen, setBankOpen] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
   const [cardType, setCardType] = useState<string | null>(null);
+
+  // New fields for enhanced categorization
+  const [cardKind, setCardKind] = useState<"credit" | "debit">(defaultCardKind || "credit"); // Credit or Debit
+  const [cobrandName, setCobrandName] = useState(defaultCobrandName); // Amazon Pay, Flipkart, Swiggy, etc.
+  const [cardUser, setCardUser] = useState<"self" | "other">(defaultCardUser || "self"); // Self or Other
+  const [dominantColor, setDominantColor] = useState(defaultDominantColor || "#2563eb"); // Default blue color
+
+  // Dropdown states
+  const [cardKindOpen, setCardKindOpen] = useState(false);
+  const [cardUserOpen, setCardUserOpen] = useState(false);
 
   // validation flags
   const cardNumberDigits = cardNumber.replace(/\D/g, "");
   const cardNumberValid = luhnCheck(cardNumberDigits);
   const holderValid = cardHolder.trim().length > 2;
   const expiryDigits = expiry.replace(/[^0-9]/g, "");
-  const { valid: expiryValid, message: expiryError } =
-    expiryDigits.length === 4 ? validateExpiry(expiry) : { valid: true, message: undefined };
+  const expiryRes = validateExpiry(expiry);
+  const expiryValid = expiryRes.valid;
+  const expiryError = expiryRes.message;
   const cvvValid = cvv.length >= 3 && cvv.length <= 4;
   const bankValid =
     bank === "OTHER"
@@ -192,12 +197,39 @@ export default function CardForm({
       cvv,
       infoText: infoText || "",
       bank: bankToSave,
+      cardKind,
+      cobrandName: cobrandName.trim() || undefined,
+      cardUser,
+      dominantColor,
     });
   };
 
   useEffect(() => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [bank]);
+
+  // Ensure only one dropdown is open at a time
+  useEffect(() => {
+    if (bankOpen) {
+      setCardKindOpen(false);
+      setCardUserOpen(false);
+    }
+  }, [bankOpen]);
+
+  useEffect(() => {
+    if (cardKindOpen) {
+      setBankOpen(false);
+      setCardUserOpen(false);
+    }
+  }, [cardKindOpen]);
+
+  useEffect(() => {
+    if (cardUserOpen) {
+      setBankOpen(false);
+      setCardKindOpen(false);
+    }
+  }, [cardUserOpen]);
+
 
 
   function getCardIcon(type: string | null) {
@@ -225,31 +257,32 @@ export default function CardForm({
 
   function validateExpiry(raw: string): { valid: boolean; message?: string } {
     const d = (raw || "").replace(/[^0-9]/g, "");
+    if (d.length === 0) return { valid: false }; // Silent fail for empty
     if (d.length < 4) return { valid: false, message: "Incomplete expiry date." };
-  
+
     const mm = parseInt(d.slice(0, 2), 10);
     const yy = parseInt(d.slice(2), 10);
-  
+
     // 🔸 Invalid month (00, 13, etc.)
     if (mm < 1 || mm > 12) {
       return { valid: false, message: "Invalid month (01–12)." };
     }
-  
+
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYearYY = now.getFullYear() % 100;
     const maxYearYY = (now.getFullYear() + 10) % 100; // +10 years upper limit
-  
-    // 🔸 Year too far in the future
-    if (yy > maxYearYY) {
-      return { valid: false, message: "Expiry year too far in the future." };
-    }
-  
+
     // 🔸 Card expired
     if (yy < currentYearYY || (yy === currentYearYY && mm < currentMonth)) {
       return { valid: false, message: "Card has expired." };
     }
-  
+
+    // 🔸 Year too far in the future
+    if (yy > maxYearYY) {
+      return { valid: false, message: "Expiry year too far in the future." };
+    }
+
     return { valid: true };
   }
 
@@ -266,7 +299,7 @@ export default function CardForm({
           open={bankOpen}
           setOpen={setBankOpen}
           value={bank}
-          setValue={(cb) => setBank(cb(bank) || "")}
+          setValue={setBank}
           items={[
             ...BANK_OPTIONS.sort((a, b) =>
               a.label.localeCompare(b.label)
@@ -282,6 +315,7 @@ export default function CardForm({
           dropDownContainerStyle={{
             borderColor: theme.border,
             backgroundColor: theme.card,
+            maxHeight: 200,
           }}
           textStyle={{ color: theme.text }}
           placeholderStyle={{ color: theme.icon }}
@@ -290,6 +324,11 @@ export default function CardForm({
           selectedItemLabelStyle={{ color: theme.tint }}
           listItemContainerStyle={{ backgroundColor: theme.card }}
           listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={3000}
+          zIndexInverse={1000}
         />
       </View>
 
@@ -315,6 +354,123 @@ export default function CardForm({
           />
         </View>
       )}
+
+
+      {/* Card Kind */}
+      <View style={styles.field}>
+        <ThemedText style={styles.label}>Card Type</ThemedText>
+        <DropDownPicker
+          open={cardKindOpen}
+          setOpen={setCardKindOpen}
+          value={cardKind}
+          setValue={setCardKind}
+          items={CARD_KIND_OPTIONS}
+          placeholder="Select card type"
+          style={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            minHeight: 50,
+          }}
+          dropDownContainerStyle={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            maxHeight: 150,
+          }}
+          textStyle={{ color: theme.text }}
+          placeholderStyle={{ color: theme.icon }}
+          labelStyle={{ color: theme.text }}
+          listItemLabelStyle={{ color: theme.text }}
+          selectedItemLabelStyle={{ color: theme.tint }}
+          listItemContainerStyle={{ backgroundColor: theme.card }}
+          listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={2000}
+          zIndexInverse={2000}
+        />
+      </View>
+
+      {/* Cobrand Name */}
+      <View style={styles.field}>
+        <ThemedText style={styles.label}>Cobrand Name (Optional)</ThemedText>
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.card,
+              borderColor:
+                focused === "cobrand" ? theme.primary : theme.border,
+              color: theme.text,
+            },
+          ]}
+          placeholder="e.g., Amazon Pay, Flipkart, Swiggy"
+          placeholderTextColor={theme.icon}
+          value={cobrandName}
+          onFocus={() => setFocused("cobrand")}
+          onBlur={() => setFocused(null)}
+          onChangeText={setCobrandName}
+        />
+      </View>
+
+      {/* Card User */}
+      <View style={styles.field}>
+        <ThemedText style={styles.label}>Card User</ThemedText>
+        <DropDownPicker
+          open={cardUserOpen}
+          setOpen={setCardUserOpen}
+          value={cardUser}
+          setValue={setCardUser}
+          items={CARD_USER_OPTIONS}
+          placeholder="Select card user"
+          style={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            minHeight: 50,
+          }}
+          dropDownContainerStyle={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            maxHeight: 150,
+          }}
+          textStyle={{ color: theme.text }}
+          placeholderStyle={{ color: theme.icon }}
+          labelStyle={{ color: theme.text }}
+          listItemLabelStyle={{ color: theme.text }}
+          selectedItemLabelStyle={{ color: theme.tint }}
+          listItemContainerStyle={{ backgroundColor: theme.card }}
+          listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={1000}
+          zIndexInverse={3000}
+        />
+      </View>
+
+      {/* Dominant Color Picker */}
+      <View style={styles.field}>
+        <ThemedText style={styles.label}>Card Theme Color</ThemedText>
+        <View style={styles.colorPalette}>
+          {COLOR_PALETTE.map((color) => (
+            <TouchableOpacity
+              key={color}
+              style={[
+                styles.colorOption,
+                { backgroundColor: color },
+                dominantColor === color && styles.selectedColor,
+              ]}
+              onPress={() => setDominantColor(color)}
+            >
+              {dominantColor === color && (
+                <View style={styles.colorCheckmark}>
+                  <ThemedText style={styles.checkmarkText}>✓</ThemedText>
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* Card Number */}
       <View style={styles.field}>
@@ -359,7 +515,12 @@ export default function CardForm({
             if (CardIcon) {
               return (
                 <View style={styles.iconHolder}>
-                  <CardIcon width={32} height={22} />
+                  <CardIcon
+                    width={32}
+                    height={22}
+                    fill={theme.text}
+                    color={theme.text}
+                  />
                 </View>
               );
             }
@@ -510,7 +671,7 @@ export default function CardForm({
       </View>
 
       <AppButton
-        title="Add Card"
+        title={isEditMode ? "Update Card" : "Add Card"}
         onPress={handleSubmit}
         fullWidth
         variant="primary"
@@ -573,20 +734,20 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 10,
   },
-  
+
   // inputField: {
   //   flex: 1,
   //   fontSize: 16,
   //   height: "100%",
   //   paddingVertical: 0,
   // },
-  
+
   inputIcon: {
     marginLeft: 8,
     justifyContent: "center",
     alignItems: "center",
   },
-  
+
   // cardTypeText: {
   //   fontSize: 12,
   //   fontWeight: "600",
@@ -601,7 +762,7 @@ const styles = StyleSheet.create({
     height: 50,
     paddingHorizontal: 10,
   },
-  
+
   inputField: {
     flex: 1,
     fontSize: 16,
@@ -609,17 +770,51 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingHorizontal: 0, // 👈 removes any grey inset padding
   },
-  
+
   iconHolder: {
     marginLeft: 8,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "transparent", // 👈 removes gray patch
   },
-  
+
   cardTypeText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#888",
+  },
+
+  // Color picker styles
+  colorPalette: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginTop: 8,
+  },
+  colorOption: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  selectedColor: {
+    borderColor: "#000",
+    transform: [{ scale: 1.1 }],
+  },
+  colorCheckmark: {
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkmarkText: {
+    color: "#000",
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });

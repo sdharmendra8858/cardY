@@ -6,11 +6,11 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { addCard as secureAddCard } from "@/utils/secureStorage";
+import { addCard as secureAddCard, getCards as secureGetCards, setCards } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -97,14 +97,50 @@ export default function AddCardScreen() {
     defaultExpiry,
     defaultCvv,
     fromExtract,
+    editId,
+    fromEdit,
+    defaultBank,
+    defaultCardType,
+    defaultCardKind,
+    defaultCobrandName,
+    defaultCardUser,
+    defaultDominantColor,
   } = useLocalSearchParams<{
     defaultCardNumber?: string;
     defaultCardHolder?: string;
     defaultExpiry?: string;
     defaultCvv?: string;
     fromExtract?: string;
+    editId?: string;
+    fromEdit?: string;
+    defaultBank?: string;
+    defaultCardType?: string;
+    defaultCardKind?: "credit" | "debit";
+    defaultCobrandName?: string;
+    defaultCardUser?: "self" | "other";
+    defaultDominantColor?: string;
   }>();
-  const hideScanButton = fromExtract === "true";
+  const isEditMode = fromEdit === "true" && !!editId;
+  const hideScanButton = fromExtract === "true" || isEditMode;
+
+  // Load existing card data for edit mode
+  useEffect(() => {
+    if (isEditMode && editId) {
+      const loadCardForEdit = async () => {
+        try {
+          const cards = await secureGetCards();
+          const existingCard = cards.find((c: any) => c.id === editId);
+          if (existingCard) {
+            // The card data will be passed via params, so we don't need to do anything here
+            // The form will be prefilled with the default* parameters
+          }
+        } catch (error) {
+          console.error("Failed to load card for editing:", error);
+        }
+      };
+      loadCardForEdit();
+    }
+  }, [isEditMode, editId]);
 
   const saveCardLocally = async (card: {
     cardNumber: string;
@@ -112,10 +148,24 @@ export default function AddCardScreen() {
     expiry: string;
     cvv: string;
     infoText: string;
+    bank?: string;
+    cardKind?: "credit" | "debit";
+    cobrandName?: string;
+    cardUser?: "self" | "other";
+    dominantColor?: string;
   }) => {
     try {
-      // Save card first
-      await secureAddCard(card as any);
+      if (isEditMode && editId) {
+        // Update existing card
+        const cards = await secureGetCards();
+        const updatedCards = cards.map((c: any) =>
+          c.id === editId ? { ...card, id: editId } : c
+        );
+        await setCards(updatedCards);
+      } else {
+        // Add new card
+        await secureAddCard(card as any);
+      }
       // Only clean up images after successful save
       await clearImageDump();
     } catch (error) {
@@ -124,8 +174,8 @@ export default function AddCardScreen() {
   };
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: "Add Card" });
-  }, [navigation]);
+    navigation.setOptions({ title: isEditMode ? "Edit Card" : "Add Card" });
+  }, [navigation, isEditMode]);
 
   const handleScan = () => {
     router.push("/add-card/scan");
@@ -137,6 +187,11 @@ export default function AddCardScreen() {
     expiry: string;
     cvv: string;
     infoText: string;
+    bank?: string;
+    cardKind?: "credit" | "debit";
+    cobrandName?: string;
+    cardUser?: "self" | "other";
+    dominantColor?: string;
   }) => {
     if (isSaving) return; // Prevent double submission
 
@@ -146,8 +201,14 @@ export default function AddCardScreen() {
       // 1️⃣ Save the card info
       await saveCardLocally(card);
 
-      // 2️⃣ Navigate immediately to home screen (don't wait for ad)
-      navigation.dispatch(StackActions.popToTop());
+      // 2️⃣ Navigate based on mode
+      if (isEditMode) {
+        // Go back to card details page
+        router.back();
+      } else {
+        // Navigate to home screen for new cards
+        navigation.dispatch(StackActions.popToTop());
+      }
 
       // 3️⃣ Show interstitial ad after a short delay (non-blocking)
       // This allows the navigation to complete first
@@ -174,7 +235,11 @@ export default function AddCardScreen() {
       style={[styles.container, { backgroundColor: palette.surface }]}
       edges={["top", "bottom"]}
     >
-      <Hero title="Add a new Card" subtitle="Scan or enter details manually" showBackButton={true} />
+      <Hero
+        title={isEditMode ? "Edit Card" : "Add a new Card"}
+        subtitle={isEditMode ? "Update card details" : "Scan or enter details manually"}
+        showBackButton={true}
+      />
       <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -183,9 +248,11 @@ export default function AddCardScreen() {
         extraHeight={120}
         extraScrollHeight={120}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
         onScrollBeginDrag={() => Keyboard.dismiss()}
       >
-        {!hideScanButton ? (
+        {!hideScanButton && (
           <>
             <ScanButton onPress={handleScan} />
 
@@ -199,7 +266,9 @@ export default function AddCardScreen() {
               />
             </View>
           </>
-        ) : (
+        )}
+
+        {hideScanButton && (
           <InfoBox
             message="⚠️ Please review all details carefully before saving. The scanned information might contain errors."
             type="warning"
@@ -213,7 +282,13 @@ export default function AddCardScreen() {
           defaultCardHolder={defaultCardHolder}
           defaultExpiry={defaultExpiry}
           defaultCvv={defaultCvv}
+          defaultBank={defaultBank}
+          defaultCardKind={defaultCardKind}
+          defaultCobrandName={defaultCobrandName}
+          defaultCardUser={defaultCardUser}
+          defaultDominantColor={defaultDominantColor}
           disabled={isSaving}
+          isEditMode={isEditMode}
         />
 
         {hideScanButton && (
