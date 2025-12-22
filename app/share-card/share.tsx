@@ -17,7 +17,10 @@ import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   Animated,
+  Dimensions,
   Easing,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StyleSheet,
   TouchableOpacity,
   View
@@ -32,6 +35,10 @@ export default function ShareCardScreen() {
   const navigation = useNavigation();
   const router = useRouter();
   const { cards, isLoading, refreshCards } = useCards();
+  const { width } = Dimensions.get("window");
+  const CARD_WIDTH = width * 0.8;
+  const SPACING = 16;
+  const ITEM_SIZE = CARD_WIDTH + SPACING;
 
   const [sessionPayload, setSessionPayload] = useState<SessionPayload | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
@@ -42,6 +49,7 @@ export default function ShareCardScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
+  const scrollX = useRef(new Animated.Value(0)).current;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -398,167 +406,261 @@ export default function ShareCardScreen() {
           title="Select Card"
           subtitle="Choose which card to share"
           showBackButton={true}
-          onBack={() => setShowCardSelection(false)}
+          onBack={() => {
+            setShowCardSelection(false);
+            setSelectedCardId(null);
+          }}
         />
         <View style={styles.container}>
-          <View style={styles.content}>
-            <View style={styles.cardsList}>
-              {isLoading ? (
-                <View style={styles.emptyState}>
-                  <MaterialIcons
-                    name="hourglass-empty"
-                    size={48}
-                    color={palette.secondary}
-                  />
-                  <ThemedText style={styles.emptyTitle}>Loading cards...</ThemedText>
-                </View>
-              ) : availableCards.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <MaterialIcons
-                    name="credit-card"
-                    size={48}
-                    color={palette.secondary}
-                  />
-                  <ThemedText style={styles.emptyTitle}>No cards available</ThemedText>
-                  <ThemedText style={styles.emptyText}>
-                    You don&apos;t have any cards to share. Add some cards first.
-                  </ThemedText>
-                </View>
-              ) : (
-                availableCards.map((card) => (
-                  <TouchableOpacity
-                    key={card.id}
-                    onPress={() => handleCardSelect(card.id)}
-                    activeOpacity={0.7}
-                    style={{ paddingHorizontal: 0, marginBottom: 12 }}
-                  >
-                    <View
-                      style={[
-                        styles.cardContainer,
-                        {
-                          backgroundColor: palette.card,
-                          borderColor: selectedCardId === card.id ? palette.primary : palette.border,
-                          borderWidth: selectedCardId === card.id ? 2 : 1,
-                        },
-                      ]}
+          <View style={styles.cardsList}>
+            {isLoading ? (
+              <View style={styles.emptyState}>
+                <MaterialIcons
+                  name="hourglass-empty"
+                  size={48}
+                  color={palette.secondary}
+                />
+                <ThemedText style={styles.emptyTitle}>Loading cards...</ThemedText>
+              </View>
+            ) : availableCards.length === 0 ? (
+              <View style={styles.emptyState}>
+                <MaterialIcons
+                  name="credit-card"
+                  size={48}
+                  color={palette.secondary}
+                />
+                <ThemedText style={styles.emptyTitle}>No cards available</ThemedText>
+                <ThemedText style={styles.emptyText}>
+                  You don&apos;t have any cards to share. Add some cards first.
+                </ThemedText>
+              </View>
+            ) : (
+              <Animated.FlatList
+                data={availableCards}
+                keyExtractor={(item) => item.id}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={ITEM_SIZE}
+                decelerationRate="fast"
+                contentContainerStyle={{
+                  paddingHorizontal: (width - ITEM_SIZE) / 2,
+                  paddingVertical: 20,
+                  alignItems: 'center',
+                }}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+                  { useNativeDriver: true }
+                )}
+                onMomentumScrollEnd={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const index = Math.round(event.nativeEvent.contentOffset.x / ITEM_SIZE);
+                  if (availableCards[index]) {
+                    setSelectedCardId(availableCards[index].id);
+                  }
+                }}
+                renderItem={({ item: card, index }) => {
+                  const isSelected = selectedCardId === card.id;
+                  const cardColor = card.dominantColor || palette.primary;
+
+                  const inputRange = [
+                    (index - 1) * ITEM_SIZE,
+                    index * ITEM_SIZE,
+                    (index + 1) * ITEM_SIZE,
+                  ];
+
+                  const scale = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [0.9, 1, 0.9],
+                    extrapolate: 'clamp',
+                  });
+
+                  const opacity = scrollX.interpolate({
+                    inputRange,
+                    outputRange: [0.7, 1, 0.7],
+                    extrapolate: 'clamp',
+                  });
+
+                  return (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedCardId(card.id);
+                      }}
+                      activeOpacity={0.9}
                     >
-                      <View style={{ padding: 16 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <ThemedText style={{ fontSize: 16, fontWeight: '600' }}>
-                            {card.bank || card.cardName || `Unknown Bank`}
-                          </ThemedText>
-                          {card.cardKind && (
-                            <View style={{
-                              backgroundColor: palette.surface,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 12
-                            }}>
-                              <ThemedText style={{ fontSize: 12, textTransform: 'capitalize', fontWeight: '500' }}>
-                                {card.cardKind}
+                      <Animated.View
+                        style={{
+                          width: CARD_WIDTH,
+                          marginRight: SPACING,
+                          transform: [{ scale }],
+                          opacity,
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.cardContainer,
+                            {
+                              backgroundColor: cardColor,
+                              height: 200,
+                              justifyContent: 'space-between',
+                              padding: 24,
+                              shadowColor: cardColor,
+                              shadowOpacity: isSelected ? 0.4 : 0.1,
+                              shadowOffset: { width: 0, height: 8 },
+                              shadowRadius: 12,
+                              elevation: isSelected ? 8 : 2,
+                            },
+                          ]}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <View>
+                              <ThemedText style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>
+                                {card.bank || 'Bank'}
                               </ThemedText>
+                              <ThemedText style={{ color: '#fff', fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+                                {card.cardName || 'Card'}
+                              </ThemedText>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                              <ThemedText style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
+                                {card.cardKind || 'DEBIT'}
+                              </ThemedText>
+                            </View>
+                          </View>
+
+                          <View>
+                            <ThemedText
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              style={{
+                                color: '#fff',
+                                fontSize: 20,
+                                fontWeight: '700',
+                                letterSpacing: 1.5,
+                                fontFamily: 'monospace',
+                              }}
+                            >
+                              •••• •••• •••• {card.cardNumber.slice(-4)}
+                            </ThemedText>
+                          </View>
+
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <View>
+                              <ThemedText style={{ color: '#fff', fontSize: 10, opacity: 0.7, textTransform: 'uppercase', marginBottom: 2 }}>
+                                Card Holder
+                              </ThemedText>
+                              <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                                {card.cardHolder}
+                              </ThemedText>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <ThemedText style={{ color: '#fff', fontSize: 10, opacity: 0.7, textTransform: 'uppercase', marginBottom: 2 }}>
+                                Expires
+                              </ThemedText>
+                              <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
+                                {card.expiry}
+                              </ThemedText>
+                            </View>
+                          </View>
+
+                          {isSelected && (
+                            <View style={[styles.selectedIndicator, { backgroundColor: '#fff', top: -10, right: -10 }]}>
+                              <MaterialIcons name="check" size={16} color={cardColor} />
                             </View>
                           )}
                         </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <View>
-                            <ThemedText style={{ fontSize: 18, fontFamily: 'monospace', letterSpacing: 1 }}>
-                              •••• •••• •••• {card.cardNumber.slice(-4)}
-                            </ThemedText>
-                            <ThemedText style={{ fontSize: 14, opacity: 0.7, marginTop: 4 }}>
-                              {card.cardHolder}
-                            </ThemedText>
-                          </View>
-                          <ThemedText style={{ fontSize: 14, fontFamily: 'monospace' }}>
-                            {card.expiry}
-                          </ThemedText>
-                        </View>
-                      </View>
-                      {selectedCardId === card.id && (
-                        <View style={[styles.selectedIndicator, { backgroundColor: palette.primary }]}>
-                          <MaterialIcons name="check" size={16} color={palette.onPrimary} />
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
+                      </Animated.View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
           </View>
 
           {!isLoading && availableCards.length > 0 && (
-            <View style={[styles.validitySelector, { backgroundColor: palette.card }]}>
-              <ThemedText style={[styles.validitySelectorTitle, { color: palette.text }]}>
-                Card Validity
-              </ThemedText>
-              <ThemedText style={[styles.validitySelectorSubtitle, { color: palette.secondary }]}>
-                How long should this card remain on the receiver's device?
-              </ThemedText>
-              <View style={styles.validityOptions}>
-                {[
-                  { label: "15 min", value: 15 },
-                  { label: "30 min", value: 30 },
-                  { label: "1 hour", value: 60 },
-                  { label: "24 hours", value: 1440 },
-                  { label: "∞ Forever", value: null },
-                ].map((option) => (
-                  <TouchableOpacity
-                    key={option.value === null ? "infinity" : option.value}
-                    onPress={() => setCardValidityMinutes(option.value)}
-                    style={[
-                      styles.validityOption,
-                      {
-                        backgroundColor: cardValidityMinutes === option.value ? palette.primary : palette.surface,
-                        borderColor: cardValidityMinutes === option.value ? palette.primary : palette.border,
-                        borderWidth: 1,
-                      },
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    <ThemedText
+            <View style={{ paddingHorizontal: 40, marginBottom: 20 }}>
+              <View style={{ height: 1, backgroundColor: palette.border, opacity: 0.5, marginBottom: 24 }} />
+
+              <View style={[styles.validitySelector, { backgroundColor: 'transparent', padding: 0, shadowOpacity: 0, elevation: 0 }]}>
+                <ThemedText style={[styles.validitySelectorTitle, { color: palette.text, fontSize: 18, marginBottom: 8 }]}>
+                  Set Expiry Time
+                </ThemedText>
+                <ThemedText style={[styles.validitySelectorSubtitle, { color: palette.secondary, marginBottom: 16 }]}>
+                  How long will this stay on their device?
+                </ThemedText>
+                <View style={styles.validityOptions}>
+                  {[
+                    { label: "15m", value: 15 },
+                    { label: "1h", value: 60 },
+                    { label: "1d", value: 1440 },
+                    { label: "∞ Forever", value: null },
+                  ].map((option) => (
+                    <TouchableOpacity
+                      key={option.value === null ? "infinity" : option.value}
+                      onPress={() => setCardValidityMinutes(option.value)}
                       style={[
-                        styles.validityOptionText,
+                        styles.validityOption,
                         {
-                          color: cardValidityMinutes === option.value ? palette.onPrimary : palette.text,
-                          fontWeight: cardValidityMinutes === option.value ? "600" : "500",
+                          backgroundColor: cardValidityMinutes === option.value ? palette.primary : palette.card,
+                          borderColor: cardValidityMinutes === option.value ? palette.primary : palette.border,
+                          borderWidth: 1,
+                          height: 45,
+                          minWidth: '22%'
                         },
                       ]}
+                      activeOpacity={0.7}
                     >
-                      {option.label}
-                    </ThemedText>
-                  </TouchableOpacity>
-                ))}
+                      <ThemedText
+                        style={[
+                          styles.validityOptionText,
+                          {
+                            color: cardValidityMinutes === option.value ? palette.onPrimary : palette.text,
+                            fontWeight: cardValidityMinutes === option.value ? "700" : "500",
+                            textAlign: 'center',
+                          },
+                        ]}
+                      >
+                        {option.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
           )}
 
           {!isLoading && availableCards.length > 0 && (
-            <View style={styles.buttonContainer}>
+            <View style={[styles.buttonContainer, { paddingTop: 0 }]}>
               <TouchableOpacity
                 style={[
                   styles.generateButton,
                   {
-                    backgroundColor: selectedCardId ? palette.primary : palette.surface,
+                    backgroundColor: selectedCardId ? palette.primary : palette.border,
+                    height: 56,
+                    borderRadius: 16,
                   },
                 ]}
                 onPress={generateQRCode}
                 disabled={!selectedCardId || isGenerating}
                 activeOpacity={selectedCardId ? 0.8 : 1}
               >
-                <MaterialIcons
-                  name="qr-code"
-                  size={20}
-                  color={selectedCardId ? palette.onPrimary : palette.secondary}
-                />
+                {isGenerating ? (
+                  <MaterialIcons name="hourglass-top" size={24} color={palette.onPrimary} />
+                ) : (
+                  <MaterialIcons
+                    name="qr-code"
+                    size={24}
+                    color={selectedCardId ? palette.onPrimary : palette.secondary}
+                  />
+                )}
                 <ThemedText
                   style={[
                     styles.generateButtonText,
                     {
                       color: selectedCardId ? palette.onPrimary : palette.secondary,
+                      fontSize: 18,
                     },
                   ]}
                 >
-                  {isGenerating ? "Generating..." : "Generate QR Code"}
+                  {isGenerating ? "Processing..." : "Generate Secure QR"}
                 </ThemedText>
               </TouchableOpacity>
             </View>
@@ -611,17 +713,18 @@ export default function ShareCardScreen() {
               </ThemedText>
             </View>
           </View>
-        </View>        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.scanButton, { backgroundColor: palette.primary }]}
-            onPress={handleScanQRCode}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
-            <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
-              Scan Session QR Code
-            </ThemedText>
-          </TouchableOpacity>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.scanButton, { backgroundColor: palette.primary }]}
+              onPress={handleScanQRCode}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
+              <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
+                Scan Session QR Code
+              </ThemedText>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

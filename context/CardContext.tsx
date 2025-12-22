@@ -1,4 +1,4 @@
-import React, { ReactNode, createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { cleanupExpiredCards } from "../utils/cardExpiry";
 import { addCard as secureAddCard, getCards as secureGetCards, removeCard as secureRemoveCard } from "../utils/secureStorage";
 
@@ -34,7 +34,7 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
   const [timerTick, setTimerTick] = useState(0); // Global timer for real-time updates
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const refreshCards = async () => {
+  const refreshCards = useCallback(async () => {
     try {
       // Clean up any expired cards first
       await cleanupExpiredCards();
@@ -46,7 +46,7 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const addCard = async (card: Card) => {
     try {
