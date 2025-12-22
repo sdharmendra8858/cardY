@@ -1,80 +1,19 @@
+import AlertBox from "@/components/AlertBox";
+import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import {
+  authenticateWithBiometric,
+  isBiometricAvailable,
+} from "@/utils/security";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { x25519 } from "@noble/curves/ed25519.js";
-import * as Clipboard from "expo-clipboard";
-import * as ExpoCrypto from "expo-crypto";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
-import "react-native-get-random-values"; // Polyfill for crypto.getRandomValues
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useCards } from "../../context/CardContext";
-
-// Generate Curve25519/X25519 ephemeral key pair as per spec 3.1
-async function generateEphemeralKeyPair(): Promise<{ publicKey: Uint8Array; privateKey: Uint8Array }> {
-  const privateKey = x25519.utils.randomSecretKey();
-  const publicKey = x25519.getPublicKey(privateKey);
-  return { publicKey, privateKey };
-}
-
-// Compute shared secret using Diffie-Hellman as per spec 3.3
-async function computeSharedSecret(privateKey: Uint8Array, publicKey: Uint8Array): Promise<Uint8Array> {
-  const sharedSecret = x25519.getSharedSecret(privateKey, publicKey);
-  return sharedSecret;
-}
-
-// Derive encryption key using HKDF-like approach as per spec 3.3.3
-async function deriveEncryptionKey(sharedSecret: Uint8Array, sessionId: string): Promise<Uint8Array> {
-  const sharedSecretStr = Array.from(sharedSecret).map(b => String.fromCharCode(b)).join('');
-  const combined = sharedSecretStr + sessionId + "cardywall-share-v1";
-  const derivedHex = await ExpoCrypto.digestStringAsync(
-    ExpoCrypto.CryptoDigestAlgorithm.SHA256,
-    combined
-  );
-
-  // Convert hex string to Uint8Array (32 bytes for AES-256)
-  const keyBytes = new Uint8Array(32);
-  for (let i = 0; i < 32; i++) {
-    keyBytes[i] = parseInt(derivedHex.substr(i * 2, 2), 16);
-  }
-  return keyBytes;
-}
-
-// Simple XOR encryption (DEMO ONLY - replace with proper AES-256-GCM in production)
-async function encryptCardData(cardPayload: any, encryptionKey: Uint8Array): Promise<{ ciphertext: string; iv: string }> {
-  const plaintext = JSON.stringify(cardPayload);
-
-  // Generate fresh IV for this session (16 bytes)
-  const iv = new Uint8Array(16);
-  for (let i = 0; i < 16; i++) {
-    iv[i] = Math.floor(Math.random() * 256);
-  }
-
-  // Simple XOR encryption (DEMO - NOT SECURE)
-  const plaintextBytes = new TextEncoder().encode(plaintext);
-  const encrypted = new Uint8Array(plaintextBytes.length);
-
-  for (let i = 0; i < plaintextBytes.length; i++) {
-    encrypted[i] = plaintextBytes[i] ^ encryptionKey[i % encryptionKey.length];
-  }
-
-  return {
-    ciphertext: btoa(String.fromCharCode(...encrypted)),
-    iv: btoa(String.fromCharCode(...iv))
-  };
-}
-
-function getCardBrand(cardNumber: string): string {
-  const number = cardNumber.replace(/\D/g, '');
-  if (number.startsWith('4')) return 'VISA';
-  if (number.startsWith('5') || number.startsWith('2')) return 'MC';
-  if (number.startsWith('3')) return 'AMEX';
-  return 'OTHER';
-}
 
 export default function QRCodeScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -84,11 +23,16 @@ export default function QRCodeScreen() {
   const params = useLocalSearchParams();
   const { cards } = useCards();
 
-  const sessionCode = params.sessionCode as string;
+  const encryptedQRString = params.encryptedQRString as string;
   const cardId = params.cardId as string;
 
   const [qrData, setQrData] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [biometricRequired, setBiometricRequired] = useState<boolean>(false);
+  const [biometricAuthenticated, setBiometricAuthenticated] = useState<boolean>(false);
+  const [biometricAvailable, setBiometricAvailable] = useState<boolean>(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -106,152 +50,96 @@ export default function QRCodeScreen() {
 
   const card = cards.find((c) => c.id === cardId);
 
+  // Check biometric availability (spec 13)
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const available = await isBiometricAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        setBiometricRequired(true);
+      }
+    };
+    checkBiometric();
+  }, []);
+
+  // Handle biometric authentication (spec 13)
+  const handleBiometricAuth = useCallback(async () => {
+    console.log("🔐 Requesting biometric authentication (spec 13)...");
+    const result = await authenticateWithBiometric(
+      "Authenticate to share this card securely"
+    );
+
+    if (result.success) {
+      console.log("✅ Biometric authentication successful");
+      setBiometricAuthenticated(true);
+    } else {
+      setAlertConfig({
+        title: "Authentication Failed",
+        message: result.error || "Biometric authentication failed. Please try again.",
+        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+      });
+      setAlertVisible(true);
+    }
+  }, []);
+
   // Check if required params are available
   useEffect(() => {
-    if (!cardId || !sessionCode) {
-      console.log("QR Screen - Missing required params:", { cardId, sessionCode });
-      Alert.alert(
-        "Error",
-        "Required information is missing. Please go back and try again.",
-        [
+    if (!cardId || !encryptedQRString) {
+      console.log("QR Screen - Missing required params:", { cardId, encryptedQRString });
+      setAlertConfig({
+        title: "Error",
+        message: "Required information is missing. Please go back and try again.",
+        buttons: [
           {
             text: "OK",
             onPress: () => router.back(),
           },
         ]
-      );
+      });
+      setAlertVisible(true);
       return;
     }
-  }, [cardId, sessionCode, router]);
+  }, [cardId, encryptedQRString, router]);
 
   // Generate QR data (encrypted according to spec)
   useEffect(() => {
     const generateEncryptedQR = async () => {
       try {
-        if (!card || !sessionCode || !cardId) {
-          console.log("QR Screen - Missing data:", { cardId, sessionCode, card: !!card });
+        // Check biometric authentication (spec 13)
+        if (biometricRequired && !biometricAuthenticated) {
+          console.log("⏳ Waiting for biometric authentication...");
           return;
         }
 
-        console.log("🔐 Starting QR generation (spec 3.3-3.4)...");
-
-        // 1. Generate sender ephemeral key pair (Curve25519/X25519) - spec 3.3.1
-        console.log("🔐 Generating sender ephemeral key pair...");
-        const senderKeyPair = await generateEphemeralKeyPair();
-
-        // 2. Retrieve receiver's public key from session storage - spec 3.3.2
-        console.log("🔐 Retrieving receiver's public key from session...");
-        let receiverPublicKey: Uint8Array | null = null;
-        let actualSessionId = sessionCode; // Start with the code, will be replaced with UUID
-
-        try {
-          // First, retrieve the actual sessionId from the code mapping
-          console.log("🔐 Looking up sessionId from code:", sessionCode);
-          const mappedSessionId = await SecureStore.getItemAsync(`session_code_${sessionCode}`, {
-            keychainService: "cardywall_sessions"
-          });
-
-          if (mappedSessionId) {
-            actualSessionId = mappedSessionId;
-            console.log("✅ Found sessionId mapping:", sessionCode, "->", actualSessionId);
-          } else {
-            console.warn("⚠️ Code mapping not found, trying direct lookup");
-          }
-
-          // Try to retrieve the session payload from secure storage using the actual sessionId
-          const sessionPayloadStr = await SecureStore.getItemAsync(`session_payload_${actualSessionId}`, {
-            keychainService: "cardywall_sessions"
-          });
-
-          if (sessionPayloadStr) {
-            const sessionPayload = JSON.parse(sessionPayloadStr);
-            // Decode receiver's public key from base64
-            receiverPublicKey = new Uint8Array(
-              atob(sessionPayload.receiverPublicKey).split('').map(c => c.charCodeAt(0))
-            );
-            console.log("✅ Retrieved receiver's public key from session");
-          } else {
-            console.warn("⚠️ Session payload not found in storage");
-
-            // Fallback: Generate mock receiver key (WRONG - needs proper session retrieval)
-            const mockReceiverKeyPair = await generateEphemeralKeyPair();
-            receiverPublicKey = mockReceiverKeyPair.publicKey;
-          }
-        } catch (err) {
-          console.error("Failed to retrieve receiver public key:", err);
-          setError("Failed to retrieve receiver information. Please try again.");
+        if (!card || !encryptedQRString || !cardId) {
+          console.log("QR Screen - Missing data:", { cardId, encryptedQRString: !!encryptedQRString, card: !!card });
           return;
         }
 
-        // 3. Compute shared secret using Diffie-Hellman - spec 3.3.2
-        console.log("🔐 Computing shared secret via ECDH...");
-        const sharedSecret = await computeSharedSecret(senderKeyPair.privateKey, receiverPublicKey);
-
-        // 4. Derive encryption key using HKDF - spec 3.3.3
-        console.log("🔐 Deriving encryption key via HKDF...");
-        const encryptionKey = await deriveEncryptionKey(sharedSecret, actualSessionId);
-
-        // 5. Prepare card payload for encryption - spec 4
-        const cardPayload = {
-          cardId: card.id,
-          cardholderName: card.cardHolder,
-          cardNumber: card.cardNumber,
-          expiryMonth: card.expiry.split('/')[0],
-          expiryYear: card.expiry.split('/')[1],
-          brand: getCardBrand(card.cardNumber),
-          metadata: {
-            sharedAt: Math.floor(Date.now() / 1000),
-            senderHint: card.bank
-          }
-        };
-
-        // 6. Encrypt card payload with AES-256-GCM - spec 3.3.4
-        console.log("🔐 Encrypting card data...");
-        const { ciphertext, iv } = await encryptCardData(cardPayload, encryptionKey);
-
-        // 7. Create QR payload with ONLY encrypted data - spec 3.4
-        // NO PLAINTEXT METADATA ALLOWED
-        const qrPayload = {
-          version: 1,
-          sessionId: actualSessionId,
-          senderPublicKey: btoa(String.fromCharCode(...senderKeyPair.publicKey)),
-          iv: iv,
-          ciphertext: ciphertext,
-          expiresAt: Math.floor(Date.now() / 1000) + 300 // 5 minutes
-        };
-
-        console.log("✅ QR payload generated (spec 3.4):", {
-          version: qrPayload.version,
-          sessionId: qrPayload.sessionId,
-          hasSenderPublicKey: !!qrPayload.senderPublicKey,
-          hasIv: !!qrPayload.iv,
-          hasCiphertext: !!qrPayload.ciphertext,
-          expiresAt: new Date(qrPayload.expiresAt * 1000).toISOString()
-        });
-
-        const qrString = JSON.stringify(qrPayload);
-        setQrData(qrString);
+        console.log("✅ QR string received from share screen");
+        setQrData(encryptedQRString);
 
       } catch (err) {
-        console.error("Failed to generate encrypted QR:", err);
-        setError("Failed to generate QR code. Please try again.");
+        console.error("Failed to process QR:", err);
+        setError("Failed to display QR code. Please try again.");
       }
     };
 
     generateEncryptedQR();
-  }, [card, sessionCode, cardId]);
+  }, [card, encryptedQRString, cardId, biometricRequired, biometricAuthenticated]);
 
   const handleShareComplete = useCallback(() => {
-    Alert.alert(
-      "Card Shared Successfully",
-      "The card has been shared securely. You can now close this screen.",
-      [
+    setAlertConfig({
+      title: "Card Shared Successfully",
+      message: "The card has been shared securely. You can now close this screen.",
+      buttons: [
         {
           text: "Done",
           onPress: () => router.replace("/profile"),
         },
       ]
-    );
+    });
+    setAlertVisible(true);
   }, [router]);
 
   if (!card) {
@@ -310,155 +198,163 @@ export default function QRCodeScreen() {
     );
   }
 
+  // Show biometric authentication prompt if required (spec 13)
+  if (biometricRequired && !biometricAuthenticated) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      >
+        <Hero
+          title="Authenticate"
+          subtitle="Verify your identity to share this card"
+          showBackButton={true}
+        />
+        <View style={styles.container}>
+          <View style={styles.biometricContainer}>
+            <View style={[styles.biometricIcon, { backgroundColor: palette.card }]}>
+              <MaterialIcons name="fingerprint" size={80} color={palette.primary} />
+            </View>
+            <ThemedText style={[styles.biometricTitle, { color: palette.text }]}>
+              Biometric Authentication Required
+            </ThemedText>
+            <ThemedText style={[styles.biometricSubtitle, { color: palette.secondary }]}>
+              For security, please authenticate with your biometric to share this card.
+            </ThemedText>
+            <TouchableOpacity
+              style={[styles.biometricButton, { backgroundColor: palette.primary }]}
+              onPress={handleBiometricAuth}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="fingerprint" size={24} color={palette.onPrimary} />
+              <ThemedText style={[styles.biometricButtonText, { color: palette.onPrimary }]}>
+                Authenticate
+              </ThemedText>
+            </TouchableOpacity>
+            {!biometricAvailable && (
+              <ThemedText style={[styles.biometricWarning, { color: palette.secondary }]}>
+                Biometric authentication is not available on this device.
+              </ThemedText>
+            )}
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: palette.surface }]}
-    >
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <View style={[styles.iconContainer, { backgroundColor: palette.card }]}>
-            <MaterialIcons name="qr-code" size={48} color={palette.tint} />
-          </View>
+    <>
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      >
+        <Hero
+          title="Share QR Code"
+          subtitle="Show this QR code to securely share your card"
+          showBackButton={true}
+        />
+        <View style={styles.container}>
+          <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.content}>
 
-          <ThemedText type="title" style={styles.title}>
-            Share QR Code
-          </ThemedText>
-
-          <ThemedText style={styles.description}>
-            Show this QR code to the person receiving your card. They will scan it to securely import your card details.
-          </ThemedText>
-
-          <View style={[styles.cardPreview, { backgroundColor: palette.card }]}>
-            <View style={styles.cardInfo}>
-              <MaterialIcons name="credit-card" size={24} color={palette.tint} />
-              <View style={styles.cardDetails}>
-                <ThemedText style={styles.cardName}>{card.cardHolder}</ThemedText>
-                <ThemedText style={styles.cardNumber}>
-                  •••• •••• •••• {card.cardNumber.slice(-4)}
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={[styles.qrContainer, { backgroundColor: palette.card }]}>
-            <View style={styles.qrDisplay}>
-              <ThemedText style={styles.qrTitle}>Scan This QR Code</ThemedText>
-
-              {qrData ? (
-                <View style={styles.qrCodeContainer}>
-                  <QRCode
-                    value={qrData}
-                    size={200}
-                    color="black"
-                    backgroundColor="white"
-                  />
-                  <View style={styles.encryptionNotice}>
-                    <MaterialIcons name="security" size={16} color={palette.primary} />
-                    <ThemedText style={styles.encryptionText}>
-                      End-to-end encrypted • Expires in 5 minutes
+              <View style={[styles.cardPreview, { backgroundColor: palette.card }]}>
+                <View style={styles.cardInfo}>
+                  <MaterialIcons name="credit-card" size={24} color={palette.tint} />
+                  <View style={styles.cardDetails}>
+                    <ThemedText style={styles.cardName}>{card.cardHolder}</ThemedText>
+                    <ThemedText style={styles.cardNumber}>
+                      •••• •••• •••• {card.cardNumber.slice(-4)}
                     </ThemedText>
                   </View>
                 </View>
-              ) : (
-                <View style={styles.qrCodeContainer}>
-                  <View style={styles.qrPlaceholder}>
-                    <MaterialIcons name="enhanced-encryption" size={100} color={palette.secondary} />
-                    <ThemedText style={styles.qrPlaceholderText}>
-                      Encrypting card data...
+              </View>
+
+              <View style={[styles.qrContainer, { backgroundColor: palette.card }]}>
+                <View style={styles.qrDisplay}>
+                  <ThemedText style={styles.qrTitle}>Scan This QR Code</ThemedText>
+
+                  {qrData ? (
+                    <View style={styles.qrCodeContainer}>
+                      <QRCode
+                        value={qrData}
+                        size={200}
+                        color="black"
+                        backgroundColor="white"
+                      />
+                      <View style={styles.encryptionNotice}>
+                        <MaterialIcons name="security" size={16} color={palette.primary} />
+                        <ThemedText style={styles.encryptionText}>
+                          End-to-end encrypted • Expires in 5 minutes
+                        </ThemedText>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.qrCodeContainer}>
+                      <View style={styles.qrPlaceholder}>
+                        <MaterialIcons name="enhanced-encryption" size={100} color={palette.secondary} />
+                        <ThemedText style={styles.qrPlaceholderText}>
+                          Encrypting card data...
+                        </ThemedText>
+                      </View>
+                    </View>
+                  )}
+
+                  <View style={styles.instructionBox}>
+                    <ThemedText style={styles.instructionTitle}>Ready to scan!</ThemedText>
+                    <ThemedText style={styles.instructionText}>
+                      Have the card receiver open their CardyWall app and scan this QR code using their camera in the Import Card section.
                     </ThemedText>
                   </View>
-                </View>
-              )}
 
-              <View style={styles.instructionBox}>
-                <ThemedText style={styles.instructionTitle}>Ready to scan!</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Have the card receiver open their CardyWall app and scan this QR code using their camera in the Import Card section.
+                </View>
+              </View>
+
+              <View style={styles.securityNotice}>
+                <MaterialIcons name="security" size={20} color={palette.secondary || "#666"} />
+                <ThemedText style={styles.securityText}>
+                  This card is encrypted and can only be decrypted on the receiving device.
                 </ThemedText>
               </View>
 
-              <View style={styles.alternativeSection}>
-                <ThemedText style={styles.alternativeTitle}>Alternative method:</ThemedText>
-                <TouchableOpacity
-                  style={[styles.copyButton, { backgroundColor: palette.secondary }]}
-                  onPress={async () => {
-                    try {
-                      await Clipboard.setStringAsync(qrData);
-                      Alert.alert(
-                        "Code Copied!",
-                        "Paste this code into any QR code generator website or app to create a scannable QR code.",
-                        [{ text: "OK" }]
-                      );
-                    } catch {
-                      Alert.alert("Error", "Failed to copy code");
-                    }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons name="content-copy" size={18} color={palette.onSecondary || "#000"} />
-                  <ThemedText style={[styles.copyButtonText, { color: palette.onSecondary || "#000" }]}>
-                    Copy Code for External QR Generator
-                  </ThemedText>
-                </TouchableOpacity>
+              <View style={styles.cvvNotice}>
+                <MaterialIcons name="info-outline" size={20} color={palette.primary} />
+                <ThemedText style={styles.cvvText}>
+                  CVV will not be shared for security reasons.
+                </ThemedText>
               </View>
             </View>
-          </View>
+          </ScrollView>
 
-          <View style={styles.securityNotice}>
-            <MaterialIcons name="security" size={20} color={palette.secondary || "#666"} />
-            <ThemedText style={styles.securityText}>
-              This card is encrypted and can only be decrypted on the receiving device.
-            </ThemedText>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.doneButton, { backgroundColor: palette.primary }]}
+              onPress={handleShareComplete}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons name="check" size={20} color={palette.onPrimary} />
+              <ThemedText style={[styles.doneButtonText, { color: palette.onPrimary }]}>
+                Card Shared
+              </ThemedText>
+            </TouchableOpacity>
           </View>
         </View>
+      </SafeAreaView>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.doneButton, { backgroundColor: palette.primary }]}
-            onPress={handleShareComplete}
-            activeOpacity={0.8}
-          >
-            <MaterialIcons name="check" size={20} color={palette.onPrimary} />
-            <ThemedText style={[styles.doneButtonText, { color: palette.onPrimary }]}>
-              Card Shared
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
+      <AlertBox
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onRequestClose={() => setAlertVisible(false)}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { flex: 1 },
-  content: { flex: 1, padding: 20 },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    textAlign: "center",
-    marginBottom: 12,
-    fontSize: 28,
-  },
-  description: {
-    textAlign: "center",
-    fontSize: 16,
-    opacity: 0.8,
-    lineHeight: 22,
-    marginBottom: 32,
-  },
+  container: { flex: 1, flexDirection: "column" },
+  scrollContent: { flex: 1 },
+  scrollContentContainer: { paddingBottom: 20 },
+  content: { padding: 20 },
   cardPreview: {
     padding: 16,
     borderRadius: 12,
@@ -552,6 +448,21 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     lineHeight: 20,
   },
+  cvvNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 122, 255, 0.08)",
+    padding: 16,
+    borderRadius: 12,
+    gap: 12,
+    marginTop: 12,
+  },
+  cvvText: {
+    flex: 1,
+    fontSize: 14,
+    opacity: 0.8,
+    lineHeight: 20,
+  },
   buttonContainer: {
     padding: 20,
     paddingBottom: 32,
@@ -636,16 +547,60 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontWeight: "500",
   },
-  alternativeSection: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
+  biometricContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
   },
-  alternativeTitle: {
-    fontSize: 14,
-    fontWeight: "600",
+  biometricIcon: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  biometricTitle: {
+    fontSize: 24,
+    fontWeight: "700",
     marginBottom: 12,
     textAlign: "center",
+  },
+  biometricSubtitle: {
+    fontSize: 16,
+    opacity: 0.7,
+    textAlign: "center",
+    marginBottom: 32,
+    lineHeight: 22,
+  },
+  biometricButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    gap: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  biometricButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  biometricWarning: {
+    fontSize: 14,
+    textAlign: "center",
+    opacity: 0.6,
   },
 });
