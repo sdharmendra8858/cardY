@@ -178,7 +178,8 @@ export default function ImportCardScreen() {
             cobrandName: cardData.cobrandName || "", // Use shared value or empty
             cardUser: "other" as "self" | "other",
             dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
-            bank: cardData.bank || "" // Use shared bank or empty
+            bank: cardData.bank || "", // Use shared bank or empty
+            cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
           };
 
           console.log("💳 Importing card:", cardToImport);
@@ -196,7 +197,7 @@ export default function ImportCardScreen() {
           setIsProcessing(false);
           setAlertConfig({
             title: "Card Added Successfully",
-            message: `Imported ${cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
+            message: `Imported ${cardToImport.bank || cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
             buttons: [
               {
                 text: "View My Cards",

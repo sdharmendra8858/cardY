@@ -13,7 +13,7 @@ import {
 import { CardPayload, SessionPayload } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera, CameraView } from "expo-camera";
-import { useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -38,6 +38,7 @@ export default function ShareCardScreen() {
   const [showCardSelection, setShowCardSelection] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
+  const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(30); // null = infinity, default 30 minutes
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
@@ -55,6 +56,14 @@ export default function ShareCardScreen() {
       ),
     });
   }, [navigation, palette.text, router]);
+
+  // Refresh cards when screen comes into focus to get latest card data
+  useFocusEffect(
+    useCallback(() => {
+      console.log("🔄 Share screen focused, refreshing cards...");
+      refreshCards();
+    }, [refreshCards])
+  );
 
   const handleScanQRCode = useCallback(async () => {
     try {
@@ -165,6 +174,25 @@ export default function ShareCardScreen() {
       return;
     }
 
+    // Validate session hasn't expired
+    const now = Math.floor(Date.now() / 1000);
+    if (now > sessionPayload.expiresAt) {
+      setAlertConfig({
+        title: "Session Expired",
+        message: "The receiver's QR code has expired. Please ask them to generate a new one.",
+        buttons: [{
+          text: "OK", style: "default", onPress: () => {
+            setAlertVisible(false);
+            setShowCardSelection(false);
+            setSelectedCardId(null);
+            setSessionPayload(null);
+          }
+        }]
+      });
+      setAlertVisible(true);
+      return;
+    }
+
     (async () => {
       try {
         setIsGenerating(true);
@@ -215,6 +243,8 @@ export default function ShareCardScreen() {
           expiryYear: expiryYear,
           brand: getCardBrand(card.cardNumber),
           sharedAt: Math.floor(Date.now() / 1000),
+          // Set card expiry based on validity duration (null = infinity)
+          cardExpiresAt: cardValidityMinutes === null ? undefined : Math.floor(Date.now() / 1000) + (cardValidityMinutes * 60),
           // Include optional metadata if available
           bank: card.bank || undefined,
           cobrandName: card.cobrandName || undefined,
@@ -265,7 +295,7 @@ export default function ShareCardScreen() {
         setIsGenerating(false);
       }
     })();
-  }, [selectedCardId, sessionPayload, cards, router]);
+  }, [selectedCardId, sessionPayload, cardValidityMinutes, refreshCards, router]);
 
 
 
@@ -455,6 +485,52 @@ export default function ShareCardScreen() {
               )}
             </View>
           </View>
+
+          {!isLoading && availableCards.length > 0 && (
+            <View style={[styles.validitySelector, { backgroundColor: palette.card }]}>
+              <ThemedText style={[styles.validitySelectorTitle, { color: palette.text }]}>
+                Card Validity
+              </ThemedText>
+              <ThemedText style={[styles.validitySelectorSubtitle, { color: palette.secondary }]}>
+                How long should this card remain on the receiver's device?
+              </ThemedText>
+              <View style={styles.validityOptions}>
+                {[
+                  { label: "15 min", value: 15 },
+                  { label: "30 min", value: 30 },
+                  { label: "1 hour", value: 60 },
+                  { label: "24 hours", value: 1440 },
+                  { label: "∞ Forever", value: null },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.value === null ? "infinity" : option.value}
+                    onPress={() => setCardValidityMinutes(option.value)}
+                    style={[
+                      styles.validityOption,
+                      {
+                        backgroundColor: cardValidityMinutes === option.value ? palette.primary : palette.surface,
+                        borderColor: cardValidityMinutes === option.value ? palette.primary : palette.border,
+                        borderWidth: 1,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <ThemedText
+                      style={[
+                        styles.validityOptionText,
+                        {
+                          color: cardValidityMinutes === option.value ? palette.onPrimary : palette.text,
+                          fontWeight: cardValidityMinutes === option.value ? "600" : "500",
+                        },
+                      ]}
+                    >
+                      {option.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           {!isLoading && availableCards.length > 0 && (
             <View style={styles.buttonContainer}>
@@ -800,5 +876,42 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  validitySelector: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  validitySelectorTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  validitySelectorSubtitle: {
+    fontSize: 13,
+    opacity: 0.7,
+    marginBottom: 12,
+  },
+  validityOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  validityOption: {
+    flex: 1,
+    minWidth: "45%",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  validityOptionText: {
+    fontSize: 13,
   },
 });

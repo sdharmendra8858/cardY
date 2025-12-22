@@ -6,6 +6,8 @@ import { sessionPayloadToQRString } from "@/utils/qr";
 import {
   createSession,
   createSessionPayload,
+  deleteSession,
+  getCurrentSession,
   SessionState,
   storeSession
 } from "@/utils/session";
@@ -32,6 +34,7 @@ export default function ReceiveCardScreen() {
   const [generationError, setGenerationError] = useState<string>("");
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [showRegenerateInfo, setShowRegenerateInfo] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -47,22 +50,43 @@ export default function ReceiveCardScreen() {
     });
   }, [navigation, palette.text, router]);
 
-  // Load existing session or generate new one on mount
+  // Load existing session on mount, or create new one if none exists
   useEffect(() => {
     const loadOrGenerateSession = async () => {
       try {
         console.log("🔐 Loading or generating session...");
 
-        // Create new session using utility
-        const newSession = await createSession();
+        // Try to load existing session
+        const existingSession = await getCurrentSession();
 
-        // Store in SecureStore
+        if (existingSession) {
+          // Check if session is still valid
+          const now = Math.floor(Date.now() / 1000);
+          const timeRemaining = existingSession.expiresAt - now;
+
+          if (timeRemaining > 0) {
+            // Session is still valid, use it
+            console.log("✅ Using existing session:", existingSession.sessionId);
+            const payload = createSessionPayload(existingSession);
+            const qr = sessionPayloadToQRString(payload);
+
+            setSession(existingSession);
+            setQrString(qr);
+            setTimeLeft(timeRemaining);
+            setGenerationError("");
+            return;
+          } else {
+            // Session expired, delete it
+            console.log("⏰ Existing session expired, deleting...");
+            await deleteSession(existingSession.sessionId);
+          }
+        }
+
+        // Create new session
+        const newSession = await createSession();
         await storeSession(newSession);
 
-        // Create shareable payload
         const payload = createSessionPayload(newSession);
-
-        // Convert to QR string
         const qr = sessionPayloadToQRString(payload);
 
         setSession(newSession);
@@ -96,6 +120,12 @@ export default function ReceiveCardScreen() {
     try {
       console.log("🔐 Starting new session generation...");
 
+      // Delete old session if it exists
+      if (session?.sessionId) {
+        console.log("🗑️ Deleting old session:", session.sessionId);
+        await deleteSession(session.sessionId);
+      }
+
       // Create new session using utility
       const newSession = await createSession();
 
@@ -113,6 +143,10 @@ export default function ReceiveCardScreen() {
       setTimeLeft(SESSION_DURATION);
       setIsExpired(false);
       setGenerationError("");
+      setShowRegenerateInfo(true);
+
+      // Hide info bar after 3 seconds
+      setTimeout(() => setShowRegenerateInfo(false), 3000);
 
       console.log("✅ Session generation complete:", {
         sessionId: newSession.sessionId,
@@ -130,7 +164,7 @@ export default function ReceiveCardScreen() {
       });
       setAlertVisible(true);
     }
-  }, []);
+  }, [session?.sessionId]);
 
   // Countdown timer and session expiry cleanup (only on timeout, not on app background)
   useEffect(() => {
@@ -195,6 +229,15 @@ export default function ReceiveCardScreen() {
         showBackButton={true}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        {showRegenerateInfo && (
+          <View style={[styles.infoBar, { backgroundColor: palette.primary + '20', borderColor: palette.primary }]}>
+            <MaterialIcons name="info" size={20} color={palette.primary} />
+            <ThemedText style={[styles.infoBarText, { color: palette.primary }]}>
+              New QR code generated. Old code is no longer valid.
+            </ThemedText>
+          </View>
+        )}
+
         {qrString && !isExpired && (
           <View style={[styles.qrContainer, { backgroundColor: palette.card }]}>
             <ThemedText style={[styles.qrLabel, { color: palette.secondary }]}>Session QR Code</ThemedText>
@@ -579,5 +622,19 @@ const styles = StyleSheet.create({
   regenerateButtonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  infoBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    gap: 10,
+  },
+  infoBarText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

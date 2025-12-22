@@ -33,15 +33,19 @@ export interface QRCodePayload {
  * 
  * Note: Metadata fields (bank, cobrand, cardKind, dominantColor) are optional
  * and may not be available when importing from other sources.
+ * 
+ * The cardExpiresAt field allows the sharer to set when the imported card
+ * should be automatically removed from the receiver's device.
  */
 export interface CardPayload {
   cardId: string;
   cardholderName: string;
   cardNumber: string;
-  expiryMonth: string; // MM
-  expiryYear: string; // YY
+  expiryMonth: string; // MM (card expiry)
+  expiryYear: string; // YY (card expiry)
   brand: "VISA" | "MC" | "AMEX" | "OTHER";
   sharedAt: number; // Unix timestamp
+  cardExpiresAt?: number; // Unix timestamp - when this shared card should be removed from receiver's device
   // Optional metadata (not required by spec, but preserved if available)
   bank?: string;
   cobrandName?: string;
