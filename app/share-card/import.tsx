@@ -200,7 +200,11 @@ export default function ImportCardScreen() {
             message: `Imported ${cardToImport.bank || cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
             buttons: [
               {
-                text: "View My Cards",
+                text: "View Card Details",
+                onPress: () => router.replace(`/card-details/${cardToImport.id}`),
+              },
+              {
+                text: "View All Cards",
                 onPress: () => router.replace("/"),
               },
               {

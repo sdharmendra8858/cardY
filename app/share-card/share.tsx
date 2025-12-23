@@ -6,6 +6,7 @@ import {
   encryptCardForSharing,
   validateSessionPayload,
 } from "@/utils/cardSharing";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import {
   parseSessionQRString,
   qrPayloadToQRString,
@@ -13,8 +14,8 @@ import {
 import { CardPayload, SessionPayload } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera, CameraView } from "expo-camera";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -34,6 +35,19 @@ export default function ShareCardScreen() {
   const palette = Colors[scheme];
   const navigation = useNavigation();
   const router = useRouter();
+  const {
+    selectedCardId: initialSelectedCardId,
+    showCardSelection: forceCardSelection,
+    sessionId: restoredSessionId,
+    receiverPublicKey: restoredReceiverPublicKey,
+    expiresAt: restoredExpiresAt
+  } = useLocalSearchParams<{
+    selectedCardId?: string;
+    showCardSelection?: string;
+    sessionId?: string;
+    receiverPublicKey?: string;
+    expiresAt?: string;
+  }>();
   const { cards, isLoading, refreshCards } = useCards();
   const { width } = Dimensions.get("window");
   const CARD_WIDTH = width * 0.8;
@@ -41,11 +55,11 @@ export default function ShareCardScreen() {
   const ITEM_SIZE = CARD_WIDTH + SPACING;
 
   const [sessionPayload, setSessionPayload] = useState<SessionPayload | null>(null);
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(initialSelectedCardId || null);
   const [showCardSelection, setShowCardSelection] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(30); // null = infinity, default 30 minutes
+  const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(2); // 2 minutes
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
@@ -72,6 +86,17 @@ export default function ShareCardScreen() {
       refreshCards();
     }, [refreshCards])
   );
+
+  // Auto-select the first card when there's only one available card
+  useEffect(() => {
+    const availableCards = cards.filter((card) => card.cardUser !== "other");
+    if (availableCards.length === 1 && !selectedCardId) {
+      setSelectedCardId(availableCards[0].id);
+    }
+  }, [cards, selectedCardId]);
+
+
+
 
   const handleScanQRCode = useCallback(async () => {
     try {
@@ -140,11 +165,6 @@ export default function ShareCardScreen() {
         throw new Error("Invalid session payload");
       }
 
-      // 3. Check expiration (spec 6)
-      const now = Math.floor(Date.now() / 1000);
-      if (now > payload.expiresAt) {
-        throw new Error("Session has expired");
-      }
 
       setSessionPayload(payload);
 
@@ -167,6 +187,37 @@ export default function ShareCardScreen() {
     }
   }, [cards.length, isLoading, refreshCards]);
 
+
+  // Handle redirect from add card screen
+  useEffect(() => {
+    if (forceCardSelection === "true") {
+      // Check if we have session parameters to restore
+      if (restoredSessionId && restoredReceiverPublicKey && restoredExpiresAt) {
+        const restoredPayload: SessionPayload = {
+          version: 1,
+          sessionId: restoredSessionId,
+          receiverPublicKey: restoredReceiverPublicKey,
+          expiresAt: parseInt(restoredExpiresAt)
+        };
+        setSessionPayload(restoredPayload);
+        setShowCardSelection(true);
+      } else if (sessionPayload) {
+        // User has a session, show card selection
+        setShowCardSelection(true);
+      } else {
+        // User doesn't have a session yet, stay on scanning screen
+        setShowCardSelection(false);
+        // Show alert to scan receiver's QR first
+        setAlertConfig({
+          title: "Scan Receiver's QR",
+          message: "Please scan the receiver's QR code first before selecting a card to share.",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+      }
+    }
+  }, [forceCardSelection, sessionPayload, restoredSessionId, restoredReceiverPublicKey, restoredExpiresAt]);
+
   const handleCardSelect = useCallback((cardId: string) => {
     setSelectedCardId(cardId);
   }, []);
@@ -182,24 +233,6 @@ export default function ShareCardScreen() {
       return;
     }
 
-    // Validate session hasn't expired
-    const now = Math.floor(Date.now() / 1000);
-    if (now > sessionPayload.expiresAt) {
-      setAlertConfig({
-        title: "Session Expired",
-        message: "The receiver's QR code has expired. Please ask them to generate a new one.",
-        buttons: [{
-          text: "OK", style: "default", onPress: () => {
-            setAlertVisible(false);
-            setShowCardSelection(false);
-            setSelectedCardId(null);
-            setSessionPayload(null);
-          }
-        }]
-      });
-      setAlertVisible(true);
-      return;
-    }
 
     (async () => {
       try {
@@ -310,17 +343,6 @@ export default function ShareCardScreen() {
   // Filter to only show cards that belong to the user (not "other" cards)
   const availableCards = cards.filter((card) => card.cardUser !== "other");
 
-  // Debug logging (only when card selection is shown to avoid excessive logging)
-  if (showCardSelection) {
-    console.log("🎯 ShareCard Debug:", {
-      totalCards: cards.length,
-      availableCards: availableCards.length,
-      isLoading,
-      showCardSelection,
-      sessionPayload: sessionPayload ? "present" : "none",
-      filteredOut: cards.length - availableCards.length
-    });
-  }
 
   function getCardBrand(cardNumber: string): "VISA" | "MC" | "AMEX" | "OTHER" {
     const number = cardNumber.replace(/\D/g, '');
@@ -330,6 +352,7 @@ export default function ShareCardScreen() {
     return 'OTHER';
   }
 
+  // ✅ ALL HOOKS CALLED - NOW SAFE TO HAVE CONDITIONAL RETURNS
   // Show camera if scanning
   if (isScanning) {
     return (
@@ -397,6 +420,8 @@ export default function ShareCardScreen() {
     );
   }
 
+  // Removed scanning screen - no QR scanning required
+
   if (showCardSelection) {
     return (
       <SafeAreaView
@@ -425,14 +450,32 @@ export default function ShareCardScreen() {
             ) : availableCards.length === 0 ? (
               <View style={styles.emptyState}>
                 <MaterialIcons
-                  name="credit-card"
-                  size={48}
+                  name="credit-card-off"
+                  size={64}
                   color={palette.secondary}
                 />
-                <ThemedText style={styles.emptyTitle}>No cards available</ThemedText>
+                <ThemedText style={styles.emptyTitle}>No Cards to Share</ThemedText>
                 <ThemedText style={styles.emptyText}>
-                  You don&apos;t have any cards to share. Add some cards first.
+                  You need to add some cards before you can share them.
                 </ThemedText>
+                <TouchableOpacity
+                  style={[styles.addCardButton, { backgroundColor: palette.primary }]}
+                  onPress={() => {
+                    const params = new URLSearchParams({ from: "share" });
+                    if (sessionPayload) {
+                      params.append("sessionId", sessionPayload.sessionId);
+                      params.append("receiverPublicKey", sessionPayload.receiverPublicKey);
+                      params.append("expiresAt", sessionPayload.expiresAt.toString());
+                    }
+                    router.push(`/add-card?${params.toString()}`);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="add" size={20} color={palette.onPrimary} />
+                  <ThemedText style={[styles.addCardButtonText, { color: palette.onPrimary }]}>
+                    Add Your First Card
+                  </ThemedText>
+                </TouchableOpacity>
               </View>
             ) : (
               <Animated.FlatList
@@ -538,7 +581,7 @@ export default function ShareCardScreen() {
                                 fontFamily: 'monospace',
                               }}
                             >
-                              •••• •••• •••• {card.cardNumber.slice(-4)}
+                              {maskAndFormatCardNumber(card.cardNumber)}
                             </ThemedText>
                           </View>
 
@@ -919,6 +962,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     textAlign: "center",
+    marginBottom: 24,
+  },
+  addCardButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addCardButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   generateButton: {
     flexDirection: "row",

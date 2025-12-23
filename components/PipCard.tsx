@@ -1,6 +1,7 @@
 import { CARD_TYPES } from "@/constants/cardTypes";
 import { getCardType } from "@/utils/CardType";
 import { formatCardNumber } from "@/utils/formatCardNumber";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import { FontAwesome } from "@expo/vector-icons";
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import {
@@ -123,7 +124,7 @@ const PipCard = forwardRef<PipCardHandle, Props>(
 
           <View style={styles.cardNumberRow}>
             <Text style={[styles.cardNumber, { color: contentColor }]}>
-              {showNumber ? formatCardNumber(cardNumber) : "•••• •••• •••• ••••"}
+              {showNumber ? formatCardNumber(cardNumber) : maskAndFormatCardNumber(cardNumber)}
             </Text>
           </View>
 

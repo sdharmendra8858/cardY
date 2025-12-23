@@ -1,8 +1,9 @@
 // components/CardItem.tsx
-import { useCards } from "@/context/CardContext";
 import { Ionicons } from "@expo/vector-icons"; // ✅ icon library included with Expo
 import { useRouter } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import ExpiryBadge from "./ExpiryBadge";
 
 type CardItemProps = {
   id: string;
@@ -16,6 +17,7 @@ type CardItemProps = {
   cardUser?: "self" | "other";
   dominantColor?: string;
   cardExpiresAt?: number; // Unix timestamp - when imported card expires
+  isExpiring?: boolean; // For expiry animation
 };
 
 export default function CardItem({
@@ -30,35 +32,27 @@ export default function CardItem({
   cardUser,
   dominantColor = "#4b7bec",
   cardExpiresAt,
+  isExpiring = false,
 }: CardItemProps) {
   const router = useRouter();
-  const { timerTick } = useCards(); // Use global timer for real-time updates
+  const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
-  // Calculate time remaining for imported cards
-  const getTimeRemaining = () => {
-    if (!cardExpiresAt) return null;
-    const now = Math.floor(Date.now() / 1000);
-    const remaining = cardExpiresAt - now;
-
-    if (remaining <= 0) return "Expired";
-    if (remaining < 60) return `${remaining}s`;
-    if (remaining < 3600) return `${Math.floor(remaining / 60)}m`;
-    if (remaining < 86400) return `${Math.floor(remaining / 3600)}h`;
-    return `${Math.floor(remaining / 86400)}d`;
-  };
-
-  const now = Math.floor(Date.now() / 1000);
-  const timeRemaining = getTimeRemaining();
-  const isExpired = cardExpiresAt ? now > cardExpiresAt : false;
-  const isExpiringSoon = cardExpiresAt ? now > (cardExpiresAt - 300) : false; // 5 minutes
+  const isExpired = cardExpiresAt ? Math.floor(Date.now() / 1000) > cardExpiresAt : false;
   const isInfinite = !cardExpiresAt && cardUser === "other"; // Imported card with no expiry
 
-  // Use timerTick to trigger re-renders (this ensures real-time updates)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = timerTick;
+  // Animate card removal when expiring
+  React.useEffect(() => {
+    if (isExpiring) {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isExpiring, fadeAnim]);
 
   return (
-    <View style={styles.cardContainer}>
+    <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
       {/* 🗑️ Delete button */}
       {onDelete && (
         <Pressable style={styles.deleteButton} onPress={() => onDelete(id)}>
@@ -82,12 +76,8 @@ export default function CardItem({
                 </Text>
               </View>
             )}
-            {timeRemaining && (
-              <View style={[styles.badge, { backgroundColor: isExpired ? "rgba(255, 59, 48, 0.8)" : isExpiringSoon ? "rgba(255, 193, 7, 0.8)" : "rgba(76, 175, 80, 0.8)" }]}>
-                <Text style={styles.badgeText}>
-                  {isExpired ? "⏰ Expired" : `⏱️ ${timeRemaining}`}
-                </Text>
-              </View>
+            {cardExpiresAt && (
+              <ExpiryBadge cardExpiresAt={cardExpiresAt} />
             )}
             {isInfinite && (
               <View style={[styles.badge, { backgroundColor: "rgba(76, 175, 80, 0.8)" }]}>
@@ -113,7 +103,7 @@ export default function CardItem({
           </View>
         )}
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 

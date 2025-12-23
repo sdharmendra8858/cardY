@@ -1,3 +1,4 @@
+import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import InfoBox from "@/components/InfoBox";
@@ -7,6 +8,7 @@ import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { maskAndFormatCardNumber } from "@/utils/mask";
@@ -17,8 +19,8 @@ import {
 } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
-import { Link, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -29,6 +31,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   useScreenProtection();
   const { showAlert } = useAlert();
+  const { timerTick } = useTimer();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [cards, setCards] = useState<
@@ -44,6 +47,7 @@ export default function HomeScreen() {
       cardUser?: "self" | "other";
       dominantColor?: string;
       cardExpiresAt?: number;
+      isExpiring?: boolean; // For animation
     }[]
   >([]);
 
@@ -57,6 +61,27 @@ export default function HomeScreen() {
   const [isAppLockEnabled, setIsAppLockEnabled] = useState(true);
   const [isCardLockEnabled, setIsCardLockEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState<"self" | "other">("self");
+  const isNavigatingRef = useRef(false);
+
+  const handleProfilePress = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push("/profile");
+
+    // Reset navigation flag after a short delay
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 1000);
+  }, [router]);
+  const { redirectToTab } = useLocalSearchParams<{ redirectToTab: "self" | "other" }>();
+
+  // Handle redirection from other screens
+  useEffect(() => {
+    if (redirectToTab) {
+      setActiveTab(redirectToTab);
+    }
+  }, [redirectToTab]);
+
   const [containerWidth, setContainerWidth] = useState(0);
 
   const checkSecuritySettings = async () => {
@@ -78,12 +103,67 @@ export default function HomeScreen() {
   const fetchCards = async () => {
     try {
       const cardList = await secureGetCards();
-
       setCards(cardList.map((c: any) => ({ id: c.id, ...c })));
     } catch (err) {
       console.error("Failed to load cards", err);
     }
   };
+
+  // Check for expired cards and animate their removal
+  const checkExpiredCards = React.useCallback(async () => {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const expiredCards = cards.filter(card =>
+        card.cardExpiresAt && now > card.cardExpiresAt && card.cardUser === "other" && !card.isExpiring
+      );
+
+      if (expiredCards.length > 0) {
+        // Mark cards as expiring for animation
+        setCards(currentCards =>
+          currentCards.map(card =>
+            expiredCards.some(expired => expired.id === card.id)
+              ? { ...card, isExpiring: true }
+              : card
+          )
+        );
+
+        // Remove cards after animation delay
+        setTimeout(async () => {
+          setCards(currentCards =>
+            currentCards.filter(card =>
+              !expiredCards.some(expired => expired.id === card.id)
+            )
+          );
+
+          // Clean up expired cards from storage
+          const { cleanupExpiredCards } = await import("@/utils/cardExpiry");
+          await cleanupExpiredCards();
+
+          // Show notification
+          if (expiredCards.length === 1) {
+            showAlert({
+              title: "Card Expired",
+              message: `"${expiredCards[0].bank || "Card"}" has expired and been removed.`,
+              buttons: [{ text: "OK", onPress: () => { } }]
+            });
+          } else {
+            showAlert({
+              title: "Cards Expired",
+              message: `${expiredCards.length} cards have expired and been removed.`,
+              buttons: [{ text: "OK", onPress: () => { } }]
+            });
+          }
+        }, 500); // 500ms animation delay
+      }
+    } catch (error) {
+      console.error("Failed to check expired cards:", error);
+    }
+  }, [cards, showAlert]);
+
+  // Check for expired cards every second
+  React.useEffect(() => {
+    checkExpiredCards();
+  }, [timerTick, checkExpiredCards]);
 
   const fetchProfile = async () => {
     try {
@@ -144,7 +224,7 @@ export default function HomeScreen() {
       <>
         {/* Profile Section */}
         <View style={styles.profileContainer}>
-          <Pressable onPress={() => router.push("/profile")}>
+          <Pressable onPress={handleProfilePress}>
             <Image
               source={avatarSource}
               style={styles.avatar}
@@ -286,12 +366,14 @@ export default function HomeScreen() {
                 cardUser={item.cardUser}
                 dominantColor={item.dominantColor}
                 cardExpiresAt={item.cardExpiresAt}
+                isExpiring={item.isExpiring}
               />
             </View>
           )}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={() => (
             <NoCards
+              showButton={cards.length === 0}
               message={
                 cards.length === 0
                   ? "No cards listed yet."
@@ -315,6 +397,8 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
+
+      <AdBanner />
     </SafeAreaView>
   );
 }

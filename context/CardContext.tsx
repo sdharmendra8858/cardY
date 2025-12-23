@@ -23,7 +23,6 @@ type CardContextType = {
   removeCard: (id: string) => Promise<void>;
   refreshCards: () => Promise<void>;
   isLoading: boolean;
-  timerTick: number; // Global timer tick for real-time updates
 };
 
 const CardContext = createContext<CardContextType | undefined>(undefined);
@@ -31,14 +30,10 @@ const CardContext = createContext<CardContextType | undefined>(undefined);
 export const CardProvider = ({ children }: { children: ReactNode }) => {
   const [cards, setCards] = useState<Card[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [timerTick, setTimerTick] = useState(0); // Global timer for real-time updates
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshCards = useCallback(async () => {
     try {
-      // Clean up any expired cards first
       await cleanupExpiredCards();
-
       const storedCards = await secureGetCards();
       setCards(storedCards);
     } catch (error) {
@@ -70,14 +65,46 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     refreshCards();
-  }, []);
+  }, [refreshCards]);
 
-  // Set up global timer for real-time updates
+  const value = React.useMemo(() => ({
+    cards,
+    addCard,
+    removeCard,
+    refreshCards,
+    isLoading
+  }), [cards, addCard, removeCard, refreshCards, isLoading]);
+
+  return (
+    <CardContext.Provider value={value}>
+      {children}
+    </CardContext.Provider>
+  );
+};
+
+export const useCards = () => {
+  const context = useContext(CardContext);
+  if (!context) throw new Error("useCards must be used inside CardProvider");
+  return context;
+};
+
+// --- Timer Context for real-time updates ---
+
+type TimerContextType = {
+  timerTick: number;
+};
+
+const TimerContext = createContext<TimerContextType | undefined>(undefined);
+
+export const TimerProvider = ({ children }: { children: ReactNode }) => {
+  const [timerTick, setTimerTick] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     if (!timerRef.current) {
       timerRef.current = setInterval(() => {
         setTimerTick(prev => prev + 1);
-      }, 1000); // Update every second
+      }, 1000);
     }
 
     return () => {
@@ -89,14 +116,14 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <CardContext.Provider value={{ cards, addCard, removeCard, refreshCards, isLoading, timerTick }}>
+    <TimerContext.Provider value={{ timerTick }}>
       {children}
-    </CardContext.Provider>
+    </TimerContext.Provider>
   );
 };
 
-export const useCards = () => {
-  const context = useContext(CardContext);
-  if (!context) throw new Error("useCards must be used inside CardProvider");
+export const useTimer = () => {
+  const context = useContext(TimerContext);
+  if (!context) throw new Error("useTimer must be used inside TimerProvider");
   return context;
 };
