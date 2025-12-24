@@ -1,6 +1,5 @@
 import AppButton from "@/components/AppButton";
 import { ThemedText } from "@/components/themed-text";
-import { Text } from "react-native";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCardType } from "@/utils/CardType";
@@ -8,8 +7,7 @@ import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
 import {
   LayoutAnimation,
-  StyleSheet,
-  TextInput,
+  StyleSheet, Text, TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -452,31 +450,30 @@ export default function CardForm({
           items={CARD_USER_OPTIONS}
           placeholder="Select card user"
           disabled={fromShare}
-            style={{
-              borderColor: theme.border,
-              backgroundColor: theme.card,
-              minHeight: 50,
-            }}
-            dropDownContainerStyle={{
-              borderColor: theme.border,
-              backgroundColor: theme.card,
-              maxHeight: 150,
-            }}
-            textStyle={{ color: theme.text }}
-            placeholderStyle={{ color: theme.icon }}
-            labelStyle={{ color: theme.text }}
-            listItemLabelStyle={{ color: theme.text }}
-            selectedItemLabelStyle={{ color: theme.tint }}
-            listItemContainerStyle={{ backgroundColor: theme.card }}
-            listMode="SCROLLVIEW"
-            scrollViewProps={{
-              nestedScrollEnabled: true,
-            }}
-            zIndex={1000}
-            zIndexInverse={3000}
-          />
-        </View>
-      )}
+          style={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            minHeight: 50,
+          }}
+          dropDownContainerStyle={{
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+            maxHeight: 150,
+          }}
+          textStyle={{ color: theme.text }}
+          placeholderStyle={{ color: theme.icon }}
+          labelStyle={{ color: theme.text }}
+          listItemLabelStyle={{ color: theme.text }}
+          selectedItemLabelStyle={{ color: theme.tint }}
+          listItemContainerStyle={{ backgroundColor: theme.card }}
+          listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={1000}
+          zIndexInverse={3000}
+        />
+      </View>
 
       {/* Dominant Color Picker */}
       <View style={styles.field}>
