@@ -7,8 +7,7 @@ import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
 import {
   LayoutAnimation,
-  StyleSheet,
-  TextInput,
+  StyleSheet, Text, TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -79,6 +78,7 @@ interface CardFormProps {
   onCvvLayout?: (y: number) => void;
   disabled?: boolean;
   isEditMode?: boolean;
+  fromShare?: boolean;
 }
 
 function formatCardNumberForDisplay(raw: string): string {
@@ -144,6 +144,7 @@ export default function CardForm({
   onCvvLayout,
   disabled = false,
   isEditMode = false,
+  fromShare = false,
 }: CardFormProps) {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
@@ -157,12 +158,12 @@ export default function CardForm({
   const [customBank, setCustomBank] = useState("");
   const [bankOpen, setBankOpen] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
-  const [cardType, setCardType] = useState<string | null>(null);
+  const [cardType, setCardType] = useState<string | null>(() => getCardType(defaultCardNumber.replace(/\D/g, "")));
 
   // New fields for enhanced categorization
   const [cardKind, setCardKind] = useState<"credit" | "debit">(defaultCardKind || "credit"); // Credit or Debit
   const [cobrandName, setCobrandName] = useState(defaultCobrandName); // Amazon Pay, Flipkart, Swiggy, etc.
-  const [cardUser, setCardUser] = useState<"self" | "other">(defaultCardUser || "self"); // Self or Other
+  const [cardUser, setCardUser] = useState<"self" | "other">(fromShare ? "self" : (defaultCardUser || "self")); // Self or Other
   const [dominantColor, setDominantColor] = useState(defaultDominantColor || "#2563eb"); // Default blue color
 
   // Dropdown states
@@ -183,8 +184,20 @@ export default function CardForm({
       ? customBank.trim().length > 0
       : bank.length > 0;
 
+  const alphanumericRegex = /^[a-zA-Z0-9 ]*$/;
+  const holderHasSpecialChars = !alphanumericRegex.test(cardHolder);
+  const cobrandHasSpecialChars = !alphanumericRegex.test(cobrandName);
+
   const isFormComplete =
-    cardNumberValid && holderValid && expiryValid && cvvValid && bankValid;
+    cardNumberValid &&
+    holderValid &&
+    expiryValid &&
+    cvvValid &&
+    bankValid &&
+    !containsProfanity(cardHolder) &&
+    !containsProfanity(cobrandName) &&
+    !holderHasSpecialChars &&
+    !cobrandHasSpecialChars;
 
   const handleSubmit = () => {
     const bankToSave =
@@ -410,10 +423,23 @@ export default function CardForm({
           onFocus={() => setFocused("cobrand")}
           onBlur={() => setFocused(null)}
           onChangeText={setCobrandName}
+          maxLength={20}
         />
+        {/* Profanity warning */}
+        {containsProfanity(cobrandName) && (
+          <Text style={styles.errorText}>
+            Please remove inappropriate words.
+          </Text>
+        )}
+        {/* Special characters warning */}
+        {cobrandHasSpecialChars && (
+          <Text style={styles.errorText}>
+            Special characters are not allowed.
+          </Text>
+        )}
       </View>
 
-      {/* Card User */}
+      {/* Card User - Disabled when coming from share screen */}
       <View style={styles.field}>
         <ThemedText style={styles.label}>Card User</ThemedText>
         <DropDownPicker
@@ -423,6 +449,7 @@ export default function CardForm({
           setValue={setCardUser}
           items={CARD_USER_OPTIONS}
           placeholder="Select card user"
+          disabled={fromShare}
           style={{
             borderColor: theme.border,
             backgroundColor: theme.card,
@@ -536,9 +563,9 @@ export default function CardForm({
         </View>
 
         {cardNumberDigits.length >= 13 && !cardNumberValid && (
-          <ThemedText style={styles.errorText}>
+          <Text style={styles.errorText}>
             Invalid card number.
-          </ThemedText>
+          </Text>
         )}
       </View>
 
@@ -566,15 +593,21 @@ export default function CardForm({
           onChangeText={setCardHolder}
         />
         {!holderValid && cardHolder.length > 0 && (
-          <ThemedText style={styles.errorText}>
+          <Text style={styles.errorText}>
             Enter a valid name (at least 3 letters).
-          </ThemedText>
+          </Text>
         )}
         {/* Profanity warning */}
         {containsProfanity(cardHolder) && (
-          <ThemedText style={styles.errorText}>
+          <Text style={styles.errorText}>
             Please remove inappropriate words.
-          </ThemedText>
+          </Text>
+        )}
+        {/* Special characters warning */}
+        {holderHasSpecialChars && (
+          <Text style={styles.errorText}>
+            Special characters are not allowed.
+          </Text>
         )}
       </View>
 
@@ -624,9 +657,9 @@ export default function CardForm({
 
         {/* Dynamic error messages */}
         {expiryDigits.length === 4 && !expiryValid && (
-          <ThemedText style={styles.errorText}>
+          <Text style={styles.errorText}>
             {expiryError || "Invalid expiry date."}
-          </ThemedText>
+          </Text>
         )}
       </View>
 
@@ -664,9 +697,9 @@ export default function CardForm({
           maxLength={4}
         />
         {!cvvValid && cvv.length > 0 && (
-          <ThemedText style={styles.errorText}>
+          <Text style={styles.errorText}>
             Invalid CVV.
-          </ThemedText>
+          </Text>
         )}
       </View>
 

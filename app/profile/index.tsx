@@ -1,5 +1,4 @@
 // app/profile/index.tsx
-import AdBanner from "@/components/AdBanner";
 import { ThemedText } from "@/components/themed-text";
 import { useThemeController } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -318,8 +317,6 @@ export default function ProfileScreen() {
           </View>
         </View>
       </View>
-
-      <AdBanner />
     </SafeAreaView>
   );
 }

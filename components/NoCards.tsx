@@ -7,8 +7,9 @@ import { FC } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
-const NoCards: FC<{ message?: string }> = ({
+const NoCards: FC<{ message?: string; showButton?: boolean }> = ({
   message = "No cards listed yet.",
+  showButton = true,
 }) => {
   const router = useRouter();
 
@@ -42,14 +43,16 @@ const NoCards: FC<{ message?: string }> = ({
 
       <ThemedText style={styles.message}>{message}</ThemedText>
 
-      <Pressable
-        style={[styles.button, { backgroundColor: palette.primary }]}
-        onPress={() => router.push("/add-card")}
-      >
-        <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
-          Add Your First Card
-        </ThemedText>
-      </Pressable>
+      {showButton && (
+        <Pressable
+          style={[styles.button, { backgroundColor: palette.primary }]}
+          onPress={() => router.push("/add-card")}
+        >
+          <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
+            Add Your First Card
+          </ThemedText>
+        </Pressable>
+      )}
     </View>
   );
 };

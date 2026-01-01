@@ -13,7 +13,7 @@ import Toast from "react-native-toast-message";
 
 import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from "@/context/AlertContext";
-import { CardProvider } from "@/context/CardContext";
+import { CardProvider, TimerProvider } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -32,16 +32,18 @@ export const unstable_settings = {
 };
 
 function AppShell() {
+  // ✅ ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL RETURNS
   const colorScheme = useColorScheme();
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [checked, setChecked] = useState(false);
-  const barStyle = colorScheme === "dark" ? "light" : "dark";
-  const barBg =
-    colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
   const [appIsActive, setAppIsActive] = useState(
     AppState.currentState === "active"
   );
+
+  const barStyle = colorScheme === "dark" ? "light" : "dark";
+  const barBg =
+    colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
@@ -78,6 +80,7 @@ function AppShell() {
         );
       } catch { }
     }
+    cleanup();
   }, []);
 
   // 🔒 Biometric authentication for both Android and iOS
@@ -95,7 +98,6 @@ function AppShell() {
       }
     })();
   }, [appIsActive, checked]);
-
 
   // 🔗 Deep linking setup
   useEffect(() => {
@@ -128,6 +130,7 @@ function AppShell() {
     }
   }
 
+  // ✅ NOW IT'S SAFE TO HAVE CONDITIONAL RETURNS - ALL HOOKS HAVE BEEN CALLED
   // 🕓 Show loading or lock screen
   if (!checked) {
     return (
@@ -163,15 +166,17 @@ function AppShell() {
       <SafeAreaProvider>
         <AlertProvider>
           <CardProvider>
-            <Stack screenOptions={{ headerShown: false }} />
-            <TermsPopup />
-            <StatusBar
-              style={barStyle}
-              backgroundColor={barBg}
-              translucent={false}
-              animated
-            />
-            <Toast position="bottom" visibilityTime={3000} />
+            <TimerProvider>
+              <Stack screenOptions={{ headerShown: false }} />
+              <TermsPopup />
+              <StatusBar
+                style={barStyle}
+                backgroundColor={barBg}
+                translucent={false}
+                animated
+              />
+              <Toast position="bottom" visibilityTime={3000} />
+            </TimerProvider>
           </CardProvider>
         </AlertProvider>
       </SafeAreaProvider>

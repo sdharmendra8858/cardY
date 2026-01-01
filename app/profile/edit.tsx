@@ -172,6 +172,7 @@ export default function EditProfileScreen() {
             keyExtractor={(item) => item.id}
             numColumns={3}
             columnWrapperStyle={{ gap: 12 }}
+            contentContainerStyle={{ paddingBottom: 120 }}
             renderItem={({ item }: { item: { id: string; source: any } }) => {
               const isSelected = item.id === selectedAvatarId;
               return (
@@ -208,6 +209,7 @@ export default function EditProfileScreen() {
               );
             }}
           />
+
           <AdBanner />
 
           <View style={styles.footer}>

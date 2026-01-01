@@ -1,3 +1,4 @@
+import AlertBox from "@/components/AlertBox";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
@@ -24,6 +25,14 @@ export default function AddCardScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const { from, sessionId, receiverPublicKey, expiresAt } = useLocalSearchParams<{
+    from?: string;
+    sessionId?: string;
+    receiverPublicKey?: string;
+    expiresAt?: string;
+  }>();
 
   const clearImageDump = async () => {
     try {
@@ -162,11 +171,24 @@ export default function AddCardScreen() {
         cardUser: card.cardUser || "self"
       };
 
+      // Check for duplicate card numbers (excluding current card in edit mode)
+      const existingCards = await secureGetCards();
+      const duplicateCard = existingCards.find((existingCard: any) => {
+        // In edit mode, exclude the current card being edited
+        if (isEditMode && editId && existingCard.id === editId) {
+          return false;
+        }
+        return existingCard.cardNumber === cardWithDefaults.cardNumber;
+      });
+
+      if (duplicateCard) {
+        throw new Error("A card with this number already exists");
+      }
+
       if (isEditMode && editId) {
         // Update existing card
-        const cards = await secureGetCards();
-        const updatedCards = cards.map((c: any) =>
-          c.id === editId ? { ...cardWithDefaults, id: editId } : c
+        const updatedCards = existingCards.map((c: any) =>
+          c.id === editId ? { ...c, ...cardWithDefaults, id: editId } : c
         );
         await setCards(updatedCards);
       } else {
@@ -209,13 +231,28 @@ export default function AddCardScreen() {
       // 1️⃣ Save the card info
       await saveCardLocally(card);
 
-      // 2️⃣ Navigate based on mode
+      // 2️⃣ Navigate based on mode with smart tab redirection
       if (isEditMode) {
         // Go back to card details page
         router.back();
+      } else if (from === "share") {
+        // Coming from share screen - go back to share screen with new card selected and force card selection mode
+        const params: any = { selectedCardId: card.id, showCardSelection: "true" };
+        if (sessionId && receiverPublicKey && expiresAt) {
+          params.sessionId = sessionId;
+          params.receiverPublicKey = receiverPublicKey;
+          params.expiresAt = expiresAt;
+        }
+        router.replace({
+          pathname: "/share-card/share",
+          params
+        });
       } else {
-        // Navigate to home screen for new cards
-        navigation.dispatch(StackActions.popToTop());
+        // Navigate to home screen for new cards and switch to the correct tab
+        router.replace({
+          pathname: "/",
+          params: { redirectToTab: card.cardUser || "self" }
+        });
       }
 
       // 3️⃣ Show interstitial ad after a short delay (non-blocking)
@@ -232,7 +269,15 @@ export default function AddCardScreen() {
 
     } catch (err) {
       console.error("Failed to save card:", err);
-      alert("Failed to save card info. Please try again.");
+      const errorMessage = err instanceof Error && err.message.includes("already exists")
+        ? "A card with this number already exists. Please use a different card."
+        : "Failed to save card info. Please try again.";
+      setAlertConfig({
+        title: "Error",
+        message: errorMessage,
+        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+      });
+      setAlertVisible(true);
     } finally {
       setIsSaving(false);
     }
@@ -276,7 +321,7 @@ export default function AddCardScreen() {
           </>
         )}
 
-        {hideScanButton && (
+        {fromExtract === "true" && (
           <InfoBox
             message="⚠️ Please review all details carefully before saving. The scanned information might contain errors."
             type="warning"
@@ -297,6 +342,7 @@ export default function AddCardScreen() {
           defaultDominantColor={defaultDominantColor}
           disabled={isSaving}
           isEditMode={isEditMode}
+          fromShare={from === "share"}
         />
 
         {hideScanButton && (
@@ -314,6 +360,14 @@ export default function AddCardScreen() {
 
       {/* Preload interstitial ad for faster loading */}
       <InterstitialAd />
+
+      <AlertBox
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        onRequestClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }

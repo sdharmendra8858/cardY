@@ -1,5 +1,7 @@
 // app/card-details/[id].tsx
+import AdBanner from "@/components/AdBanner";
 import CardNotFound from "@/components/CardNotFound";
+import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
@@ -8,7 +10,7 @@ import { CARD_TYPES } from "@/constants/cardTypes";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
-import { useCards } from "@/context/CardContext";
+import { useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
@@ -19,7 +21,7 @@ import {
   getCards as secureGetCards,
   removeCard as secureRemoveCard,
 } from "@/utils/secureStorage";
-import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as Clipboard from "expo-clipboard";
@@ -69,21 +71,19 @@ const getContrastColor = (hexcolor: string) => {
 
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
-  const { timerTick } = useCards(); // Use global timer for real-time updates
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { timerTick } = useTimer(); // Force re-renders for validity timer
   useScreenProtection();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [card, setCard] = useState<any>(null);
+  const [isLoadingCard, setIsLoadingCard] = useState(true);
+  const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [showNumber, setShowNumber] = useState(false);
   const [canUsePip, setCanUsePip] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [cooldownActive, setCooldownActive] = useState(false);
   const cooldownActiveRef = useRef(false);
-
-  // Use timerTick to trigger re-renders (this ensures real-time updates)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _ = timerTick;
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pipCardRef = useRef<PipCardHandle | null>(null);
   const [renderPipCard, setRenderPipCard] = useState(false);
@@ -172,10 +172,36 @@ export default function CardDetailsScreen() {
 
   const loadCard = React.useCallback(async () => {
     try {
+      setIsLoadingCard(true);
+      setHasAttemptedLoad(false);
+
       const list = await secureGetCards();
       const found = list.find((c) => c.id === id);
-      if (found) setCard(found);
-    } catch (err) { console.error(err); }
+      if (found) {
+        setCard(found);
+        setIsLoadingCard(false);
+        setHasAttemptedLoad(true);
+      } else {
+        // If card not found immediately, wait a bit and try again (for newly imported cards)
+        setTimeout(async () => {
+          const retryList = await secureGetCards();
+          const retryFound = retryList.find((c) => c.id === id);
+          if (retryFound) {
+            setCard(retryFound);
+          } else {
+            // Card still not found after retry
+            setCard(null);
+          }
+          setIsLoadingCard(false);
+          setHasAttemptedLoad(true);
+        }, 1000);
+        return; // Don't execute finally block yet
+      }
+    } catch (err) {
+      console.error(err);
+      setIsLoadingCard(false);
+      setHasAttemptedLoad(true);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -315,51 +341,30 @@ export default function CardDetailsScreen() {
     };
   });
 
-  if (!card) return <CardNotFound />;
+  if (!card && hasAttemptedLoad) return <CardNotFound />;
+
+  // Show loading state while card is being loaded
+  if (isLoadingCard) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: palette.surface }]}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <MaterialIcons name="credit-card" size={64} color={palette.primary} />
+          <ThemedText style={{ fontSize: 18, marginTop: 16, textAlign: 'center' }}>
+            Loading card details...
+          </ThemedText>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const cardColor = card.dominantColor || palette.primary;
   const contentColor = getContrastColor(cardColor);
   const isDarkCard = contentColor === "#FFFFFF";
 
-  // Calculate validity info for real-time updates
-  const now = Math.floor(Date.now() / 1000);
-  let validityInfo = {
-    text: "N/A",
-    color: palette.primary,
-    bgColor: palette.primary + '15',
-  };
-
-  if (card.cardUser === "other" && card.cardExpiresAt) {
-    const isExpired = now > card.cardExpiresAt;
-    const isExpiringSoon = now > (card.cardExpiresAt - 300); // 5 minutes
-
-    if (isExpired) {
-      validityInfo = {
-        text: "Expired",
-        color: palette.danger,
-        bgColor: palette.danger + '15',
-      };
-    } else {
-      const remaining = card.cardExpiresAt - now;
-      let text = "";
-      if (remaining < 60) text = `${remaining}s`;
-      else if (remaining < 3600) text = `${Math.floor(remaining / 60)}m`;
-      else if (remaining < 86400) text = `${Math.floor(remaining / 3600)}h`;
-      else text = `${Math.floor(remaining / 86400)}d`;
-
-      validityInfo = {
-        text,
-        color: isExpiringSoon ? palette.secondary : palette.primary,
-        bgColor: isExpiringSoon ? palette.secondary + '15' : palette.primary + '15',
-      };
-    }
-  } else if (card.cardUser === "other" && !card.cardExpiresAt) {
-    validityInfo = {
-      text: "∞ Forever",
-      color: palette.primary,
-      bgColor: palette.primary + '15',
-    };
-  }
+  // timerTick ensures component re-renders for validity updates
+  void timerTick; // Mark as used to prevent linter warning
 
 
   return (
@@ -441,10 +446,19 @@ export default function CardDetailsScreen() {
                 <View style={styles.magneticStripe} />
                 <View style={styles.signatureRow}>
                   <View style={styles.signatureArea} />
-                  <View style={styles.cvvArea}>
-                    <ThemedText style={styles.cvvLabel}>CVV</ThemedText>
-                    <ThemedText style={styles.cvvText}>{showNumber ? card.cvv : "•••"}</ThemedText>
-                  </View>
+                  {card.cvv ? (
+                    <View style={styles.cvvArea}>
+                      <ThemedText style={styles.cvvLabel}>CVV</ThemedText>
+                      <ThemedText style={styles.cvvText}>
+                        {showNumber ? card.cvv : (card.cvv.length === 4 ? "••••" : "•••")}
+                      </ThemedText>
+                    </View>
+                  ) : (
+                    <View style={styles.cvvArea}>
+                      <ThemedText style={styles.cvvLabel}>CVV</ThemedText>
+                      <ThemedText style={styles.cvvText}>N/A</ThemedText>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.backInfo}>
                   <ThemedText style={styles.backInfoText}>Authorized Signature • Not Valid Unless Signed</ThemedText>
@@ -487,14 +501,13 @@ export default function CardDetailsScreen() {
             </Pressable>
           </View>
 
-          <View style={styles.summaryContainer}>
+          <View style={[styles.summaryContainer, { backgroundColor: palette.surface }]}>
             <View style={styles.summaryHeader}>
-              <Ionicons name="information-circle-outline" size={20} color={palette.text} />
               <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Card Details</ThemedText>
             </View>
 
             <View style={styles.summaryGrid}>
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { backgroundColor: palette.card }]}>
                 <View style={[styles.summaryIcon, { backgroundColor: palette.primary + '15' }]}>
                   <Ionicons name="business-outline" size={18} color={palette.primary} />
                 </View>
@@ -504,7 +517,7 @@ export default function CardDetailsScreen() {
                 </View>
               </View>
 
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { backgroundColor: palette.card }]}>
                 <View style={[styles.summaryIcon, { backgroundColor: palette.secondary + '15' }]}>
                   <Ionicons name={card.cardUser === "other" ? "people-outline" : "person-outline"} size={18} color={palette.secondary} />
                 </View>
@@ -514,7 +527,7 @@ export default function CardDetailsScreen() {
                 </View>
               </View>
 
-              <View style={styles.summaryCard}>
+              <View style={[styles.summaryCard, { backgroundColor: palette.card }]}>
                 <View style={[styles.summaryIcon, { backgroundColor: palette.tint + '15' }]}>
                   <Ionicons name={card.cardKind === "debit" ? "card-outline" : "card"} size={18} color={palette.tint} />
                 </View>
@@ -525,7 +538,7 @@ export default function CardDetailsScreen() {
               </View>
 
               {card.cobrandName && (
-                <View style={styles.summaryCard}>
+                <View style={[styles.summaryCard, { backgroundColor: palette.card }]}>
                   <View style={[styles.summaryIcon, { backgroundColor: palette.danger + '15' }]}>
                     <Ionicons name="pricetag-outline" size={18} color={palette.danger} />
                   </View>
@@ -536,22 +549,22 @@ export default function CardDetailsScreen() {
                 </View>
               )}
 
-              {card.cardUser === "other" && (
-                <View style={styles.summaryCard}>
-                  <View style={[styles.summaryIcon, { backgroundColor: validityInfo.bgColor }]}>
-                    <Ionicons name="time-outline" size={18} color={validityInfo.color} />
+              {card.cardUser === "other" && card.cardExpiresAt ? (
+                <ExpiryTimerSection cardExpiresAt={card.cardExpiresAt} />
+              ) : card.cardUser === "other" ? (
+                <View style={[styles.summaryCard, { backgroundColor: palette.card }]}>
+                  <View style={[styles.summaryIcon, { backgroundColor: palette.primary + '15' }]}>
+                    <Ionicons name="time-outline" size={18} color={palette.primary} />
                   </View>
                   <View style={styles.summaryContent}>
                     <ThemedText style={styles.summaryLabel}>Validity</ThemedText>
-                    <ThemedText style={styles.summaryValue}>
-                      {validityInfo.text}
-                    </ThemedText>
+                    <ThemedText style={styles.summaryValue}>∞ Forever</ThemedText>
                   </View>
                 </View>
-              )}
+              ) : null}
             </View>
 
-            <View style={styles.cardInsights}>
+            <View style={[styles.cardInsights, { borderTopColor: palette.border }]}>
               <View style={styles.insightRow}>
                 <View style={styles.insightItem}>
                   <Ionicons name="shield-checkmark-outline" size={16} color={palette.text} />
@@ -582,6 +595,8 @@ export default function CardDetailsScreen() {
           <PipCard ref={pipCardRef} card={card} showNumber={showNumber} />
         </View>
       )}
+
+      <AdBanner />
     </SafeAreaView>
   );
 }
@@ -640,14 +655,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   actionLabel: { fontSize: 12, fontWeight: "600", textAlign: "center", minWidth: 60 },
-  summaryContainer: { marginHorizontal: 16, padding: 20, backgroundColor: "rgba(0,0,0,0.03)", borderRadius: 16, marginBottom: 24 },
+  summaryContainer: { marginHorizontal: 16, padding: 20, borderRadius: 16, marginBottom: 24 },
   summaryHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: "600", marginLeft: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: "600" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 12 },
   summaryCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 12,
     padding: 12,
     width: "48%",
@@ -663,7 +677,7 @@ const styles = StyleSheet.create({
   summaryContent: { flex: 1 },
   summaryLabel: { fontSize: 10, opacity: 0.6, marginBottom: 2, textTransform: "uppercase", fontWeight: "500" },
   summaryValue: { fontSize: 14, fontWeight: "600" },
-  cardInsights: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.1)" },
+  cardInsights: { marginTop: 20, paddingTop: 16, borderTopWidth: 1 },
   insightRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   insightItem: { flexDirection: "row", alignItems: "center", flex: 0.48 },
   insightText: { fontSize: 11, opacity: 0.7, marginLeft: 6 },

@@ -8,6 +8,7 @@ import {
 } from "@/utils/security";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
@@ -261,7 +262,7 @@ export default function QRCodeScreen() {
                   <View style={styles.cardDetails}>
                     <ThemedText style={styles.cardName}>{card.cardHolder}</ThemedText>
                     <ThemedText style={styles.cardNumber}>
-                      •••• •••• •••• {card.cardNumber.slice(-4)}
+                      {maskAndFormatCardNumber(card.cardNumber)}
                     </ThemedText>
                   </View>
                 </View>

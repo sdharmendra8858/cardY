@@ -6,7 +6,7 @@
 import { bytesToBase64, generateEphemeralKeyPair } from "../crypto";
 import { SessionPayload, SessionState } from "./sessionTypes";
 
-const SESSION_DURATION = 300; // 5 minutes in seconds
+const SESSION_DURATION = 120; // 2 minutes
 
 /**
  * Generate 6-digit session code
