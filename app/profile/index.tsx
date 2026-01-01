@@ -241,6 +241,82 @@ export default function ProfileScreen() {
             })}
           </View>
         </View>
+
+        <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
+          <ThemedText style={{ fontSize: 16, fontWeight: "700" }}>
+            Card Sharing
+          </ThemedText>
+          <ThemedText style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>
+            Securely share cards with others
+          </ThemedText>
+          <View style={[styles.themeRow, { marginTop: 12 }]}>
+            {([
+              {
+                id: "receive",
+                label: "Receive Card",
+                icon: "qr-code-scanner",
+                route: "/share-card/receive",
+              },
+              {
+                id: "share",
+                label: "Share Card",
+                icon: "share",
+                route: "/share-card/share",
+              },
+              {
+                id: "import",
+                label: "Import Card",
+                icon: "download",
+                route: "/share-card/import",
+              }
+            ] as const).map((option) => (
+              <TouchableOpacity
+                key={option.id}
+                accessibilityRole="button"
+                onPress={() => router.push(option.route)}
+                activeOpacity={0.85}
+                style={[
+                  styles.themeOption,
+                  {
+                    backgroundColor: palette.surface,
+                    borderColor: palette.border,
+                  },
+                ]}
+              >
+                <View style={styles.themeOptionInner}>
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: scheme === "dark"
+                        ? "rgba(255,255,255,0.06)"
+                        : "rgba(0,0,0,0.06)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <MaterialIcons
+                      name={option.icon as any}
+                      size={18}
+                      color={palette.tint}
+                    />
+                  </View>
+                  <ThemedText
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: palette.text,
+                    }}
+                  >
+                    {option.label}
+                  </ThemedText>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </View>
 
       <AdBanner />

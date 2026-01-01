@@ -14,6 +14,7 @@ type Card = {
   cardUser?: "self" | "other"; // Who owns/uses the card
   dominantColor?: string; // Hex color code for card theme
   bank?: string; // Bank name
+  cardExpiresAt?: number; // Unix timestamp - when imported card should be auto-removed
 };
 
 export async function getCards(): Promise<Card[]> {

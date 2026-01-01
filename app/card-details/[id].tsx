@@ -8,6 +8,7 @@ import { CARD_TYPES } from "@/constants/cardTypes";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useCards } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
@@ -68,6 +69,7 @@ const getContrastColor = (hexcolor: string) => {
 
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
+  const { timerTick } = useCards(); // Use global timer for real-time updates
   const { id } = useLocalSearchParams<{ id: string }>();
   useScreenProtection();
   const scheme = useColorScheme() ?? "light";
@@ -78,6 +80,10 @@ export default function CardDetailsScreen() {
   const [flipped, setFlipped] = useState(false);
   const [cooldownActive, setCooldownActive] = useState(false);
   const cooldownActiveRef = useRef(false);
+
+  // Use timerTick to trigger re-renders (this ensures real-time updates)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = timerTick;
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pipCardRef = useRef<PipCardHandle | null>(null);
   const [renderPipCard, setRenderPipCard] = useState(false);
@@ -183,6 +189,33 @@ export default function CardDetailsScreen() {
     }, [loadCard])
   );
 
+  // Check if card has expired and auto-delete
+  useEffect(() => {
+    if (!card || !card.cardExpiresAt || card.cardUser !== "other") return;
+
+    const now = Math.floor(Date.now() / 1000);
+    if (now > card.cardExpiresAt) {
+      // Card has expired, delete it
+      console.log("🗑️ Card has expired, auto-deleting:", card.id);
+      secureRemoveCard(card.id).then(() => {
+        showAlert({
+          title: "Card Expired",
+          message: "This imported card has expired and has been automatically removed.",
+          buttons: [{ text: "OK", onPress: () => router.back() }],
+        });
+      }).catch(err => console.error("Failed to delete expired card:", err));
+      return;
+    }
+
+    // Set up timer to check again when card expires
+    const timeUntilExpiry = card.cardExpiresAt - now;
+    const timer = setTimeout(() => {
+      loadCard(); // Reload to trigger expiry check
+    }, (timeUntilExpiry + 1) * 1000);
+
+    return () => clearTimeout(timer);
+  }, [card, loadCard, router, showAlert]);
+
   const handleDelete = async () => {
     await showAlert({
       title: "Delete Card",
@@ -243,6 +276,13 @@ export default function CardDetailsScreen() {
     } catch (err) { console.error(err); }
   };
 
+  const handleShare = useCallback(() => {
+    router.push({
+      pathname: "/share-card/share",
+      params: { cardId: id },
+    });
+  }, [router, id]);
+
   useEffect(() => {
     return () => {
       if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
@@ -280,6 +320,46 @@ export default function CardDetailsScreen() {
   const cardColor = card.dominantColor || palette.primary;
   const contentColor = getContrastColor(cardColor);
   const isDarkCard = contentColor === "#FFFFFF";
+
+  // Calculate validity info for real-time updates
+  const now = Math.floor(Date.now() / 1000);
+  let validityInfo = {
+    text: "N/A",
+    color: palette.primary,
+    bgColor: palette.primary + '15',
+  };
+
+  if (card.cardUser === "other" && card.cardExpiresAt) {
+    const isExpired = now > card.cardExpiresAt;
+    const isExpiringSoon = now > (card.cardExpiresAt - 300); // 5 minutes
+
+    if (isExpired) {
+      validityInfo = {
+        text: "Expired",
+        color: palette.danger,
+        bgColor: palette.danger + '15',
+      };
+    } else {
+      const remaining = card.cardExpiresAt - now;
+      let text = "";
+      if (remaining < 60) text = `${remaining}s`;
+      else if (remaining < 3600) text = `${Math.floor(remaining / 60)}m`;
+      else if (remaining < 86400) text = `${Math.floor(remaining / 3600)}h`;
+      else text = `${Math.floor(remaining / 86400)}d`;
+
+      validityInfo = {
+        text,
+        color: isExpiringSoon ? palette.secondary : palette.primary,
+        bgColor: isExpiringSoon ? palette.secondary + '15' : palette.primary + '15',
+      };
+    }
+  } else if (card.cardUser === "other" && !card.cardExpiresAt) {
+    validityInfo = {
+      text: "∞ Forever",
+      color: palette.primary,
+      bgColor: palette.primary + '15',
+    };
+  }
 
 
   return (
@@ -452,6 +532,20 @@ export default function CardDetailsScreen() {
                   <View style={styles.summaryContent}>
                     <ThemedText style={styles.summaryLabel}>Co-brand</ThemedText>
                     <ThemedText style={styles.summaryValue}>{card.cobrandName}</ThemedText>
+                  </View>
+                </View>
+              )}
+
+              {card.cardUser === "other" && (
+                <View style={styles.summaryCard}>
+                  <View style={[styles.summaryIcon, { backgroundColor: validityInfo.bgColor }]}>
+                    <Ionicons name="time-outline" size={18} color={validityInfo.color} />
+                  </View>
+                  <View style={styles.summaryContent}>
+                    <ThemedText style={styles.summaryLabel}>Validity</ThemedText>
+                    <ThemedText style={styles.summaryValue}>
+                      {validityInfo.text}
+                    </ThemedText>
                   </View>
                 </View>
               )}

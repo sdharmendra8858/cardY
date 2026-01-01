@@ -143,6 +143,7 @@ export default function AddCardScreen() {
   }, [isEditMode, editId]);
 
   const saveCardLocally = async (card: {
+    id: string;
     cardNumber: string;
     cardHolder: string;
     expiry: string;
@@ -155,16 +156,22 @@ export default function AddCardScreen() {
     dominantColor?: string;
   }) => {
     try {
+      // Ensure cardUser defaults to "self" if not specified
+      const cardWithDefaults = {
+        ...card,
+        cardUser: card.cardUser || "self"
+      };
+
       if (isEditMode && editId) {
         // Update existing card
         const cards = await secureGetCards();
         const updatedCards = cards.map((c: any) =>
-          c.id === editId ? { ...card, id: editId } : c
+          c.id === editId ? { ...cardWithDefaults, id: editId } : c
         );
         await setCards(updatedCards);
       } else {
         // Add new card
-        await secureAddCard(card as any);
+        await secureAddCard(cardWithDefaults);
       }
       // Only clean up images after successful save
       await clearImageDump();
@@ -182,6 +189,7 @@ export default function AddCardScreen() {
   };
 
   const handleManualAdd = async (card: {
+    id: string;
     cardNumber: string;
     cardHolder: string;
     expiry: string;

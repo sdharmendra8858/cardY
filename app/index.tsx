@@ -43,6 +43,7 @@ export default function HomeScreen() {
       cobrandName?: string;
       cardUser?: "self" | "other";
       dominantColor?: string;
+      cardExpiresAt?: number;
     }[]
   >([]);
 
@@ -284,6 +285,7 @@ export default function HomeScreen() {
                 cobrandName={item.cobrandName}
                 cardUser={item.cardUser}
                 dominantColor={item.dominantColor}
+                cardExpiresAt={item.cardExpiresAt}
               />
             </View>
           )}
