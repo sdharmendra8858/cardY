@@ -18,8 +18,12 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
@@ -35,6 +39,10 @@ export default function HomeScreen() {
       expiry: string;
       cardName?: string;
       bank?: string;
+      cardKind?: "credit" | "debit";
+      cobrandName?: string;
+      cardUser?: "self" | "other";
+      dominantColor?: string;
     }[]
   >([]);
 
@@ -47,6 +55,8 @@ export default function HomeScreen() {
 
   const [isAppLockEnabled, setIsAppLockEnabled] = useState(true);
   const [isCardLockEnabled, setIsCardLockEnabled] = useState(true);
+  const [activeTab, setActiveTab] = useState<"self" | "other">("self");
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const checkSecuritySettings = async () => {
     try {
@@ -116,113 +126,153 @@ export default function HomeScreen() {
     });
   };
 
+  const tabIndicatorStyle = useAnimatedStyle(() => {
+    const tabWidth = (containerWidth - 8) / 2;
+    return {
+      width: tabWidth > 0 ? tabWidth : "49%",
+      transform: [
+        {
+          translateX: withSpring(activeTab === "self" ? 0 : tabWidth),
+        },
+      ],
+    };
+  });
+
+  const ListHeader = useMemo(
+    () => (
+      <>
+        {/* Profile Section */}
+        <View style={styles.profileContainer}>
+          <Pressable onPress={() => router.push("/profile")}>
+            <Image
+              source={avatarSource}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          </Pressable>
+          <View style={styles.profileTextWrapper}>
+            <View>
+              <ThemedText style={styles.greeting}>Hello,</ThemedText>
+              <ThemedText type="title" style={styles.name}>
+                {profileName}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+
+        {/* Security Alerts */}
+        {(!isAppLockEnabled || !isCardLockEnabled) && (
+          <View style={styles.securityAlertContainer}>
+            <View style={styles.securityAlertContent}>
+              <View style={styles.securityAlertHeader}>
+                <ThemedText style={styles.securityAlertEmoji}>🛡️</ThemedText>
+                <ThemedText type="defaultSemiBold" style={{ color: "#E65100" }}>
+                  Security Recommendation
+                </ThemedText>
+              </View>
+              <ThemedText style={styles.securityAlertText}>
+                {!isAppLockEnabled && !isCardLockEnabled
+                  ? "App Lock and Card Lock are disabled. Enable them to secure your data."
+                  : !isAppLockEnabled
+                    ? "App Lock is disabled. Enable it to prevent unauthorized access."
+                    : "Card Lock is disabled. Enable it to protect card details."}
+              </ThemedText>
+              <Pressable
+                onPress={() => router.push("/settings")}
+                style={styles.securityAlertButton}
+              >
+                <ThemedText style={styles.securityAlertButtonText}>
+                  Enable Security Features
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* Title and Info */}
+        {cards.length !== 0 && (
+          <View style={styles.listHeaderTitleContainer}>
+            <ThemedText type="title" style={styles.title}>
+              Your Cards
+            </ThemedText>
+            <InfoBox
+              message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+              type="warning"
+              style={{ marginHorizontal: 16, marginBottom: 12 }}
+            />
+          </View>
+        )}
+
+        {/* Tabs */}
+        {cards.length > 0 && (
+          <View
+            style={styles.tabContainer}
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+          >
+            {/* Sliding Indicator */}
+            <Animated.View style={[styles.tabIndicator, tabIndicatorStyle]} />
+            <Pressable
+              style={styles.tab}
+              onPress={() => setActiveTab("self")}
+            >
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  activeTab === "self" && styles.activeTabText,
+                ]}
+              >
+                Self
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              style={styles.tab}
+              onPress={() => setActiveTab("other")}
+            >
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  activeTab === "other" && styles.activeTabText,
+                ]}
+              >
+                Others
+              </ThemedText>
+            </Pressable>
+          </View>
+        )}
+      </>
+    ),
+    [
+      avatarSource,
+      profileName,
+      isAppLockEnabled,
+      isCardLockEnabled,
+      cards.length,
+      activeTab,
+      containerWidth,
+      router,
+    ]
+  );
+
+  const renderFooter = () => null;
+
+  const filteredCards = cards.filter((card) => {
+    if (activeTab === "self") {
+      return !card.cardUser || card.cardUser === "self";
+    }
+    return card.cardUser === "other";
+  });
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
       edges={["top", "bottom"]}
     >
-      {/* Profile Section */}
-      <View style={styles.profileContainer}>
-        <Pressable onPress={() => router.push("/profile")}>
-          <Image
-            source={avatarSource}
-            style={styles.avatar}
-            contentFit="cover"
-          />
-        </Pressable>
-        <View
-          style={[
-            styles.profileText,
-            {
-              flex: 1,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            },
-          ]}
-        >
-          <View>
-            <ThemedText style={styles.greeting}>Hello,</ThemedText>
-            <ThemedText type="title" style={styles.name}>
-              {profileName}
-            </ThemedText>
-          </View>
-        </View>
-      </View>
-
-      {(!isAppLockEnabled || !isCardLockEnabled) && (
-        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
-          <View
-            style={{
-              backgroundColor: "#FFF4E5",
-              borderRadius: 12,
-              padding: 12,
-              borderWidth: 1,
-              borderColor: "#FFE0B2",
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-              <ThemedText style={{ fontSize: 18, marginRight: 8 }}>🛡️</ThemedText>
-              <ThemedText type="defaultSemiBold" style={{ color: "#E65100" }}>
-                Security Recommendation
-              </ThemedText>
-            </View>
-            <ThemedText style={{ color: "#BF360C", marginBottom: 12, fontSize: 13 }}>
-              {!isAppLockEnabled && !isCardLockEnabled
-                ? "App Lock and Card Lock are disabled. Enable them to secure your data."
-                : !isAppLockEnabled
-                  ? "App Lock is disabled. Enable it to prevent unauthorized access."
-                  : "Card Lock is disabled. Enable it to protect card details."}
-            </ThemedText>
-            <Pressable
-              onPress={() => router.push("/settings")}
-              style={{
-                backgroundColor: "#E65100",
-                paddingVertical: 8,
-                borderRadius: 8,
-                alignItems: "center",
-              }}
-            >
-              <ThemedText style={{ color: "white", fontWeight: "bold", fontSize: 13 }}>
-                Enable Security Features
-              </ThemedText>
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {cards.length !== 0 && (
-        <View>
-          <ThemedText type="title" style={styles.title}>
-            Your Cards
-          </ThemedText>
-          <InfoBox
-            message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
-            type="warning"
-            style={{ marginHorizontal: 16 }}
-          />
-        </View>
-      )}
-
-      {cards.length === 0 ? (
-        <NoCards />
-      ) : (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16, flex: 1 }}>
-          <FlatList
-            data={cards}
-            keyExtractor={(item) => item.id}
-            renderItem={({
-              item,
-            }: {
-              item: {
-                id: string;
-                cardNumber: string;
-                cardHolder: string;
-                expiry: string;
-                cardName?: string;
-                bank?: string;
-              };
-            }) => (
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={filteredCards}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={{ paddingHorizontal: 16 }}>
               <CardItem
                 id={item.id}
                 cardName={item.bank || item.cardName || `Unknown Bank`}
@@ -230,22 +280,39 @@ export default function HomeScreen() {
                 cardHolder={item.cardHolder}
                 expiry={item.expiry}
                 onDelete={handleRemoveCard}
+                cardKind={item.cardKind}
+                cobrandName={item.cobrandName}
+                cardUser={item.cardUser}
+                dominantColor={item.dominantColor}
               />
-            )}
-          />
-        </View>
-      )}
+            </View>
+          )}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={() => (
+            <NoCards
+              message={
+                cards.length === 0
+                  ? "No cards listed yet."
+                  : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
+              }
+            />
+          )}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        />
 
-      {/* Navigate to Add Card */}
-      {cards.length !== 0 && (
-        <Link href="/add-card" asChild>
-          <AppButton
-            title="Add New Card"
-            fullWidth
-            style={{ marginHorizontal: 16, marginBottom: 16 }}
-          />
-        </Link>
-      )}
+        {cards.length > 0 && (
+          <View style={styles.stickyButtonContainer}>
+            <Link href="/add-card" asChild>
+              <AppButton
+                title="Add New Card"
+                fullWidth
+                style={styles.footerButton}
+              />
+            </Link>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -264,8 +331,12 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 50,
   },
-  profileText: {
+  profileTextWrapper: {
     marginLeft: 12,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   greeting: {
     fontSize: 17,
@@ -275,29 +346,97 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: "bold",
   },
+  securityAlertContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  securityAlertContent: {
+    backgroundColor: "#FFF4E5",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#FFE0B2",
+  },
+  securityAlertHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  securityAlertEmoji: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  securityAlertText: {
+    color: "#BF360C",
+    marginBottom: 12,
+    fontSize: 13,
+  },
+  securityAlertButton: {
+    backgroundColor: "#E65100",
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  securityAlertButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
+  listHeaderTitleContainer: {
+    marginBottom: 12,
+  },
   title: {
     fontSize: 24,
     fontWeight: "bold",
     marginHorizontal: 16,
     marginBottom: 12,
   },
-  cardContainer: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    elevation: 2,
+  footerButton: {
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
-  deleteButton: {
-    marginTop: 8,
-    alignSelf: "flex-end",
-    backgroundColor: "#ff4d4f",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+  stickyButtonContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "transparent",
+    paddingTop: 12,
+  },
+  tabContainer: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: "#eee",
     borderRadius: 8,
+    padding: 4,
   },
-  deleteText: {
-    color: "#fff",
-    fontWeight: "bold",
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 6,
+    zIndex: 1,
+  },
+  tabIndicator: {
+    position: "absolute",
+    top: 4,
+    bottom: 4,
+    left: 4,
+    backgroundColor: "#fff",
+    borderRadius: 6,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#888",
+  },
+  activeTabText: {
+    color: "#000",
   },
 });

@@ -16,7 +16,12 @@ export function formatCardNumber(cardNumber: string): string {
   else if (len === 15) groups = [4, 6, 5];
   else if (len === 14) groups = [4, 6, 4];
   else if (len === 13) groups = [4, 4, 5];
-  else groups = [4, 4, 4, 4]; // fallback
+  else {
+    // Dynamic grouping for other lengths (e.g. 19)
+    for (let i = 0; i < len; i += 4) {
+      groups.push(Math.min(4, len - i));
+    }
+  }
 
   const parts: string[] = [];
   let index = 0;
