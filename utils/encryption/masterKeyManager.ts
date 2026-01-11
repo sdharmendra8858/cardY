@@ -74,9 +74,9 @@ export async function getMasterKey(): Promise<string> {
     if (__DEV__) console.log("🔑 Generating new master encryption key...");
     const newKey = generateMasterKey();
 
-    // Store in secure storage with biometric authentication
+    // Store in secure storage - disable biometric requirement for encryption tasks
     await SecureStore.setItemAsync(MASTER_KEY_ID, newKey, {
-      requireAuthentication: !__DEV__, // Biometric auth in production only
+      requireAuthentication: false, // User requested no biometric on add/update
     });
     if (__DEV__) console.log("✅ Master key generated and stored securely");
 
