@@ -1,5 +1,5 @@
+import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
-import NativeAd from "@/components/NativeAd";
 import { useAlert } from "@/context/AlertContext";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";

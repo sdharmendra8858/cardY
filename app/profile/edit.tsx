@@ -1,5 +1,5 @@
 import AdBanner from "@/components/AdBanner";
-import InterstitialAd, { showInterstitialAd } from "@/components/InterstitialAd";
+import InterstitialAd, { showInterstitialAd } from "@/components/AdInterstitial";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";

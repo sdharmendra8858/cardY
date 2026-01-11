@@ -33,7 +33,7 @@ export default function ExpiryBadge({ cardExpiresAt }: ExpiryBadgeProps) {
     }, [timerTick, cardExpiresAt]);
 
     const getTimeRemainingText = () => {
-        if (isExpired) return "Expired";
+        if (isExpired) return "Validity Ended";
         if (remaining < 60) return `${remaining}s`;
         if (remaining < 3600) return `${Math.floor(remaining / 60)}m`;
         if (remaining < 86400) return `${Math.floor(remaining / 3600)}h`;
@@ -49,7 +49,7 @@ export default function ExpiryBadge({ cardExpiresAt }: ExpiryBadgeProps) {
             { backgroundColor: isExpired ? "rgba(255, 59, 48, 0.8)" : isExpiringSoon ? "rgba(255, 193, 7, 0.8)" : "rgba(76, 175, 80, 0.8)" }
         ]}>
             <Text style={styles.badgeText}>
-                {isExpired ? "⏰ Expired" : `⏱️ ${getTimeRemainingText()}`}
+                {isExpired ? "⏰ Validity Ended" : `⏱️ ${getTimeRemainingText()}`}
             </Text>
         </View>
     );

@@ -31,3 +31,9 @@ export {
     zeroUint8Array
 } from "./memoryZeroing";
 
+export {
+    checkDeviceSecurity,
+    handleCompromisedDevice,
+    hasDeviceLockOrBiometric,
+    type DeviceSecurityCheckResult
+} from "./rootJailbreakDetection";
