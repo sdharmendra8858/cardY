@@ -1,7 +1,6 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
-import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
@@ -17,11 +16,12 @@ import {
   getCards as secureGetCards,
   removeCard as secureRemoveCards,
 } from "@/utils/secureStorage";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -52,6 +52,10 @@ export default function HomeScreen() {
   >([]);
 
   const router = useRouter();
+  const [showWarning, setShowWarning] = useState(false);
+  const [tooltipTop, setTooltipTop] = useState(0);
+  const [tooltipLeft, setTooltipLeft] = useState(0);
+  const iconRef = useRef<View>(null);
   const [profileName, setProfileName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
@@ -273,14 +277,50 @@ export default function HomeScreen() {
         {/* Title and Info */}
         {cards.length !== 0 && (
           <View style={styles.listHeaderTitleContainer}>
-            <ThemedText type="title" style={styles.title}>
-              Your Cards
-            </ThemedText>
-            <InfoBox
-              message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
-              type="warning"
-              style={{ marginHorizontal: 16, marginBottom: 12 }}
-            />
+            <View style={styles.titleRow}>
+              <ThemedText type="title" style={styles.title}>
+                Your Cards
+              </ThemedText>
+              <Pressable
+                ref={iconRef}
+                onPress={() => {
+                  if (iconRef.current) {
+                    iconRef.current.measure((x, y, width, height, px, py) => {
+                      setTooltipTop(py + height);
+                      setTooltipLeft(px);
+                      setShowWarning(true);
+                    });
+                  }
+                }}
+                hitSlop={20}
+              >
+                <Ionicons
+                  name={showWarning ? "information-circle" : "information-circle-outline"}
+                  size={22}
+                  color={showWarning ? palette.primary : palette.icon}
+                />
+              </Pressable>
+            </View>
+
+            <Modal
+              transparent
+              visible={showWarning}
+              onRequestClose={() => setShowWarning(false)}
+              animationType="fade"
+            >
+              <Pressable
+                style={styles.backdrop}
+                onPress={() => setShowWarning(false)}
+              />
+              <View
+                style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
+              >
+                <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
+                <ThemedText style={styles.tooltipText}>
+                  Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently.
+                </ThemedText>
+              </View>
+            </Modal>
           </View>
         )}
 
@@ -331,6 +371,9 @@ export default function HomeScreen() {
       activeTab,
       containerWidth,
       router,
+      showWarning,
+      tooltipTop,
+      tooltipLeft,
     ]
   );
 
@@ -470,12 +513,56 @@ const styles = StyleSheet.create({
   },
   listHeaderTitleContainer: {
     marginBottom: 12,
+    paddingHorizontal: 16,
+    zIndex: 1000, // Ensure tooltip appears above list items
+    elevation: 1000, // Android z-index equivalent
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginHorizontal: 16,
-    marginBottom: 12,
+    marginRight: 8,
+  },
+  tooltipContainer: {
+    position: 'absolute',
+    // top is set dynamically via style prop
+    left: 20,
+    right: 20,
+    padding: 12,
+    backgroundColor: '#FFF4E5', // Warning background
+    borderRadius: 8,
+    // Remove zIndex/elevation as Modal handles stacking
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    top: -8,
+    // left is set dynamically via style prop
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#FFF4E5', // Match warning background
+  },
+  tooltipText: {
+    color: '#BF360C', // Warning text color
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   footerButton: {
     marginHorizontal: 16,
