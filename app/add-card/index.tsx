@@ -18,6 +18,7 @@ import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
+import NfcScanButton from "./components/NfcScanButton";
 import ScanButton from "./components/ScanButton";
 
 export default function AddCardScreen() {
@@ -214,6 +215,10 @@ export default function AddCardScreen() {
     router.push("/add-card/scan");
   };
 
+  const handleNfcScan = () => {
+    router.push("/add-card/nfc");
+  };
+
   const handleManualAdd = async (card: {
     id: string;
     cardNumber: string;
@@ -312,7 +317,14 @@ export default function AddCardScreen() {
       >
         {!hideScanButton && (
           <>
-            <ScanButton onPress={handleScan} />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <ScanButton onPress={handleScan} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <NfcScanButton onPress={handleNfcScan} />
+              </View>
+            </View>
 
             <View style={styles.orSeparatorContainer}>
               <View

@@ -52,6 +52,8 @@ const COLOR_PALETTE = [
   "#000000", // Black
 ];
 
+const GENERIC_NETWORK_NAMES = ["VISA", "MASTERCARD", "RUPAY", "AMEX", "DISCOVER", "DINERS", "JCB", "MAESTRO", "ENROUTE"];
+
 interface CardFormProps {
   onSubmit: (card: {
     id: string;
@@ -159,15 +161,23 @@ export default function CardForm({
   const [cvv, setCvv] = useState(defaultCvv);
   const [bank, setBank] = useState<string | null>(() => {
     if (!defaultBank) return null;
+    const bankUpper = defaultBank.toUpperCase();
+    const isGeneric = GENERIC_NETWORK_NAMES.some(net => bankUpper.includes(net));
+    if (isGeneric) return null;
+
     const exists = BANK_OPTIONS.some(
-      (option) => option.value === defaultBank.toUpperCase()
+      (option) => option.value === bankUpper
     );
-    return exists ? defaultBank.toUpperCase() : "OTHER";
+    return exists ? bankUpper : "OTHER";
   });
   const [customBank, setCustomBank] = useState(() => {
     if (!defaultBank) return "";
+    const bankUpper = defaultBank.toUpperCase();
+    const isGeneric = GENERIC_NETWORK_NAMES.some(net => bankUpper.includes(net));
+    if (isGeneric) return "";
+
     const exists = BANK_OPTIONS.some(
-      (option) => option.value === defaultBank.toUpperCase()
+      (option) => option.value === bankUpper
     );
     return exists ? "" : defaultBank;
   });
@@ -268,6 +278,53 @@ export default function CardForm({
       setCardKindOpen(false);
     }
   }, [cardUserOpen]);
+
+  // Sync with NFC/Scan results
+  useEffect(() => {
+    if (defaultCardNumber) {
+      const clean = defaultCardNumber.replace(/\D/g, "");
+      setCardNumber(defaultCardNumber);
+      setCardType(getCardType(clean));
+    }
+
+    if (defaultCardHolder) setCardHolder(defaultCardHolder);
+    if (defaultExpiry) setExpiry(formatExpiryForDisplay(defaultExpiry));
+
+    if (defaultBank) {
+      const bankUpper = defaultBank.toUpperCase();
+      const exists = BANK_OPTIONS.some(option => option.value === bankUpper);
+
+      setBank(prevBank => {
+        if (prevBank && prevBank !== "OTHER") return prevBank;
+        if (exists) {
+          setCustomBank("");
+          return bankUpper;
+        } else {
+          const isGeneric = GENERIC_NETWORK_NAMES.some(net => bankUpper.includes(net));
+          if (isGeneric) {
+            return prevBank;
+          }
+          setCustomBank(defaultBank);
+          return "OTHER";
+        }
+      });
+
+      if (bankUpper.includes("DEBIT")) setCardKind("debit");
+      if (bankUpper.includes("CREDIT")) setCardKind("credit");
+    }
+
+    if (defaultCardKind) setCardKind(defaultCardKind);
+    if (defaultCobrandName) setCobrandName(defaultCobrandName);
+    if (defaultDominantColor) setDominantColor(defaultDominantColor);
+  }, [
+    defaultCardNumber,
+    defaultCardHolder,
+    defaultExpiry,
+    defaultBank,
+    defaultCardKind,
+    defaultCobrandName,
+    defaultDominantColor
+  ]);
 
 
 
@@ -579,6 +636,9 @@ export default function CardForm({
                 setCardNumber(digitsOnly);
                 const detectedType = getCardType(digitsOnly);
                 setCardType(detectedType);
+
+                // BIN identification removed per user request.
+                // Categorization is now strictly via NFC/Scan or manual entry.
               }}
               maxLength={23}
               keyboardType="number-pad"
