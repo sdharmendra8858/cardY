@@ -15,8 +15,8 @@ interface AdBannerProps {
 }
 
 const adUnitId = __DEV__
-        ? TestIds.BANNER
-        : ADMOB_CONFIG.bannerAdUnitId;
+    ? TestIds.BANNER
+    : ADMOB_CONFIG.bannerAdUnitId;
 
 export default function AdBanner({ style }: AdBannerProps) {
     const scheme = useColorScheme() ?? "light";

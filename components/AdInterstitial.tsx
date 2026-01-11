@@ -21,7 +21,9 @@ export class InterstitialAdManager {
 
   private createAd(): RNInterstitialAd {
     // Use test ID for development, production ID for production
-    const adUnitId = __DEV__ ? TestIds.INTERSTITIAL : ADMOB_CONFIG.interstitialAdUnitId || '';
+    const adUnitId = __DEV__
+      ? TestIds.INTERSTITIAL
+      : ADMOB_CONFIG.interstitialAdUnitId || '';
 
     const ad = RNInterstitialAd.createForAdRequest(adUnitId, {
       requestNonPersonalizedAdsOnly: true,

@@ -14,11 +14,13 @@ import Toast from "react-native-toast-message";
 import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from "@/context/AlertContext";
 import { CardProvider, TimerProvider } from "@/context/CardContext";
+import { SecurityProvider } from "@/context/SecurityContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // 👇 import your Android native lock module wrapper
 import AuthRequired from "@/components/AuthRequired";
+import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
 import { Colors } from "@/constants/theme";
 import { ThemeOverrideProvider } from "@/context/ThemeContext";
 import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
@@ -165,19 +167,22 @@ function AppShell() {
     <NavThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <SafeAreaProvider>
         <AlertProvider>
-          <CardProvider>
-            <TimerProvider>
-              <Stack screenOptions={{ headerShown: false }} />
-              <TermsPopup />
-              <StatusBar
-                style={barStyle}
-                backgroundColor={barBg}
-                translucent={false}
-                animated
-              />
-              <Toast position="bottom" visibilityTime={3000} />
-            </TimerProvider>
-          </CardProvider>
+          <SecurityProvider>
+            <CardProvider>
+              <TimerProvider>
+                <CompromisedDeviceModal />
+                <Stack screenOptions={{ headerShown: false }} />
+                <TermsPopup />
+                <StatusBar
+                  style={barStyle}
+                  backgroundColor={barBg}
+                  translucent={false}
+                  animated
+                />
+                <Toast position="bottom" visibilityTime={3000} />
+              </TimerProvider>
+            </CardProvider>
+          </SecurityProvider>
         </AlertProvider>
       </SafeAreaProvider>
     </NavThemeProvider>

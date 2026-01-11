@@ -3,7 +3,34 @@
  * Handles automatic removal of imported cards when they expire
  */
 
-import { getCards, setCards } from "./secureStorage";
+import type { EncryptionResult } from "./encryption/cardEncryption";
+import { setCards } from "./secureStorage";
+
+// Import the unmasked cards getter for cleanup operations
+async function getUnmaskedCards() {
+  const { STORAGE_KEY_UNMASKED } = await import("./secureStorage");
+  const SecureStore = (await import("expo-secure-store")).default;
+  const { decryptCards } = await import("./encryption/cardEncryption");
+
+  try {
+    const value = await SecureStore.getItemAsync(STORAGE_KEY_UNMASKED, {
+      keychainService: STORAGE_KEY_UNMASKED,
+    });
+
+    if (!value) return [];
+
+    const encryptionResult: EncryptionResult = JSON.parse(value);
+    const decrypted = await decryptCards(encryptionResult);
+
+    if (Array.isArray(decrypted)) {
+      return decrypted as any[];
+    }
+    return [];
+  } catch (error) {
+    console.error("❌ Failed to retrieve unmasked cards in expiry cleanup:", error);
+    return [];
+  }
+}
 
 /**
  * Check and remove expired cards
@@ -13,7 +40,7 @@ import { getCards, setCards } from "./secureStorage";
  */
 export async function cleanupExpiredCards(): Promise<string[]> {
   try {
-    const cards = await getCards();
+    const cards = await getUnmaskedCards();
     const now = Math.floor(Date.now() / 1000);
     const expiredCardIds: string[] = [];
 

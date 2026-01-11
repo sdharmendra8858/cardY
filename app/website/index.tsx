@@ -1,5 +1,5 @@
+import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
-import NativeAd from "@/components/NativeAd";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";

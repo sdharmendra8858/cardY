@@ -1,8 +1,10 @@
 /**
- * AES-256-GCM Encryption/Decryption
+ * Card Encryption/Decryption for Card Sharing
  * Implements AES-256-GCM per spec 8.4 and 10.4
  * 
  * Uses expo-crypto for cryptographic operations
+ * Note: This is for card sharing between devices, not main card storage
+ * Main card storage uses utils/encryption/cardEncryption.ts with react-native-aes-crypto
  */
 
 import * as Crypto from "expo-crypto";

@@ -8,15 +8,10 @@ import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
-import { useTimer } from "@/context/CardContext";
+import { useCards, useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { maskAndFormatCardNumber } from "@/utils/mask";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
-import {
-  getCards as secureGetCards,
-  removeCard as secureRemoveCards,
-} from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -31,9 +26,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   useScreenProtection();
   const { showAlert } = useAlert();
-  const { timerTick } = useTimer();
+  const { cards: contextCards, removeCard } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+
+  // Only subscribe to timer if there are "other" cards with non-infinity expiry
+  const hasExpiringOtherCards = React.useMemo(() => {
+    return contextCards.some(card =>
+      card.cardUser === "other" && card.cardExpiresAt !== undefined
+    );
+  }, [contextCards]);
+
+  // Conditionally use timer only when needed for optimization
+  const { timerTick } = hasExpiringOtherCards ? useTimer() : { timerTick: 0 };
   const [cards, setCards] = useState<
     {
       id: string;
@@ -100,14 +105,11 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchCards = async () => {
-    try {
-      const cardList = await secureGetCards();
-      setCards(cardList.map((c: any) => ({ id: c.id, ...c })));
-    } catch (err) {
-      console.error("Failed to load cards", err);
-    }
-  };
+  // Sync context cards to local state
+  React.useEffect(() => {
+    setCards(contextCards);
+  }, [contextCards]);
+
 
   // Check for expired cards and animate their removal
   const checkExpiredCards = React.useCallback(async () => {
@@ -160,10 +162,13 @@ export default function HomeScreen() {
     }
   }, [cards, showAlert]);
 
-  // Check for expired cards every second
+  // Check for expired cards every second (only when there are expiring cards)
   React.useEffect(() => {
+    // Skip if no expiring cards exist
+    if (!hasExpiringOtherCards) return;
+
     checkExpiredCards();
-  }, [timerTick, checkExpiredCards]);
+  }, [timerTick, checkExpiredCards, hasExpiringOtherCards]);
 
   const fetchProfile = async () => {
     try {
@@ -180,16 +185,15 @@ export default function HomeScreen() {
     }
   };
 
-  // Load saved cards and profile
+  // Load profile and settings
   useFocusEffect(
     useCallback(() => {
-      fetchCards();
       fetchProfile();
       checkSecuritySettings();
     }, [])
   );
 
-  const handleRemoveCard = (id: string) => {
+  const handleRemoveCard = React.useCallback((id: string) => {
     showAlert({
       title: "Remove Card",
       message: "Are you sure you want to delete this card?",
@@ -199,13 +203,13 @@ export default function HomeScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await secureRemoveCards(id);
-            await fetchCards();
+            await removeCard(id);
           },
         },
       ],
     });
-  };
+  }, [showAlert, removeCard]);
+
 
   const tabIndicatorStyle = useAnimatedStyle(() => {
     const tabWidth = (containerWidth - 8) / 2;
@@ -336,12 +340,34 @@ export default function HomeScreen() {
 
   const renderFooter = () => null;
 
-  const filteredCards = cards.filter((card) => {
-    if (activeTab === "self") {
-      return !card.cardUser || card.cardUser === "self";
-    }
-    return card.cardUser === "other";
-  });
+  const filteredCards = React.useMemo(() => {
+    return cards.filter((card) => {
+      if (activeTab === "self") {
+        return !card.cardUser || card.cardUser === "self";
+      }
+      return card.cardUser === "other";
+    });
+  }, [cards, activeTab]);
+
+  const renderCardItem = React.useCallback(({ item }: { item: any }) => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <CardItem
+        id={item.id}
+        cardName={item.bank || item.cardName || `Unknown Bank`}
+        cardNumber={item.cardNumber}
+        cardHolder={item.cardHolder}
+        onDelete={handleRemoveCard}
+        cardKind={item.cardKind}
+        cobrandName={item.cobrandName}
+        cardUser={item.cardUser}
+        dominantColor={item.dominantColor}
+        cardExpiresAt={item.cardExpiresAt}
+        expiry={item.expiry}
+        isExpiring={item.isExpiring}
+      />
+    </View>
+  ), [handleRemoveCard]);
+
 
   return (
     <SafeAreaView
@@ -352,26 +378,9 @@ export default function HomeScreen() {
         <FlatList
           data={filteredCards}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={{ paddingHorizontal: 16 }}>
-              <CardItem
-                id={item.id}
-                cardName={item.bank || item.cardName || `Unknown Bank`}
-                cardNumber={maskAndFormatCardNumber(item.cardNumber)}
-                cardHolder={item.cardHolder}
-                expiry={item.expiry}
-                onDelete={handleRemoveCard}
-                cardKind={item.cardKind}
-                cobrandName={item.cobrandName}
-                cardUser={item.cardUser}
-                dominantColor={item.dominantColor}
-                cardExpiresAt={item.cardExpiresAt}
-                isExpiring={item.isExpiring}
-              />
-            </View>
-          )}
+          renderItem={renderCardItem}
           ListHeaderComponent={ListHeader}
-          ListEmptyComponent={() => (
+          ListEmptyComponent={React.useMemo(() => () => (
             <NoCards
               showButton={cards.length === 0}
               message={
@@ -380,7 +389,7 @@ export default function HomeScreen() {
                   : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
               }
             />
-          )}
+          ), [cards.length, activeTab])}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />

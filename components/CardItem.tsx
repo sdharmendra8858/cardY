@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons"; // ✅ icon library included with
 import { useRouter } from "expo-router";
 import React from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { formatCardNumber } from "../utils/formatCardNumber";
 import ExpiryBadge from "./ExpiryBadge";
 
 type CardItemProps = {
@@ -10,14 +11,15 @@ type CardItemProps = {
   cardName: string;
   cardNumber: string;
   cardHolder: string;
-  expiry: string;
   onDelete?: (id: string) => void;
+  onReveal?: (id: string) => void;
   cardKind?: "credit" | "debit";
   cobrandName?: string;
   cardUser?: "self" | "other";
   dominantColor?: string;
-  cardExpiresAt?: number; // Unix timestamp - when imported card expires
-  isExpiring?: boolean; // For expiry animation
+  cardExpiresAt?: number;
+  expiry?: string;
+  isExpiring?: boolean;
 };
 
 export default function CardItem({
@@ -25,20 +27,22 @@ export default function CardItem({
   cardNumber,
   cardName,
   cardHolder,
-  expiry,
   onDelete,
+  onReveal,
   cardKind,
   cobrandName,
   cardUser,
   dominantColor = "#4b7bec",
   cardExpiresAt,
+  expiry,
   isExpiring = false,
 }: CardItemProps) {
   const router = useRouter();
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
 
+  // Calculate expiry status
   const isExpired = cardExpiresAt ? Math.floor(Date.now() / 1000) > cardExpiresAt : false;
-  const isInfinite = !cardExpiresAt && cardUser === "other"; // Imported card with no expiry
+  const isInfinite = !cardExpiresAt && cardUser === "other";
 
   // Animate card removal when expiring
   React.useEffect(() => {
@@ -50,6 +54,10 @@ export default function CardItem({
       }).start();
     }
   }, [isExpiring, fadeAnim]);
+
+  // Format card number properly with spaces and X's
+  const displayCardNumber = formatCardNumber(cardNumber.replace(/\*/g, 'X'));
+
 
   return (
     <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
@@ -87,15 +95,14 @@ export default function CardItem({
           </View>
         </View>
 
-        <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.cardNumber, { opacity: isExpired ? 0.6 : 1 }]}>{cardNumber}</Text>
+        <Text style={[styles.cardNumber, { opacity: isExpired ? 0.6 : 1 }]}>{displayCardNumber}</Text>
 
         {/* Cobrand name if present */}
         {cobrandName && (
           <Text style={[styles.cobrandName, { opacity: isExpired ? 0.6 : 1 }]}>{cobrandName}</Text>
         )}
 
-        <Text style={[styles.cardHolder, { opacity: isExpired ? 0.6 : 1 }]}>{cardHolder}</Text>
-        <Text style={[styles.expiry, { opacity: isExpired ? 0.6 : 1 }]}>Expires: {expiry}</Text>
+        <Text style={styles.cardHolder}>{cardHolder}</Text>
 
         {isExpired && (
           <View style={styles.expiredOverlay}>
@@ -148,7 +155,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "bold",
   },
-  cardNumber: { color: "white", fontSize: 18, fontWeight: "bold", marginBottom: 4 },
+  cardNumber: { color: "white", fontSize: 18, fontWeight: "bold", marginBottom: 4, flexShrink: 1 },
   cobrandName: {
     color: "white",
     fontSize: 14,

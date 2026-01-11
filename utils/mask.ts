@@ -14,7 +14,7 @@ export function maskAndFormatCardNumber(cardNumber: string): string {
   const visibleCount = 4;
   const maskedArray = clean
     .split("")
-    .map((d, i) => (i < clean.length - visibleCount ? "x" : d));
+    .map((d, i) => (i < clean.length - visibleCount ? "X" : d));
 
   const maskedString = maskedArray.join("");
   return formatCardNumber(maskedString);
