@@ -4,10 +4,14 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCardType } from "@/utils/CardType";
 import { generateRandomString } from "@/utils/random";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
+  Keyboard,
+  Pressable,
   StyleSheet, Text, TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -153,10 +157,23 @@ export default function CardForm({
   const [cardHolder, setCardHolder] = useState(defaultCardHolder);
   const [expiry, setExpiry] = useState(defaultExpiry);
   const [cvv, setCvv] = useState(defaultCvv);
-  const [bank, setBank] = useState(defaultBank);
-  const [customBank, setCustomBank] = useState("");
+  const [bank, setBank] = useState<string | null>(() => {
+    if (!defaultBank) return null;
+    const exists = BANK_OPTIONS.some(
+      (option) => option.value === defaultBank.toUpperCase()
+    );
+    return exists ? defaultBank.toUpperCase() : "OTHER";
+  });
+  const [customBank, setCustomBank] = useState(() => {
+    if (!defaultBank) return "";
+    const exists = BANK_OPTIONS.some(
+      (option) => option.value === defaultBank.toUpperCase()
+    );
+    return exists ? "" : defaultBank;
+  });
   const [bankOpen, setBankOpen] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
+  const [showCvv, setShowCvv] = useState(false);
   const [cardType, setCardType] = useState<string | null>(() => getCardType(defaultCardNumber.replace(/\D/g, "")));
 
   // New fields for enhanced categorization
@@ -177,15 +194,16 @@ export default function CardForm({
   const expiryRes = validateExpiry(expiry);
   const expiryValid = expiryRes.valid;
   const expiryError = expiryRes.message;
-  const cvvValid = cvv.length >= 3 && cvv.length <= 4;
+  const cvvValid = cvv.length === 0 || (cvv.length >= 3 && cvv.length <= 4);
   const bankValid =
     bank === "OTHER"
       ? customBank.trim().length > 0
-      : bank.length > 0;
+      : !!bank && bank.length > 0;
 
   const alphanumericRegex = /^[a-zA-Z0-9 ]*$/;
   const holderHasSpecialChars = !alphanumericRegex.test(cardHolder);
   const cobrandHasSpecialChars = !alphanumericRegex.test(cobrandName);
+  const bankHasSpecialChars = !alphanumericRegex.test(customBank);
 
   const isFormComplete =
     cardNumberValid &&
@@ -195,8 +213,19 @@ export default function CardForm({
     bankValid &&
     !containsProfanity(cardHolder) &&
     !containsProfanity(cobrandName) &&
+    !containsProfanity(customBank) &&
     !holderHasSpecialChars &&
-    !cobrandHasSpecialChars;
+    !cobrandHasSpecialChars &&
+    !bankHasSpecialChars;
+
+  const isAnyDropdownOpen = bankOpen || cardKindOpen || cardUserOpen;
+
+  const closeAllDropdowns = () => {
+    if (bankOpen) setBankOpen(false);
+    if (cardKindOpen) setCardKindOpen(false);
+    if (cardUserOpen) setCardUserOpen(false);
+    Keyboard.dismiss();
+  };
 
   const handleSubmit = () => {
     const bankToSave =
@@ -297,417 +326,455 @@ export default function CardForm({
   }
 
   return (
-    <View style={styles.form}>
-      {infoText && (
-        <ThemedText style={styles.info}>{infoText}</ThemedText>
-      )}
+    <TouchableWithoutFeedback onPress={closeAllDropdowns} accessible={false}>
+      <View style={styles.form}>
+        {isAnyDropdownOpen && (
+          <Pressable
+            style={[StyleSheet.absoluteFill, { zIndex: 500 }]}
+            onPress={closeAllDropdowns}
+          />
+        )}
+        {infoText && (
+          <ThemedText style={styles.info}>{infoText}</ThemedText>
+        )}
 
-      {/* Bank Picker */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Bank</ThemedText>
-        <DropDownPicker
-          open={bankOpen}
-          setOpen={setBankOpen}
-          value={bank}
-          setValue={setBank}
-          items={[
-            ...BANK_OPTIONS.sort((a, b) =>
-              a.label.localeCompare(b.label)
-            ),
-            { label: "Other", value: "OTHER" },
-          ]}
-          placeholder="Select a Bank"
-          style={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            minHeight: 50,
-          }}
-          dropDownContainerStyle={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            maxHeight: 200,
-          }}
-          textStyle={{ color: theme.text }}
-          placeholderStyle={{ color: theme.icon }}
-          labelStyle={{ color: theme.text }}
-          listItemLabelStyle={{ color: theme.text }}
-          selectedItemLabelStyle={{ color: theme.tint }}
-          listItemContainerStyle={{ backgroundColor: theme.card }}
-          listMode="SCROLLVIEW"
-          scrollViewProps={{
-            nestedScrollEnabled: true,
-          }}
-          zIndex={3000}
-          zIndexInverse={1000}
-        />
-      </View>
-
-      {bank === "OTHER" && (
+        {/* Bank Picker */}
         <View style={styles.field}>
-          <ThemedText style={styles.label}>Bank Name</ThemedText>
+          <ThemedText style={styles.label}>Bank</ThemedText>
+          <DropDownPicker
+            open={bankOpen}
+            setOpen={setBankOpen}
+            value={bank}
+            setValue={setBank}
+            items={[
+              ...BANK_OPTIONS.sort((a, b) =>
+                a.label.localeCompare(b.label)
+              ),
+              { label: "Other", value: "OTHER" },
+            ]}
+            placeholder="Select a Bank"
+            style={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              minHeight: 50,
+            }}
+            dropDownContainerStyle={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              maxHeight: 200,
+            }}
+            textStyle={{ color: theme.text }}
+            placeholderStyle={{ color: theme.icon }}
+            labelStyle={{ color: theme.text }}
+            listItemLabelStyle={{ color: theme.text }}
+            selectedItemLabelStyle={{ color: theme.tint }}
+            listItemContainerStyle={{ backgroundColor: theme.card }}
+            listMode="SCROLLVIEW"
+            scrollViewProps={{
+              nestedScrollEnabled: true,
+            }}
+            zIndex={3000}
+            zIndexInverse={1000}
+          />
+        </View>
+
+        {bank === "OTHER" && (
+          <View style={styles.field}>
+            <ThemedText style={styles.label}>Bank Name</ThemedText>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.card,
+                  borderColor:
+                    focused === "bank" ? theme.primary : theme.border,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="Enter bank name"
+              placeholderTextColor={theme.icon}
+              value={customBank}
+              onFocus={() => setFocused("bank")}
+              onBlur={() => setFocused(null)}
+              onChangeText={setCustomBank}
+              maxLength={20}
+            />
+            {/* Profanity warning */}
+            {containsProfanity(customBank) && (
+              <Text style={styles.errorText}>
+                Please remove inappropriate words.
+              </Text>
+            )}
+            {/* Special characters warning */}
+            {bankHasSpecialChars && (
+              <Text style={styles.errorText}>
+                Special characters are not allowed.
+              </Text>
+            )}
+          </View>
+        )}
+
+
+        {/* Card Kind */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Card Type</ThemedText>
+          <DropDownPicker
+            open={cardKindOpen}
+            setOpen={setCardKindOpen}
+            value={cardKind}
+            setValue={setCardKind}
+            items={CARD_KIND_OPTIONS}
+            placeholder="Select card type"
+            style={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              minHeight: 50,
+            }}
+            dropDownContainerStyle={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              maxHeight: 150,
+            }}
+            textStyle={{ color: theme.text }}
+            placeholderStyle={{ color: theme.icon }}
+            labelStyle={{ color: theme.text }}
+            listItemLabelStyle={{ color: theme.text }}
+            selectedItemLabelStyle={{ color: theme.tint }}
+            listItemContainerStyle={{ backgroundColor: theme.card }}
+            listMode="SCROLLVIEW"
+            scrollViewProps={{
+              nestedScrollEnabled: true,
+            }}
+            zIndex={2000}
+            zIndexInverse={2000}
+          />
+        </View>
+
+        {/* Cobrand Name */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Cobrand Name (Optional)</ThemedText>
           <TextInput
             style={[
               styles.input,
               {
                 backgroundColor: theme.card,
                 borderColor:
-                  focused === "bank" ? theme.primary : theme.border,
+                  focused === "cobrand" ? theme.primary : theme.border,
                 color: theme.text,
               },
             ]}
-            placeholder="Enter bank name"
+            placeholder="e.g., Amazon Pay, Flipkart, Swiggy"
             placeholderTextColor={theme.icon}
-            value={customBank}
-            onFocus={() => setFocused("bank")}
+            value={cobrandName}
+            onFocus={() => setFocused("cobrand")}
             onBlur={() => setFocused(null)}
-            onChangeText={setCustomBank}
+            onChangeText={setCobrandName}
+            maxLength={20}
+          />
+          {/* Profanity warning */}
+          {containsProfanity(cobrandName) && (
+            <Text style={styles.errorText}>
+              Please remove inappropriate words.
+            </Text>
+          )}
+          {/* Special characters warning */}
+          {cobrandHasSpecialChars && (
+            <Text style={styles.errorText}>
+              Special characters are not allowed.
+            </Text>
+          )}
+        </View>
+
+        {/* Card User - Disabled when coming from share screen */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Card User</ThemedText>
+          <DropDownPicker
+            open={cardUserOpen}
+            setOpen={setCardUserOpen}
+            value={cardUser}
+            setValue={setCardUser}
+            items={CARD_USER_OPTIONS}
+            placeholder="Select card user"
+            disabled={fromShare}
+            style={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              minHeight: 50,
+            }}
+            dropDownContainerStyle={{
+              borderColor: theme.border,
+              backgroundColor: theme.card,
+              maxHeight: 150,
+            }}
+            textStyle={{ color: theme.text }}
+            placeholderStyle={{ color: theme.icon }}
+            labelStyle={{ color: theme.text }}
+            listItemLabelStyle={{ color: theme.text }}
+            selectedItemLabelStyle={{ color: theme.tint }}
+            listItemContainerStyle={{ backgroundColor: theme.card }}
+            listMode="SCROLLVIEW"
+            scrollViewProps={{
+              nestedScrollEnabled: true,
+            }}
+            zIndex={1000}
+            zIndexInverse={3000}
           />
         </View>
-      )}
 
-
-      {/* Card Kind */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Card Type</ThemedText>
-        <DropDownPicker
-          open={cardKindOpen}
-          setOpen={setCardKindOpen}
-          value={cardKind}
-          setValue={setCardKind}
-          items={CARD_KIND_OPTIONS}
-          placeholder="Select card type"
-          style={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            minHeight: 50,
-          }}
-          dropDownContainerStyle={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            maxHeight: 150,
-          }}
-          textStyle={{ color: theme.text }}
-          placeholderStyle={{ color: theme.icon }}
-          labelStyle={{ color: theme.text }}
-          listItemLabelStyle={{ color: theme.text }}
-          selectedItemLabelStyle={{ color: theme.tint }}
-          listItemContainerStyle={{ backgroundColor: theme.card }}
-          listMode="SCROLLVIEW"
-          scrollViewProps={{
-            nestedScrollEnabled: true,
-          }}
-          zIndex={2000}
-          zIndexInverse={2000}
-        />
-      </View>
-
-      {/* Cobrand Name */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Cobrand Name (Optional)</ThemedText>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.card,
-              borderColor:
-                focused === "cobrand" ? theme.primary : theme.border,
-              color: theme.text,
-            },
-          ]}
-          placeholder="e.g., Amazon Pay, Flipkart, Swiggy"
-          placeholderTextColor={theme.icon}
-          value={cobrandName}
-          onFocus={() => setFocused("cobrand")}
-          onBlur={() => setFocused(null)}
-          onChangeText={setCobrandName}
-          maxLength={20}
-        />
-        {/* Profanity warning */}
-        {containsProfanity(cobrandName) && (
-          <Text style={styles.errorText}>
-            Please remove inappropriate words.
-          </Text>
-        )}
-        {/* Special characters warning */}
-        {cobrandHasSpecialChars && (
-          <Text style={styles.errorText}>
-            Special characters are not allowed.
-          </Text>
-        )}
-      </View>
-
-      {/* Card User - Disabled when coming from share screen */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Card User</ThemedText>
-        <DropDownPicker
-          open={cardUserOpen}
-          setOpen={setCardUserOpen}
-          value={cardUser}
-          setValue={setCardUser}
-          items={CARD_USER_OPTIONS}
-          placeholder="Select card user"
-          disabled={fromShare}
-          style={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            minHeight: 50,
-          }}
-          dropDownContainerStyle={{
-            borderColor: theme.border,
-            backgroundColor: theme.card,
-            maxHeight: 150,
-          }}
-          textStyle={{ color: theme.text }}
-          placeholderStyle={{ color: theme.icon }}
-          labelStyle={{ color: theme.text }}
-          listItemLabelStyle={{ color: theme.text }}
-          selectedItemLabelStyle={{ color: theme.tint }}
-          listItemContainerStyle={{ backgroundColor: theme.card }}
-          listMode="SCROLLVIEW"
-          scrollViewProps={{
-            nestedScrollEnabled: true,
-          }}
-          zIndex={1000}
-          zIndexInverse={3000}
-        />
-      </View>
-
-      {/* Dominant Color Picker */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Card Theme Color</ThemedText>
-        <View style={styles.colorPalette}>
-          {COLOR_PALETTE.map((color) => (
-            <TouchableOpacity
-              key={color}
-              style={[
-                styles.colorOption,
-                { backgroundColor: color },
-                dominantColor === color && styles.selectedColor,
-              ]}
-              onPress={() => setDominantColor(color)}
-            >
-              {dominantColor === color && (
-                <View style={styles.colorCheckmark}>
-                  <ThemedText style={styles.checkmarkText}>✓</ThemedText>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+        {/* Dominant Color Picker */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Card Theme Color</ThemedText>
+          <View style={styles.colorPalette}>
+            {COLOR_PALETTE.map((color) => (
+              <TouchableOpacity
+                key={color}
+                style={[
+                  styles.colorOption,
+                  { backgroundColor: color },
+                  dominantColor === color && styles.selectedColor,
+                ]}
+                onPress={() => setDominantColor(color)}
+              >
+                {dominantColor === color && (
+                  <View style={styles.colorCheckmark}>
+                    <ThemedText style={styles.checkmarkText}>✓</ThemedText>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
 
-      {/* Card Number */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Card Number</ThemedText>
+        {/* Card Number */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Card Number</ThemedText>
 
-        {/* Unified styled input with inline icon */}
-        <View
-          style={[
-            styles.inputRow,
-            {
-              borderColor:
-                focused === "cardNumber" ? theme.primary : theme.border,
-              backgroundColor: theme.card,
-            },
-            !cardNumberValid && cardNumberDigits.length >= 13
-              ? styles.inputError
-              : null,
-          ]}
-        >
+          {/* Unified styled input with inline icon */}
+          <View
+            style={[
+              styles.inputRow,
+              {
+                borderColor:
+                  focused === "cardNumber" ? theme.primary : theme.border,
+                backgroundColor: theme.card,
+              },
+              !cardNumberValid && cardNumberDigits.length >= 13
+                ? styles.inputError
+                : null,
+              isEditMode && { opacity: 0.6 },
+            ]}
+          >
+            <TextInput
+              style={[
+                styles.inputField,
+                { color: theme.text, backgroundColor: "transparent" }, // 👈 no gray patch
+              ]}
+              placeholder="Enter card number"
+              placeholderTextColor={theme.icon}
+              value={formatCardNumberForDisplay(cardNumber)}
+              onFocus={() => setFocused("cardNumber")}
+              onBlur={() => setFocused(null)}
+              onChangeText={(text) => {
+                const digitsOnly = text.replace(/[^0-9]/g, "").slice(0, 19);
+                setCardNumber(digitsOnly);
+                const detectedType = getCardType(digitsOnly);
+                setCardType(detectedType);
+              }}
+              maxLength={23}
+              keyboardType="number-pad"
+              editable={!isEditMode}
+            />
+
+            {(() => {
+              const CardIcon = getCardIcon(cardType);
+              if (CardIcon) {
+                return (
+                  <View style={styles.iconHolder}>
+                    <CardIcon
+                      width={32}
+                      height={22}
+                      fill={theme.text}
+                      color={theme.text}
+                    />
+                  </View>
+                );
+              }
+              if (cardType) {
+                return (
+                  <View style={styles.iconHolder}>
+                    <ThemedText style={styles.cardTypeText}>{cardType}</ThemedText>
+                  </View>
+                );
+              }
+              return null;
+            })()}
+          </View>
+
+          {cardNumberDigits.length >= 13 && !cardNumberValid && (
+            <Text style={styles.errorText}>
+              Invalid card number.
+            </Text>
+          )}
+        </View>
+
+        {/* Card Holder */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Card Holder</ThemedText>
           <TextInput
             style={[
-              styles.inputField,
-              { color: theme.text, backgroundColor: "transparent" }, // 👈 no gray patch
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor:
+                  focused === "holder" ? theme.primary : theme.border,
+                color: theme.text,
+              },
+              !holderValid && cardHolder.length > 0
+                ? styles.inputError
+                : null,
             ]}
-            placeholder="Enter card number"
+            placeholder="Enter card holder name"
             placeholderTextColor={theme.icon}
-            value={formatCardNumberForDisplay(cardNumber)}
-            onFocus={() => setFocused("cardNumber")}
+            value={cardHolder}
+            onFocus={() => setFocused("holder")}
             onBlur={() => setFocused(null)}
-            onChangeText={(text) => {
-              const digitsOnly = text.replace(/[^0-9]/g, "").slice(0, 19);
-              setCardNumber(digitsOnly);
-              const detectedType = getCardType(digitsOnly);
-              setCardType(detectedType);
-            }}
-            maxLength={23}
-            keyboardType="number-pad"
+            onChangeText={setCardHolder}
           />
-
-          {(() => {
-            const CardIcon = getCardIcon(cardType);
-            if (CardIcon) {
-              return (
-                <View style={styles.iconHolder}>
-                  <CardIcon
-                    width={32}
-                    height={22}
-                    fill={theme.text}
-                    color={theme.text}
-                  />
-                </View>
-              );
-            }
-            if (cardType) {
-              return (
-                <View style={styles.iconHolder}>
-                  <ThemedText style={styles.cardTypeText}>{cardType}</ThemedText>
-                </View>
-              );
-            }
-            return null;
-          })()}
+          {!holderValid && cardHolder.length > 0 && (
+            <Text style={styles.errorText}>
+              Enter a valid name (at least 3 letters).
+            </Text>
+          )}
+          {/* Profanity warning */}
+          {containsProfanity(cardHolder) && (
+            <Text style={styles.errorText}>
+              Please remove inappropriate words.
+            </Text>
+          )}
+          {/* Special characters warning */}
+          {holderHasSpecialChars && (
+            <Text style={styles.errorText}>
+              Special characters are not allowed.
+            </Text>
+          )}
         </View>
 
-        {cardNumberDigits.length >= 13 && !cardNumberValid && (
-          <Text style={styles.errorText}>
-            Invalid card number.
-          </Text>
-        )}
-      </View>
+        {/* Expiry */}
+        <View style={styles.field}>
+          <ThemedText style={styles.label}>Expiry</ThemedText>
 
-      {/* Card Holder */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Card Holder</ThemedText>
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.card,
-              borderColor:
-                focused === "holder" ? theme.primary : theme.border,
-              color: theme.text,
-            },
-            !holderValid && cardHolder.length > 0
-              ? styles.inputError
-              : null,
-          ]}
-          placeholder="Enter card holder name"
-          placeholderTextColor={theme.icon}
-          value={cardHolder}
-          onFocus={() => setFocused("holder")}
-          onBlur={() => setFocused(null)}
-          onChangeText={setCardHolder}
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.card,
+                borderColor:
+                  focused === "expiry" ? theme.primary : theme.border,
+                color: theme.text,
+              },
+              expiryDigits.length === 4 && !expiryValid
+                ? styles.inputError
+                : null,
+            ]}
+            placeholder="MM/YY"
+            placeholderTextColor={theme.icon}
+            value={formatExpiryForDisplay(expiry)}
+            onFocus={() => setFocused("expiry")}
+            onBlur={() => setFocused(null)}
+            onChangeText={(text) => {
+              const prevDisplay = formatExpiryForDisplay(expiry);
+              const isDeleting = text.length < prevDisplay.length;
+
+              // Handle deleting '/' correctly
+              if (
+                isDeleting &&
+                prevDisplay.endsWith("/") &&
+                text.length === prevDisplay.length - 1
+              ) {
+                setExpiry(expiry.slice(0, -1));
+                return;
+              }
+
+              const normalized = normalizeExpiryDigits(text);
+              setExpiry(normalized);
+            }}
+            maxLength={5}
+            keyboardType="number-pad"
+            inputMode="numeric"
+          />
+
+          {/* Dynamic error messages */}
+          {expiryDigits.length === 4 && !expiryValid && (
+            <Text style={styles.errorText}>
+              {expiryError || "Invalid expiry date."}
+            </Text>
+          )}
+        </View>
+
+        <View
+          style={styles.field}
+          onLayout={(e) => onCvvLayout?.(e.nativeEvent.layout.y)}
+        >
+          <ThemedText style={styles.label}>CVV (Optional)</ThemedText>
+          <View
+            style={[
+              styles.inputRow,
+              {
+                borderColor:
+                  focused === "cvv" ? theme.primary : theme.border,
+                backgroundColor: theme.card,
+              },
+              !cvvValid && cvv.length > 0 ? styles.inputError : null,
+            ]}
+          >
+            <TextInput
+              ref={setCvvRef}
+              style={[
+                styles.inputField,
+                { color: theme.text, backgroundColor: "transparent" },
+              ]}
+              placeholder="CVV"
+              placeholderTextColor={theme.icon}
+              value={cvv}
+              keyboardType="number-pad"
+              secureTextEntry={!showCvv}
+              onFocus={() => {
+                setFocused("cvv");
+                onCvvFocus?.();
+              }}
+              onBlur={() => setFocused(null)}
+              onChangeText={(text) =>
+                setCvv(text.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              maxLength={4}
+            />
+            <TouchableOpacity
+              onPress={() => setShowCvv(!showCvv)}
+              style={styles.iconHolder}
+            >
+              <Ionicons
+                name={showCvv ? "eye-outline" : "eye-off-outline"}
+                size={20}
+                color={theme.icon}
+              />
+            </TouchableOpacity>
+          </View>
+          {!cvvValid && cvv.length > 0 && (
+            <Text style={styles.errorText}>
+              Invalid CVV.
+            </Text>
+          )}
+        </View>
+
+        <AppButton
+          title={isEditMode ? "Update Card" : "Add Card"}
+          onPress={handleSubmit}
+          fullWidth
+          variant="primary"
+          disabled={!isFormComplete || disabled}
         />
-        {!holderValid && cardHolder.length > 0 && (
-          <Text style={styles.errorText}>
-            Enter a valid name (at least 3 letters).
-          </Text>
-        )}
-        {/* Profanity warning */}
-        {containsProfanity(cardHolder) && (
-          <Text style={styles.errorText}>
-            Please remove inappropriate words.
-          </Text>
-        )}
-        {/* Special characters warning */}
-        {holderHasSpecialChars && (
-          <Text style={styles.errorText}>
-            Special characters are not allowed.
-          </Text>
-        )}
       </View>
-
-      {/* Expiry */}
-      <View style={styles.field}>
-        <ThemedText style={styles.label}>Expiry</ThemedText>
-
-        <TextInput
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.card,
-              borderColor:
-                focused === "expiry" ? theme.primary : theme.border,
-              color: theme.text,
-            },
-            expiryDigits.length === 4 && !expiryValid
-              ? styles.inputError
-              : null,
-          ]}
-          placeholder="MM/YY"
-          placeholderTextColor={theme.icon}
-          value={formatExpiryForDisplay(expiry)}
-          onFocus={() => setFocused("expiry")}
-          onBlur={() => setFocused(null)}
-          onChangeText={(text) => {
-            const prevDisplay = formatExpiryForDisplay(expiry);
-            const isDeleting = text.length < prevDisplay.length;
-
-            // Handle deleting '/' correctly
-            if (
-              isDeleting &&
-              prevDisplay.endsWith("/") &&
-              text.length === prevDisplay.length - 1
-            ) {
-              setExpiry(expiry.slice(0, -1));
-              return;
-            }
-
-            const normalized = normalizeExpiryDigits(text);
-            setExpiry(normalized);
-          }}
-          maxLength={5}
-          keyboardType="number-pad"
-          inputMode="numeric"
-        />
-
-        {/* Dynamic error messages */}
-        {expiryDigits.length === 4 && !expiryValid && (
-          <Text style={styles.errorText}>
-            {expiryError || "Invalid expiry date."}
-          </Text>
-        )}
-      </View>
-
-      {/* CVV */}
-      <View
-        style={styles.field}
-        onLayout={(e) => onCvvLayout?.(e.nativeEvent.layout.y)}
-      >
-        <ThemedText style={styles.label}>CVV</ThemedText>
-        <TextInput
-          ref={setCvvRef}
-          style={[
-            styles.input,
-            {
-              backgroundColor: theme.card,
-              borderColor:
-                focused === "cvv" ? theme.primary : theme.border,
-              color: theme.text,
-            },
-            !cvvValid && cvv.length > 0 ? styles.inputError : null,
-          ]}
-          placeholder="CVV"
-          placeholderTextColor={theme.icon}
-          value={cvv}
-          keyboardType="number-pad"
-          secureTextEntry
-          onFocus={() => {
-            setFocused("cvv");
-            onCvvFocus?.();
-          }}
-          onBlur={() => setFocused(null)}
-          onChangeText={(text) =>
-            setCvv(text.replace(/[^0-9]/g, "").slice(0, 4))
-          }
-          maxLength={4}
-        />
-        {!cvvValid && cvv.length > 0 && (
-          <Text style={styles.errorText}>
-            Invalid CVV.
-          </Text>
-        )}
-      </View>
-
-      <AppButton
-        title={isEditMode ? "Update Card" : "Add Card"}
-        onPress={handleSubmit}
-        fullWidth
-        variant="primary"
-        disabled={!isFormComplete || disabled}
-      />
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 

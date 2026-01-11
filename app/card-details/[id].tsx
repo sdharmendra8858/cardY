@@ -1,4 +1,12 @@
 // app/card-details/[id].tsx
+import Amex from "@/assets/icons/cards/amex.svg";
+import Diners from "@/assets/icons/cards/dinersclub.svg";
+import Discover from "@/assets/icons/cards/discover.svg";
+import JCB from "@/assets/icons/cards/jcb.svg";
+import Maestro from "@/assets/icons/cards/maestro.svg";
+import MasterCard from "@/assets/icons/cards/mastercard.svg";
+import RuPay from "@/assets/icons/cards/rupay.svg";
+import Visa from "@/assets/icons/cards/visa.svg";
 import AdBanner from "@/components/AdBanner";
 import CardNotFound from "@/components/CardNotFound";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
@@ -15,7 +23,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
-import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as Clipboard from "expo-clipboard";
@@ -168,38 +176,58 @@ export default function CardDetailsScreen() {
 
   const loadCard = React.useCallback(async () => {
     try {
-      setIsLoadingCard(true);
+      // 1. Get card from context (masked version initially)
+      const found = cards.find((c) => c.id === id);
+
+      // Only show top-level loading if we don't have a card in state yet
+      if (!found) {
+        setIsLoadingCard(true);
+      }
       setHasAttemptedLoad(false);
 
-      // Get card from context (masked version initially)
-      const found = cards.find((c) => c.id === id);
       if (found) {
-        setCard(found);
+        // 2. If already revealed, fetch unmasked info to stay "fresh"
+        if (isRevealed) {
+          try {
+            const revealed = await revealCard(id);
+            if (revealed) {
+              setCard((prev: any) => JSON.stringify(prev) !== JSON.stringify(revealed) ? revealed : prev);
+            } else {
+              setCard((prev: any) => JSON.stringify(prev) !== JSON.stringify(found) ? found : prev);
+              setIsRevealed(false);
+            }
+          } catch (revealErr) {
+            console.error("Failed to re-reveal card on reload:", revealErr);
+            setCard((prev: any) => JSON.stringify(prev) !== JSON.stringify(found) ? found : prev);
+            setIsRevealed(false);
+          }
+        } else {
+          setCard((prev: any) => JSON.stringify(prev) !== JSON.stringify(found) ? found : prev);
+        }
+
         setIsLoadingCard(false);
         setHasAttemptedLoad(true);
-        setIsRevealed(false); // Start with masked state
       } else {
         // If card not found in context, it might not be loaded yet
         setTimeout(async () => {
           const retryCard = cards.find((c) => c.id === id);
           if (retryCard) {
-            setCard(retryCard);
+            setCard((prev: any) => JSON.stringify(prev) !== JSON.stringify(retryCard) ? retryCard : prev);
             setIsRevealed(false);
           } else {
-            // Card still not found
             setCard(null);
           }
           setIsLoadingCard(false);
           setHasAttemptedLoad(true);
-        }, 1000);
-        return; // Don't execute finally block yet
+        }, 800);
+        return;
       }
     } catch (err) {
       console.error(err);
       setIsLoadingCard(false);
       setHasAttemptedLoad(true);
     }
-  }, [id, cards]);
+  }, [id, cards, isRevealed, revealCard]);
 
   useEffect(() => {
     loadCard();
@@ -423,42 +451,37 @@ export default function CardDetailsScreen() {
                   </ThemedText>
                   <View style={styles.cardTypeIcon}>
                     {(() => {
-                      // Use saved card type instead of detecting from masked number
                       const cardType = card.cardType;
+                      const iconProps = {
+                        width: 38,
+                        height: 24,
+                        fill: contentColor,
+                        color: contentColor,
+                      };
+
                       if (cardType === CARD_TYPES.VISA) {
-                        return <FontAwesome name="cc-visa" size={24} color={contentColor} />;
+                        return <Visa {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.MASTERCARD) {
-                        return (
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#EB001B', marginRight: -4, opacity: 0.9 }} />
-                            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#F79E1B', opacity: 0.9 }} />
-                          </View>
-                        );
+                        return <MasterCard {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.AMEX) {
-                        return <FontAwesome name="cc-amex" size={24} color={contentColor} />;
+                        return <Amex {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.DISCOVER) {
-                        return <FontAwesome name="cc-discover" size={24} color={contentColor} />;
+                        return <Discover {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.RUPAY) {
-                        return (
-                          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                            <ThemedText style={[styles.cardTypeLabel, { color: contentColor, fontSize: 10, fontWeight: 'bold', opacity: 0.8 }]}>
-                              RuPay
-                            </ThemedText>
-                          </View>
-                        );
+                        return <RuPay {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.MAESTRO) {
-                        return <FontAwesome name="cc-mastercard" size={24} color={contentColor} />;
+                        return <Maestro {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.JCB) {
-                        return <FontAwesome name="cc-jcb" size={24} color={contentColor} />;
+                        return <JCB {...iconProps} />;
                       }
                       if (cardType === CARD_TYPES.DINERS) {
-                        return <FontAwesome name="cc-diners-club" size={24} color={contentColor} />;
+                        return <Diners {...iconProps} />;
                       }
                       return cardType ? (
                         <ThemedText style={[styles.cardTypeLabel, { color: contentColor, opacity: 0.7, fontSize: 10, fontWeight: 'bold' }]}>

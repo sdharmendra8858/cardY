@@ -1,6 +1,6 @@
 import React, { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { deleteMasterKey } from "../utils/encryption/masterKeyManager";
-import { getMaskedCards, addCard as secureAddCard, removeCard as secureRemoveCard, revealCard as secureRevealCard } from "../utils/secureStorage";
+import { getMaskedCards, addCard as secureAddCard, removeCard as secureRemoveCard, revealCard as secureRevealCard, updateCard as secureUpdateCard } from "../utils/secureStorage";
 import { useSecurity } from "./SecurityContext";
 
 type Card = {
@@ -22,6 +22,7 @@ type Card = {
 type CardContextType = {
   cards: Card[];
   addCard: (card: Card) => Promise<void>;
+  updateCard: (id: string, card: Card) => Promise<void>;
   removeCard: (id: string) => Promise<void>;
   refreshCards: () => Promise<void>;
   revealCard: (cardId: string) => Promise<Card | null>;
@@ -63,15 +64,9 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
         await setCards(activeCards);
       }
 
-      // Only update if cards actually changed
       const prevCards = cardsRef.current;
-      const cardsChanged = prevCards.length !== activeCards.length ||
-        prevCards.some((card, index) =>
-          !activeCards[index] ||
-          card.id !== activeCards[index].id ||
-          card.cardNumber !== activeCards[index].cardNumber ||
-          card.expiry !== activeCards[index].expiry
-        );
+      // Use stringify for a simple deep comparison to detect any property changes
+      const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(activeCards);
 
       if (cardsChanged) {
         cardsRef.current = activeCards;
@@ -90,6 +85,16 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
       await refreshCards();
     } catch (error) {
       console.error("Failed to add card:", error);
+      throw error;
+    }
+  };
+
+  const updateCard = async (id: string, card: Card) => {
+    try {
+      await secureUpdateCard(id, card);
+      await refreshCards();
+    } catch (error) {
+      console.error("Failed to update card:", error);
       throw error;
     }
   };
@@ -136,6 +141,7 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
   const value = React.useMemo(() => ({
     cards,
     addCard,
+    updateCard,
     removeCard,
     refreshCards,
     revealCard,

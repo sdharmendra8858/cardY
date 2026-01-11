@@ -9,9 +9,9 @@
 
 import * as SecureStore from "expo-secure-store";
 import {
-  decryptCards,
-  encryptCards,
-  EncryptionResult,
+    decryptCards,
+    encryptCards,
+    EncryptionResult,
 } from "./encryption/cardEncryption";
 
 const STORAGE_KEY_MASKED = "cards_masked";
@@ -91,7 +91,7 @@ export async function getMaskedCards(): Promise<Card[]> {
  *
  * @returns Array of full cards
  */
-async function getUnmaskedCards(): Promise<Card[]> {
+export async function getUnmaskedCards(): Promise<Card[]> {
   try {
     const value = await SecureStore.getItemAsync(STORAGE_KEY_UNMASKED, {
       keychainService: STORAGE_KEY_UNMASKED,
@@ -258,6 +258,35 @@ export async function removeCard(cardId: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     console.error("❌ Failed to remove card:", message);
     throw new Error(`Failed to remove card: ${message}`);
+  }
+}
+
+/**
+ * Update an existing card in storage
+ *
+ * @param cardId ID of the card to update
+ * @param updatedCard Updated card data
+ * @throws Error if operation fails
+ */
+export async function updateCard(
+  cardId: string,
+  updatedCard: Card
+): Promise<void> {
+  try {
+    if (__DEV__) console.log(`✏️ Updating card: ${cardId}`);
+
+    const existing = await getUnmaskedCards();
+    const updatedCards = existing.map((c: Card) =>
+      c.id === cardId ? { ...c, ...updatedCard, id: cardId } : c
+    );
+
+    await setCards(updatedCards);
+
+    if (__DEV__) console.log("✅ Card updated successfully");
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("❌ Failed to update card:", message);
+    throw new Error(`Failed to update card: ${message}`);
   }
 }
 
