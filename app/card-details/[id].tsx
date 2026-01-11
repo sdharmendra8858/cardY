@@ -10,17 +10,11 @@ import { CARD_TYPES } from "@/constants/cardTypes";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
-import { useTimer } from "@/context/CardContext";
+import { useCards, useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { getCardType } from "@/utils/CardType";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
-import { maskAndFormatCardNumber } from "@/utils/mask";
-import {
-  getCards as secureGetCards,
-  removeCard as secureRemoveCard,
-} from "@/utils/secureStorage";
 import { FontAwesome, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -71,6 +65,7 @@ const getContrastColor = (hexcolor: string) => {
 
 export default function CardDetailsScreen() {
   const { showAlert } = useAlert();
+  const { cards, revealCard, removeCard } = useCards();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { timerTick } = useTimer(); // Force re-renders for validity timer
   useScreenProtection();
@@ -80,6 +75,7 @@ export default function CardDetailsScreen() {
   const [isLoadingCard, setIsLoadingCard] = useState(true);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const [showNumber, setShowNumber] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
   const [canUsePip, setCanUsePip] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [cooldownActive, setCooldownActive] = useState(false);
@@ -175,21 +171,22 @@ export default function CardDetailsScreen() {
       setIsLoadingCard(true);
       setHasAttemptedLoad(false);
 
-      const list = await secureGetCards();
-      const found = list.find((c) => c.id === id);
+      // Get card from context (masked version initially)
+      const found = cards.find((c) => c.id === id);
       if (found) {
         setCard(found);
         setIsLoadingCard(false);
         setHasAttemptedLoad(true);
+        setIsRevealed(false); // Start with masked state
       } else {
-        // If card not found immediately, wait a bit and try again (for newly imported cards)
+        // If card not found in context, it might not be loaded yet
         setTimeout(async () => {
-          const retryList = await secureGetCards();
-          const retryFound = retryList.find((c) => c.id === id);
-          if (retryFound) {
-            setCard(retryFound);
+          const retryCard = cards.find((c) => c.id === id);
+          if (retryCard) {
+            setCard(retryCard);
+            setIsRevealed(false);
           } else {
-            // Card still not found after retry
+            // Card still not found
             setCard(null);
           }
           setIsLoadingCard(false);
@@ -202,7 +199,7 @@ export default function CardDetailsScreen() {
       setIsLoadingCard(false);
       setHasAttemptedLoad(true);
     }
-  }, [id]);
+  }, [id, cards]);
 
   useEffect(() => {
     loadCard();
@@ -223,7 +220,7 @@ export default function CardDetailsScreen() {
     if (now > card.cardExpiresAt) {
       // Card has expired, delete it
       console.log("🗑️ Card has expired, auto-deleting:", card.id);
-      secureRemoveCard(card.id).then(() => {
+      removeCard(card.id).then(() => {
         showAlert({
           title: "Card Expired",
           message: "This imported card has expired and has been automatically removed.",
@@ -253,7 +250,7 @@ export default function CardDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await secureRemoveCard(id);
+              await removeCard(id);
               router.back();
             } catch (err) { console.error(err); }
           },
@@ -266,21 +263,32 @@ export default function CardDetailsScreen() {
     if (showNumber) {
       setShowNumber(false);
       setCanUsePip(false);
+
+      // Revert to masked card from context
+      const maskedCard = cards.find((c) => c.id === id);
+      if (maskedCard) {
+        setCard(maskedCard);
+        setIsRevealed(false);
+      }
       return;
     }
+
+    // Check security settings for biometric authentication
     const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
     const parsed = saved ? JSON.parse(saved) : {};
     const cardLock = parsed.cardLock ?? true;
     const cooldown = parsed.cooldown ?? 0;
+
+    // If card lock is disabled or cooldown is active, proceed without auth
     if (!cardLock || cooldownActiveRef.current) {
-      setShowNumber(true);
-      setCanUsePip(true);
+      await performRevealAndShow();
       return;
     }
+
+    // Require authentication before revealing/showing card data
     const ok = await authenticateUser("card");
     if (ok) {
-      setShowNumber(true);
-      setCanUsePip(true);
+      await performRevealAndShow();
       if (cooldown > 0) {
         cooldownActiveRef.current = true;
         setCooldownActive(true);
@@ -294,11 +302,45 @@ export default function CardDetailsScreen() {
     }
   };
 
+  const performRevealAndShow = async () => {
+    // If card is not revealed yet, reveal it first
+    if (!isRevealed) {
+      try {
+        const revealedCard = await revealCard(id);
+        if (revealedCard) {
+          setCard(revealedCard);
+          setIsRevealed(true);
+        } else {
+          showAlert({
+            title: "Error",
+            message: "Failed to reveal card details. Please try again.",
+            buttons: [{ text: "OK", onPress: () => { } }]
+          });
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to reveal card:", error);
+        showAlert({
+          title: "Error",
+          message: "Failed to reveal card details. Please try again.",
+          buttons: [{ text: "OK", onPress: () => { } }]
+        });
+        return;
+      }
+    }
+
+    // Show the card numbers
+    setShowNumber(true);
+    setCanUsePip(true);
+  };
+
   const handleCopy = async () => {
     if (!card?.cardNumber) return;
     try {
-      await Clipboard.setStringAsync(card.cardNumber);
-      Toast.show({ type: "success", text1: "Copied!", visibilityTime: 1500 });
+      // Copy the masked card number with X's instead of asterisks
+      const maskedNumber = card.cardNumber.replace(/\*/g, 'X');
+      await Clipboard.setStringAsync(maskedNumber);
+      Toast.show({ type: "success", text1: "Masked number copied!", visibilityTime: 1500 });
     } catch (err) { console.error(err); }
   };
 
@@ -381,11 +423,12 @@ export default function CardDetailsScreen() {
                   </ThemedText>
                   <View style={styles.cardTypeIcon}>
                     {(() => {
-                      const detectedCardType = getCardType(card.cardNumber);
-                      if (detectedCardType === CARD_TYPES.VISA) {
+                      // Use saved card type instead of detecting from masked number
+                      const cardType = card.cardType;
+                      if (cardType === CARD_TYPES.VISA) {
                         return <FontAwesome name="cc-visa" size={24} color={contentColor} />;
                       }
-                      if (detectedCardType === CARD_TYPES.MASTERCARD) {
+                      if (cardType === CARD_TYPES.MASTERCARD) {
                         return (
                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#EB001B', marginRight: -4, opacity: 0.9 }} />
@@ -393,13 +436,13 @@ export default function CardDetailsScreen() {
                           </View>
                         );
                       }
-                      if (detectedCardType === CARD_TYPES.AMEX) {
+                      if (cardType === CARD_TYPES.AMEX) {
                         return <FontAwesome name="cc-amex" size={24} color={contentColor} />;
                       }
-                      if (detectedCardType === CARD_TYPES.DISCOVER) {
+                      if (cardType === CARD_TYPES.DISCOVER) {
                         return <FontAwesome name="cc-discover" size={24} color={contentColor} />;
                       }
-                      if (detectedCardType === CARD_TYPES.RUPAY) {
+                      if (cardType === CARD_TYPES.RUPAY) {
                         return (
                           <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                             <ThemedText style={[styles.cardTypeLabel, { color: contentColor, fontSize: 10, fontWeight: 'bold', opacity: 0.8 }]}>
@@ -408,18 +451,18 @@ export default function CardDetailsScreen() {
                           </View>
                         );
                       }
-                      if (detectedCardType === CARD_TYPES.MAESTRO) {
+                      if (cardType === CARD_TYPES.MAESTRO) {
                         return <FontAwesome name="cc-mastercard" size={24} color={contentColor} />;
                       }
-                      if (detectedCardType === CARD_TYPES.JCB) {
+                      if (cardType === CARD_TYPES.JCB) {
                         return <FontAwesome name="cc-jcb" size={24} color={contentColor} />;
                       }
-                      if (detectedCardType === CARD_TYPES.DINERS) {
+                      if (cardType === CARD_TYPES.DINERS) {
                         return <FontAwesome name="cc-diners-club" size={24} color={contentColor} />;
                       }
-                      return detectedCardType ? (
+                      return cardType ? (
                         <ThemedText style={[styles.cardTypeLabel, { color: contentColor, opacity: 0.7, fontSize: 10, fontWeight: 'bold' }]}>
-                          {(detectedCardType as string).toUpperCase()}
+                          {(cardType as string).toUpperCase()}
                         </ThemedText>
                       ) : null;
                     })()}
@@ -427,7 +470,7 @@ export default function CardDetailsScreen() {
                 </View>
                 <View style={styles.cardNumberRow}>
                   <ThemedText numberOfLines={1} adjustsFontSizeToFit style={[styles.cardNumber, { color: contentColor }]}>
-                    {showNumber ? formatCardNumber(card.cardNumber) : maskAndFormatCardNumber(card.cardNumber)}
+                    {showNumber ? formatCardNumber(card.cardNumber) : formatCardNumber(card.cardNumber.replace(/\*/g, 'X'))}
                   </ThemedText>
                 </View>
                 <View style={styles.cardInfoRow}>
@@ -435,9 +478,9 @@ export default function CardDetailsScreen() {
                     <ThemedText style={[styles.label, { color: isDarkCard ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)" }]}>Card Holder</ThemedText>
                     <ThemedText numberOfLines={1} style={[styles.info, { color: contentColor }]}>{card.cardHolder}</ThemedText>
                   </View>
-                  <View style={{ alignItems: 'flex-end', marginLeft: 10 }}>
+                  <View style={{ alignItems: 'flex-end', marginLeft: 10, minWidth: 60 }}>
                     <ThemedText style={[styles.label, { color: isDarkCard ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)" }]}>Expiry</ThemedText>
-                    <ThemedText style={[styles.info, { color: contentColor }]}>{showNumber ? card.expiry : "•• / ••"}</ThemedText>
+                    <ThemedText numberOfLines={1} style={[styles.info, { color: contentColor }]}>{showNumber ? card.expiry : "XX/XX"}</ThemedText>
                   </View>
                 </View>
               </Animated.View>
@@ -450,7 +493,7 @@ export default function CardDetailsScreen() {
                     <View style={styles.cvvArea}>
                       <ThemedText style={styles.cvvLabel}>CVV</ThemedText>
                       <ThemedText style={styles.cvvText}>
-                        {showNumber ? card.cvv : (card.cvv.length === 4 ? "••••" : "•••")}
+                        {showNumber ? card.cvv : (card.cvv ? "•".repeat(card.cvv.length) : "N/A")}
                       </ThemedText>
                     </View>
                   ) : (
@@ -473,7 +516,9 @@ export default function CardDetailsScreen() {
               <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
                 <Ionicons name={!showNumber ? "eye-off-outline" : "eye-outline"} size={24} color="white" />
               </View>
-              <ThemedText style={styles.actionLabel}>{showNumber ? "Hide" : "Reveal"}</ThemedText>
+              <ThemedText style={styles.actionLabel}>
+                {showNumber ? "Hide" : "Reveal"}
+              </ThemedText>
             </Pressable>
             <Pressable style={[styles.actionButton, (!showNumber || flipped) && { opacity: 0.5 }]} onPress={handleCopy} disabled={!showNumber || flipped}>
               <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
@@ -626,7 +671,7 @@ const styles = StyleSheet.create({
   },
   cardInfoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   label: { fontSize: 10, textTransform: "uppercase", letterSpacing: 1, marginBottom: 2, fontWeight: "600" },
-  info: { fontSize: 15, fontWeight: "bold", letterSpacing: 0.5 },
+  info: { fontSize: 15, fontWeight: "bold", letterSpacing: 0.5, fontFamily: Platform.select({ ios: "Courier-Bold", android: "monospace" }) },
   cardTypeLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: "900", fontStyle: "italic" },
   // providerLogoContainer: { position: "absolute", bottom: 15, right: 20, opacity: 0.9 },
   magneticStripe: { backgroundColor: "#1a1a1a", height: 40, width: "100%", marginTop: 10, marginBottom: 20 },
