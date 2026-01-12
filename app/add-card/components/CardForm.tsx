@@ -26,6 +26,7 @@ import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import { CARD_TYPES } from "@/constants/cardTypes";
+import { luhnCheck } from "@/utils/cardValidation";
 import { containsProfanity } from "@/utils/profanityFilter";
 
 // Constants for new dropdown options
@@ -91,28 +92,6 @@ function formatCardNumberForDisplay(raw: string): string {
   return digitsOnly.replace(/(.{4})/g, "$1 ").trim();
 }
 
-function luhnCheck(raw: string): boolean {
-  const digits = raw.replace(/\D/g, "");
-
-  if (digits.length < 13 || digits.length > 19) return false;
-  if (/^(\d)\1+$/.test(digits)) return false;
-
-  let sum = 0;
-  let shouldDouble = false;
-
-  for (let i = digits.length - 1; i >= 0; i--) {
-    let digit = parseInt(digits.charAt(i), 10);
-    if (shouldDouble) {
-      digit *= 2;
-      if (digit > 9) digit -= 9;
-    }
-    sum += digit;
-    shouldDouble = !shouldDouble;
-  }
-
-  return sum % 10 === 0;
-}
-
 function normalizeExpiryDigits(raw: string): string {
   const d = (raw || "").replace(/[^0-9]/g, "").slice(0, 4);
   if (d.length === 0) return "";
@@ -165,10 +144,13 @@ export default function CardForm({
     const isGeneric = GENERIC_NETWORK_NAMES.some(net => bankUpper.includes(net));
     if (isGeneric) return null;
 
-    const exists = BANK_OPTIONS.some(
-      (option) => option.value === bankUpper
+    const found = BANK_OPTIONS.find(
+      (option) =>
+        option.value === bankUpper ||
+        option.label.toUpperCase() === bankUpper ||
+        (option.label.includes("(") && option.label.split("(")[1].split(")")[0].toUpperCase() === bankUpper)
     );
-    return exists ? bankUpper : "OTHER";
+    return found ? found.value : "OTHER";
   });
   const [customBank, setCustomBank] = useState(() => {
     if (!defaultBank) return "";
@@ -292,13 +274,18 @@ export default function CardForm({
 
     if (defaultBank) {
       const bankUpper = defaultBank.toUpperCase();
-      const exists = BANK_OPTIONS.some(option => option.value === bankUpper);
+      const found = BANK_OPTIONS.find(
+        (option) =>
+          option.value === bankUpper ||
+          option.label.toUpperCase() === bankUpper ||
+          (option.label.includes("(") && option.label.split("(")[1].split(")")[0].toUpperCase() === bankUpper)
+      );
 
       setBank(prevBank => {
         if (prevBank && prevBank !== "OTHER") return prevBank;
-        if (exists) {
+        if (found) {
           setCustomBank("");
-          return bankUpper;
+          return found.value;
         } else {
           const isGeneric = GENERIC_NETWORK_NAMES.some(net => bankUpper.includes(net));
           if (isGeneric) {

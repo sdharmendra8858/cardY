@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { luhnCheck } from '@/utils/cardValidation';
 import { readNfcCard } from '@/utils/nfcUtils';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -14,10 +15,15 @@ export default function NfcScreen() {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const [isScanning, setIsScanning] = useState(false);
+    const [isSuccess, setIsSuccess] = useState(false);
+    const [isSupported, setIsSupported] = useState(true);
     const [statusMessage, setStatusMessage] = useState("Bring your physical card near the back of your phone to scan details automatically.");
     const waveAnim = React.useRef(new Animated.Value(0)).current;
+    const successAnim = React.useRef(new Animated.Value(0)).current;
+    const isMounted = React.useRef(true);
 
     useEffect(() => {
+        isMounted.current = true;
         const setupNfc = async () => {
             try {
                 console.log('NFC: Starting NfcManager...');
@@ -28,6 +34,8 @@ export default function NfcScreen() {
 
                 if (!supported) {
                     console.error('NFC: Hardware not supported on this device');
+                    setIsSupported(false);
+                    setStatusMessage("NFC hardware is not supported on this device. Please use the camera or enter details manually.");
                 } else if (!enabled) {
                     console.warn('NFC: Hardware supported but disabled in settings');
                     Alert.alert('NFC Disabled', 'Please enable NFC in your device settings.');
@@ -59,6 +67,7 @@ export default function NfcScreen() {
 
         return () => {
             console.log('NFC: Cleaning up...');
+            isMounted.current = false;
             NfcManager.cancelTechnologyRequest().catch(() => { });
         };
     }, []);
@@ -75,33 +84,63 @@ export default function NfcScreen() {
         }
 
         console.log('NFC: Entering scan loop...');
+        setIsSuccess(false);
         setIsScanning(true);
         setStatusMessage("Hold card still...");
+        successAnim.setValue(0);
 
         try {
             const cardData = await readNfcCard();
+            if (!isMounted.current) return;
             console.log('NFC: Scan finished. Result:', cardData ? 'SUCCESS' : 'FAILURE/CANCEL');
-            setIsScanning(false);
 
             if (cardData) {
-                console.log('NFC: Card data found! Navigating back...');
+                // Validate card number
+                if (!luhnCheck(cardData.cardNumber)) {
+                    console.warn('NFC: Invalid card number scanned:', cardData.cardNumber);
+                    setIsScanning(false);
+                    setStatusMessage("Invalid card number detected. Please try again or enter manually.");
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    return;
+                }
+
+                console.log('NFC: Card data found and valid! Showing animated success UI...');
+                setIsSuccess(true);
+                setIsScanning(false);
+
+                // Trigger pop-in animation
+                Animated.spring(successAnim, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    tension: 50,
+                    friction: 7
+                }).start();
+
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                router.back();
+
+                // Wait for 1.2 seconds to show success state
                 setTimeout(() => {
-                    router.setParams({
-                        defaultCardNumber: cardData.cardNumber,
-                        defaultExpiry: cardData.expiry,
-                        defaultCardHolder: cardData.cardHolder,
-                        defaultCardKind: cardData.appLabel.toUpperCase().includes('DEBIT') ? 'debit' :
-                            cardData.appLabel.toUpperCase().includes('CREDIT') ? 'credit' : undefined,
-                        fromNfc: 'true'
-                    });
-                }, 100);
+                    console.log('NFC: Navigating back to card form...');
+                    router.back();
+                    setTimeout(() => {
+                        router.setParams({
+                            defaultCardNumber: cardData.cardNumber,
+                            defaultExpiry: cardData.expiry,
+                            defaultCardHolder: cardData.cardHolder,
+                            defaultCardKind: cardData.appLabel.toUpperCase().includes('DEBIT') ? 'debit' :
+                                cardData.appLabel.toUpperCase().includes('CREDIT') ? 'credit' : undefined,
+                            fromNfc: 'true'
+                        });
+                    }, 100);
+                }, 1200);
             } else {
+                if (!isMounted.current) return;
+                setIsScanning(false);
                 console.log('NFC: No card data found from scan session.');
                 setStatusMessage("Card not supported. Please enter details manually.");
             }
         } catch (err: any) {
+            if (!isMounted.current) return;
             console.log('NFC: Scan error catch block:', err.message);
             setIsScanning(false);
             if (err.message === 'CONNECTION_LOST') {
@@ -140,40 +179,59 @@ export default function NfcScreen() {
             <View style={styles.content}>
                 <View style={styles.animationContainer}>
                     {/* Device Icon */}
-                    <View style={[styles.deviceFrame, { borderColor: theme.border }]}>
+                    <View style={[styles.deviceFrame, { borderColor: theme.border, opacity: isSuccess ? 0.3 : 1 }]}>
                         <View style={[styles.deviceScreen, { backgroundColor: theme.card }]} />
                     </View>
 
-                    {/* Waving Card Icon */}
-                    <Animated.View style={[
-                        styles.cardIcon,
-                        {
-                            transform: [{ translateY }, { scale }],
-                            backgroundColor: theme.primary
-                        }
-                    ]}>
-                        <MaterialCommunityIcons name="credit-card-chip" size={50} color="white" />
-                    </Animated.View>
+                    {/* Waving Card Icon (hidden on success) */}
+                    {!isSuccess && (
+                        <Animated.View style={[
+                            styles.cardIcon,
+                            {
+                                transform: [{ translateY }, { scale }],
+                                backgroundColor: theme.primary
+                            }
+                        ]}>
+                            <MaterialCommunityIcons name="credit-card-chip" size={50} color="white" />
+                        </Animated.View>
+                    )}
 
-                    {/* Wave lines */}
-                    <View style={styles.waves}>
-                        <Ionicons name="radio-outline" size={80} color={theme.primary} style={{ opacity: 0.3 }} />
-                    </View>
+                    {/* Success Icon (animated) */}
+                    {isSuccess && (
+                        <Animated.View style={[
+                            styles.successInnerContainer,
+                            {
+                                transform: [{ scale: successAnim }],
+                                opacity: successAnim
+                            }
+                        ]}>
+                            <Ionicons name="checkmark-circle" size={100} color="#4CAF50" />
+                        </Animated.View>
+                    )}
+
+                    {/* Wave lines (hidden on success) */}
+                    {!isSuccess && (
+                        <View style={styles.waves}>
+                            <Ionicons name="radio-outline" size={80} color={theme.primary} style={{ opacity: 0.3 }} />
+                        </View>
+                    )}
                 </View>
 
                 <ThemedText style={styles.instruction}>
-                    {isScanning ? "Scanning..." : "Ready to Scan"}
+                    {isSuccess ? "Success!" : isScanning ? "Scanning..." : "Ready to Scan"}
                 </ThemedText>
-                <ThemedText style={[styles.subtitle, { color: statusMessage.includes('moved') ? '#FF5252' : theme.text }]}>
-                    {statusMessage}
+                <ThemedText style={[styles.subtitle, { color: isSuccess ? '#4CAF50' : statusMessage.includes('moved') ? '#FF5252' : theme.text }]}>
+                    {isSuccess ? "Card data extracted successfully" : statusMessage}
                 </ThemedText>
 
-                {!isScanning && (
+                {!isScanning && !isSuccess && (
                     <TouchableOpacity
                         style={[styles.retryButton, { backgroundColor: theme.primary }]}
-                        onPress={handleRetry}
+                        onPress={isSupported ? handleRetry : () => router.back()}
                     >
-                        <ThemedText style={{ color: 'white', fontWeight: 'bold' }}>Scan Again</ThemedText>
+                        <ThemedText style={{ color: 'white', fontWeight: 'bold' }}>
+                            {isSupported ? "Scan Again" : "Go Back"}
+                        </ThemedText>
                     </TouchableOpacity>
                 )}
 
@@ -190,12 +248,12 @@ export default function NfcScreen() {
                     <ThemedText style={{ color: theme.text }}>Cancel</ThemedText>
                 </TouchableOpacity>
             </View>
+
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    // ... (styles update)
     container: {
         flex: 1,
     },
@@ -295,5 +353,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
         borderRadius: 25,
         borderWidth: 1,
+    },
+    successInnerContainer: {
+        position: 'absolute',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10,
     }
 });

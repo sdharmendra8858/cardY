@@ -268,7 +268,7 @@ export async function readNfcCard() {
 
     } catch (ex: any) {
         if (ex.message === 'CONNECTION_LOST') throw ex;
-        console.error('EMV: NFC Read Exception:', ex);
+        console.warn('EMV: NFC Read Exception (Expected on cancel):', ex.message || ex);
         return null;
     } finally {
         NfcManager.setEventListener(NfcEvents.DiscoverTag, null);

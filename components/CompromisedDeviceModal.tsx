@@ -8,12 +8,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "./themed-text";
 
 export default function CompromisedDeviceModal() {
-    const { isDeviceCompromised } = useSecurity();
+    const { isDeviceCompromised, isDebuggingEnabled } = useSecurity();
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
     const insets = useSafeAreaInsets();
 
-    if (!isDeviceCompromised) {
+    if (!isDeviceCompromised && !isDebuggingEnabled) {
         return null;
     }
 
@@ -21,7 +21,7 @@ export default function CompromisedDeviceModal() {
         <Modal
             animationType="fade"
             transparent={false}
-            visible={isDeviceCompromised}
+            visible={isDeviceCompromised || isDebuggingEnabled}
             statusBarTranslucent
         >
             <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
@@ -32,29 +32,38 @@ export default function CompromisedDeviceModal() {
                 </View>
 
                 <ThemedText style={[styles.title, { color: palette.danger }]}>
-                    Security Alert
+                    {isDeviceCompromised ? "Security Alert" : "Security Block"}
                 </ThemedText>
 
                 <ThemedText style={styles.subtitle}>
-                    Device Compromised
+                    {isDeviceCompromised ? "Device Compromised" : "USB Debugging Enabled"}
                 </ThemedText>
 
                 <View style={[styles.messageContainer, { backgroundColor: scheme === 'dark' ? '#2c2c2c' : '#f5f5f5' }]}>
                     <ThemedText style={styles.message}>
-                        For your security, Cardy Wall cannot run on a rooted or jailbroken device.
+                        {isDeviceCompromised
+                            ? "For your security, Cardy Wall cannot run on a rooted or jailbroken device."
+                            : "For your security, Cardy Wall cannot run while USB Debugging or Developer Options are enabled."
+                        }
                     </ThemedText>
 
                     <ThemedText style={[styles.message, { marginTop: 12, fontWeight: 'bold' }]}>
-                        Action Taken:
+                        {isDeviceCompromised ? "Action Taken:" : "Required Action:"}
                     </ThemedText>
 
                     <ThemedText style={styles.message}>
-                        All locally stored card data has been permanently wiped to prevent theft.
+                        {isDeviceCompromised
+                            ? "All locally stored card data has been permanently wiped to prevent theft."
+                            : "Please disable USB Debugging and Developer Options in your device settings to continue."
+                        }
                     </ThemedText>
                 </View>
 
                 <ThemedText style={[styles.footer, { color: palette.icon }]}>
-                    Please use Cardy Wall on a secure, unmodified device.
+                    {isDeviceCompromised
+                        ? "Please use Cardy Wall on a secure, unmodified device."
+                        : "Device security policy enforced by Cardy Wall"
+                    }
                 </ThemedText>
             </View>
         </Modal>

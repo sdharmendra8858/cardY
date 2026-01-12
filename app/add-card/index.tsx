@@ -16,6 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import NfcManager from "react-native-nfc-manager";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
 import NfcScanButton from "./components/NfcScanButton";
@@ -30,6 +31,7 @@ export default function AddCardScreen() {
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+  const [isNfcSupported, setIsNfcSupported] = useState(true);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const { from, sessionId, receiverPublicKey, expiresAt } = useLocalSearchParams<{
     from?: string;
@@ -138,6 +140,17 @@ export default function AddCardScreen() {
 
   // Load existing card data for edit mode
   useEffect(() => {
+    // Check NFC support
+    const checkNfcSupport = async () => {
+      try {
+        const supported = await NfcManager.isSupported();
+        setIsNfcSupported(supported);
+      } catch (err) {
+        setIsNfcSupported(false);
+      }
+    };
+    checkNfcSupport();
+
     if (isEditMode && editId) {
       const loadCardForEdit = async () => {
         try {
@@ -321,9 +334,11 @@ export default function AddCardScreen() {
               <View style={{ flex: 1 }}>
                 <ScanButton onPress={handleScan} />
               </View>
-              <View style={{ flex: 1 }}>
-                <NfcScanButton onPress={handleNfcScan} />
-              </View>
+              {isNfcSupported && (
+                <View style={{ flex: 1 }}>
+                  <NfcScanButton onPress={handleNfcScan} />
+                </View>
+              )}
             </View>
 
             <View style={styles.orSeparatorContainer}>
