@@ -2,7 +2,6 @@ import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { maskAndFormatCardNumber } from "@/utils/mask";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
@@ -173,9 +172,9 @@ export default function QRCodeScreen() {
                 <View style={styles.cardInfo}>
                   <MaterialIcons name="credit-card" size={24} color={palette.tint} />
                   <View style={styles.cardDetails}>
-                    <ThemedText style={styles.cardName}>{card.cardHolder}</ThemedText>
+                    <ThemedText style={styles.cardName}>{card.bank || 'Bank'}</ThemedText>
                     <ThemedText style={styles.cardNumber}>
-                      {maskAndFormatCardNumber(card.cardNumber)}
+                      {card.cardNumber}
                     </ThemedText>
                   </View>
                 </View>

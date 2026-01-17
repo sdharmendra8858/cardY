@@ -36,6 +36,9 @@ export interface QRCodePayload {
  * 
  * The cardExpiresAt field allows the sharer to set when the imported card
  * should be automatically removed from the receiver's device.
+ * 
+ * Note: isPinned is NOT included in the payload as it's a device-specific
+ * property. Imported cards always start with isPinned: false.
  */
 export interface CardPayload {
   cardId: string;

@@ -6,7 +6,8 @@ import {
   encryptCardForSharing,
   validateSessionPayload,
 } from "@/utils/cardSharing";
-import { maskAndFormatCardNumber } from "@/utils/mask";
+import { formatCardNumber } from "@/utils/formatCardNumber";
+import { authenticateUser } from "@/utils/LockScreen";
 import {
   parseSessionQRString,
   qrPayloadToQRString,
@@ -15,6 +16,7 @@ import { CardPayload, SessionPayload } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera, CameraView } from "expo-camera";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import * as ScreenCapture from "expo-screen-capture";
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -48,7 +50,7 @@ export default function ShareCardScreen() {
     receiverPublicKey?: string;
     expiresAt?: string;
   }>();
-  const { cards, isLoading, refreshCards } = useCards();
+  const { cards, isLoading, refreshCards, revealCard } = useCards();
   const { width } = Dimensions.get("window");
   const CARD_WIDTH = width * 0.8;
   const SPACING = 16;
@@ -59,7 +61,10 @@ export default function ShareCardScreen() {
   const [showCardSelection, setShowCardSelection] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(2); // 2 minutes
+  const [revealedCardId, setRevealedCardId] = useState<string | null>(null);
+  const [revealedCardData, setRevealedCardData] = useState<any>(null);
+  const [isRevealingCard, setIsRevealingCard] = useState<boolean>(false);
+  const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(15); // 15 minutes default
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
@@ -86,6 +91,16 @@ export default function ShareCardScreen() {
       refreshCards();
     }, [refreshCards])
   );
+
+  // Disable screenshots when showing card selection
+  useEffect(() => {
+    if (showCardSelection) {
+      ScreenCapture.preventScreenCaptureAsync();
+      return () => {
+        ScreenCapture.allowScreenCaptureAsync();
+      };
+    }
+  }, [showCardSelection]);
 
   // Auto-select the first card when there's only one available card
   useEffect(() => {
@@ -222,6 +237,46 @@ export default function ShareCardScreen() {
     setSelectedCardId(cardId);
   }, []);
 
+  const handleRevealCard = useCallback(async (cardId: string) => {
+    if (revealedCardId === cardId) {
+      // Toggle off - hide the revealed card
+      setRevealedCardId(null);
+      setRevealedCardData(null);
+      return;
+    }
+
+    // Toggle on - require biometric authentication first
+    try {
+      const authenticated = await authenticateUser("card");
+      if (!authenticated) {
+        setAlertConfig({
+          title: "Authentication Failed",
+          message: "Biometric authentication failed. Please try again.",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      setIsRevealingCard(true);
+      const fullCard = await revealCard(cardId);
+      if (fullCard) {
+        setRevealedCardId(cardId);
+        setRevealedCardData(fullCard);
+      }
+    } catch (error) {
+      console.error("Failed to reveal card:", error);
+      setAlertConfig({
+        title: "Error",
+        message: "Failed to reveal card details",
+        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+      });
+      setAlertVisible(true);
+    } finally {
+      setIsRevealingCard(false);
+    }
+  }, [revealedCardId, revealCard]);
+
   const generateQRCode = useCallback(() => {
     if (!selectedCardId || !sessionPayload) {
       setAlertConfig({
@@ -238,29 +293,47 @@ export default function ShareCardScreen() {
       try {
         setIsGenerating(true);
 
-        // Get selected card
-        const card = cards.find(c => c.id === selectedCardId);
-        if (!card) {
+        // Get selected card from masked collection
+        const maskedCard = cards.find(c => c.id === selectedCardId);
+        if (!maskedCard) {
           throw new Error("Card not found");
         }
 
-        console.log("🔍 Raw card data:", {
-          id: card.id,
-          cardNumber: card.cardNumber ? `****${card.cardNumber.slice(-4)}` : "MISSING",
-          cardHolder: card.cardHolder,
-          expiry: card.expiry,
-          bank: card.bank,
-          cardName: card.cardName,
+        console.log("🔍 Masked card data:", {
+          id: maskedCard.id,
+          cardNumber: maskedCard.cardNumber,
+          cardHolder: maskedCard.cardHolder,
+          expiry: maskedCard.expiry,
+          bank: maskedCard.bank,
+          cardName: maskedCard.cardName,
+        });
+
+        // Fetch the full unmasked card data to get sensitive fields like expiry
+        const fullCard = await revealCard(selectedCardId);
+
+        if (!fullCard) {
+          throw new Error("Failed to retrieve full card data");
+        }
+
+        console.log("🔍 Full card data retrieved:", {
+          id: fullCard.id,
+          cardNumber: fullCard.cardNumber ? `****${fullCard.cardNumber.slice(-4)}` : "MISSING",
+          cardHolder: fullCard.cardHolder,
+          expiry: fullCard.expiry,
+          bank: fullCard.bank,
+          cardName: fullCard.cardName,
         });
 
         // Validate required card fields
-        if (!card.cardNumber || !card.cardHolder || !card.expiry) {
+        if (!fullCard.cardNumber || !fullCard.cardHolder || !fullCard.expiry) {
           const missing = [];
-          if (!card.cardNumber) missing.push("cardNumber");
-          if (!card.cardHolder) missing.push("cardHolder");
-          if (!card.expiry) missing.push("expiry");
+          if (!fullCard.cardNumber) missing.push("cardNumber");
+          if (!fullCard.cardHolder) missing.push("cardHolder");
+          if (!fullCard.expiry) missing.push("expiry");
           throw new Error(`Card is missing required information: ${missing.join(", ")}`);
         }
+
+        const card = fullCard;
 
         // Parse expiry - handle both "MM/YY" and "MM/YYYY" formats
         const expiryParts = card.expiry.split("/");
@@ -291,6 +364,8 @@ export default function ShareCardScreen() {
           cobrandName: card.cobrandName || undefined,
           cardKind: card.cardKind || undefined,
           dominantColor: card.dominantColor || undefined,
+          // Note: isPinned is NOT included - it's a device-specific property
+          // Imported cards will always start with isPinned: false on the receiver's device
         };
 
         console.log("📋 Card data prepared:", {
@@ -336,7 +411,7 @@ export default function ShareCardScreen() {
         setIsGenerating(false);
       }
     })();
-  }, [selectedCardId, sessionPayload, cardValidityMinutes, refreshCards, router]);
+  }, [selectedCardId, sessionPayload, cardValidityMinutes, refreshCards, revealCard, router]);
 
 
 
@@ -502,6 +577,7 @@ export default function ShareCardScreen() {
                 }}
                 renderItem={({ item: card, index }) => {
                   const isSelected = selectedCardId === card.id;
+                  const isRevealed = revealedCardId === card.id;
                   const cardColor = card.dominantColor || palette.primary;
 
                   const inputRange = [
@@ -564,25 +640,33 @@ export default function ShareCardScreen() {
                             </View>
                             <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                               <ThemedText style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
-                                {card.cardKind || 'DEBIT'}
+                                {card.cardKind === "credit" ? "💳" : "💵"} {card.cardKind?.toUpperCase() || 'DEBIT'}
                               </ThemedText>
                             </View>
                           </View>
 
-                          <View>
+                          <View style={styles.cardNumberRow}>
                             <ThemedText
                               numberOfLines={1}
                               adjustsFontSizeToFit
-                              style={{
-                                color: '#fff',
-                                fontSize: 20,
-                                fontWeight: '700',
-                                letterSpacing: 1.5,
-                                fontFamily: 'monospace',
-                              }}
+                              style={styles.cardNumber}
                             >
-                              {maskAndFormatCardNumber(card.cardNumber)}
+                              {isRevealed && revealedCardData
+                                ? formatCardNumber(revealedCardData.cardNumber)
+                                : formatCardNumber(card.cardNumber)}
                             </ThemedText>
+
+                            <TouchableOpacity
+                              onPress={() => handleRevealCard(card.id)}
+                              disabled={isRevealingCard}
+                              hitSlop={10}
+                            >
+                              <MaterialIcons
+                                name={isRevealed ? "visibility" : "visibility-off"}
+                                size={18}
+                                color="rgba(255,255,255,0.8)"
+                              />
+                            </TouchableOpacity>
                           </View>
 
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -591,15 +675,15 @@ export default function ShareCardScreen() {
                                 Card Holder
                               </ThemedText>
                               <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                                {card.cardHolder}
+                                {isRevealed && revealedCardData ? revealedCardData.cardHolder : card.cardHolder}
                               </ThemedText>
                             </View>
                             <View style={{ alignItems: 'flex-end' }}>
                               <ThemedText style={{ color: '#fff', fontSize: 10, opacity: 0.7, textTransform: 'uppercase', marginBottom: 2 }}>
                                 Expires
                               </ThemedText>
-                              <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-                                {card.expiry}
+                              <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
+                                {isRevealed && revealedCardData ? revealedCardData.expiry : (card.expiry || 'XX/XX')}
                               </ThemedText>
                             </View>
                           </View>
@@ -621,6 +705,24 @@ export default function ShareCardScreen() {
           {!isLoading && availableCards.length > 0 && (
             <View style={{ paddingHorizontal: 40, marginBottom: 20 }}>
               <View style={{ height: 1, backgroundColor: palette.border, opacity: 0.5, marginBottom: 24 }} />
+
+              <View style={[
+                styles.securityPill,
+                {
+                  backgroundColor: scheme === "dark"
+                    ? "rgba(255,255,255,0.06)"
+                    : "rgba(0,0,0,0.04)"
+                }
+              ]}>
+                <MaterialIcons
+                  name="lock"
+                  size={14}
+                  color={palette.secondary}
+                />
+                <ThemedText style={styles.securityPillText}>
+                  CVV never shared · Encrypted end-to-end
+                </ThemedText>
+              </View>
 
               <View style={[styles.validitySelector, { backgroundColor: 'transparent', padding: 0, shadowOpacity: 0, elevation: 0 }]}>
                 <ThemedText style={[styles.validitySelectorTitle, { color: palette.text, fontSize: 18, marginBottom: 8 }]}>
@@ -1073,5 +1175,39 @@ const styles = StyleSheet.create({
   },
   validityOptionText: {
     fontSize: 13,
+  },
+  cardNumberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 12,
+  },
+
+  cardNumber: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    fontFamily: "monospace",
+    flex: 1,
+    marginRight: 12,
+  },
+  securityPill: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginTop: 8,
+    marginBottom: 12,
+    opacity: 0.85,
+  },
+
+  securityPillText: {
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: 0.2,
   },
 });

@@ -180,6 +180,7 @@ export default function ImportCardScreen() {
             dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
             bank: cardData.bank || "", // Use shared bank or empty
             cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
+            isPinned: false, // Imported cards always start unpinned (device-specific property)
           };
 
           console.log("💳 Importing card:", cardToImport);
