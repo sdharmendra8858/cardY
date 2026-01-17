@@ -95,39 +95,53 @@ export default function SwipeableCard({
     };
 
     const handlePanStateChange = (event: any) => {
-        const { translationX, velocityX, state } = event.nativeEvent;
+        const { translationX, translationY, velocityX, state } = event.nativeEvent;
 
         if (state === State.BEGAN) {
             panResponder.x = translationX;
             panResponder.isMoving = true;
         } else if (state === State.END || state === State.CANCELLED) {
             panResponder.isMoving = false;
-            const currentValue = panResponder.currentOffset + translationX;
-            const distance = Math.abs(translationX);
-            const velocity = Math.abs(velocityX);
 
-            const shouldOpen = distance > SWIPE_THRESHOLD || velocity > 500;
+            // Check if gesture is primarily on X axis
+            const isXGesture = Math.abs(translationX) > Math.abs(translationY);
+
+            // If gesture is primarily on Y axis, close the card and ignore
+            if (!isXGesture) {
+                const isCurrentlyOpen = Math.abs(panResponder.currentOffset) > snapDistance * 0.1;
+                if (isCurrentlyOpen) {
+                    Animated.spring(translateX, {
+                        toValue: 0,
+                        useNativeDriver: false,
+                        speed: 12,
+                        bounciness: 3,
+                    }).start();
+                    panResponder.currentOffset = 0;
+                    setIsOpen(false);
+                }
+                return;
+            }
+
             const isSwipeLeft = translationX < 0;
             const isSwipeRight = translationX > 0;
+            const isCurrentlyOpen = Math.abs(panResponder.currentOffset) > snapDistance * 0.1;
 
-            let targetValue = currentValue;
+            let targetValue = 0;
 
-            // If swiping in opposite direction to close
-            if (panResponder.currentOffset > 0 && isSwipeLeft) {
-                // Currently swiped right, now swiping left to close
+            // If card is open and user swipes in any direction, close it
+            if (isCurrentlyOpen) {
                 targetValue = 0;
                 setIsOpen(false);
-            } else if (panResponder.currentOffset < 0 && isSwipeRight) {
-                // Currently swiped left, now swiping right to close
-                targetValue = 0;
-                setIsOpen(false);
-            } else if (shouldOpen && isSwipeLeft) {
-                targetValue = Math.max(-snapDistance, currentValue);
+            } else if (isSwipeLeft) {
+                // Swiping left - open to the left
+                targetValue = -snapDistance;
                 setIsOpen(true);
-            } else if (shouldOpen && isSwipeRight) {
-                targetValue = Math.min(snapDistance, currentValue);
+            } else if (isSwipeRight) {
+                // Swiping right - open to the right
+                targetValue = snapDistance;
                 setIsOpen(true);
             } else {
+                // No significant swipe - return to original
                 targetValue = 0;
                 setIsOpen(false);
             }
