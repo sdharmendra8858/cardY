@@ -63,6 +63,11 @@ export default function SwipeableCard({
         currentOffset: 0,
     }).current;
 
+    // Sync isPinned prop to local state whenever it changes
+    useEffect(() => {
+        setIsPinned(initialIsPinned);
+    }, [initialIsPinned]);
+
     // Calculate expiry status
     const isExpired = cardExpiresAt ? Math.floor(Date.now() / 1000) > cardExpiresAt : false;
     const isInfinite = !cardExpiresAt && cardUser === "other";
@@ -218,6 +223,7 @@ export default function SwipeableCard({
                             {canPin(cardUser as "self" | "shared" | "other") ? (
                                 <Pressable
                                     style={{ justifyContent: "center", alignItems: "center" }}
+                                    hitSlop={12}
                                     onPress={() => {
                                         console.log(`🎯 Left pin button pressed for card ${id}`);
                                         handlePin();
@@ -238,6 +244,7 @@ export default function SwipeableCard({
                             {canPin(cardUser as "self" | "shared" | "other") ? (
                                 <Pressable
                                     style={{ justifyContent: "center", alignItems: "center" }}
+                                    hitSlop={12}
                                     onPress={() => {
                                         console.log(`🎯 Right pin button pressed for card ${id}`);
                                         handlePin();
@@ -257,6 +264,7 @@ export default function SwipeableCard({
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
                             <Pressable
                                 style={{ justifyContent: "center", alignItems: "center" }}
+                                hitSlop={12}
                                 onPress={handleDelete}
                             >
                                 <Ionicons name="trash-outline" size={20} color="#fff" />
@@ -270,6 +278,7 @@ export default function SwipeableCard({
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
                             <Pressable
                                 style={{ justifyContent: "center", alignItems: "center" }}
+                                hitSlop={12}
                                 onPress={handleDelete}
                             >
                                 <Ionicons name="trash-outline" size={20} color="#fff" />

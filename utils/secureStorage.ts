@@ -9,9 +9,9 @@
 
 import * as SecureStore from "expo-secure-store";
 import {
-    decryptCards,
-    encryptCards,
-    EncryptionResult,
+  decryptCards,
+  encryptCards,
+  EncryptionResult,
 } from "./encryption/cardEncryption";
 
 const STORAGE_KEY_MASKED = "cards_masked";
@@ -74,6 +74,7 @@ export async function getMaskedCards(): Promise<Card[]> {
             expiry: card.expiry, // Should be undefined in masked storage
             cardUser: card.cardUser, // "self" or "other"
             cardExpiresAt: card.cardExpiresAt, // Unix timestamp for validity
+            isPinned: card.isPinned, // Pinned status
           }))
         );
       }
@@ -158,6 +159,7 @@ export async function setCards(cards: Card[]): Promise<void> {
 
     // Create masked version for list display
     // Keep cardUser and cardExpiresAt for categorization and validity tracking
+    // Keep isPinned for pin state persistence
     // Remove expiry (MM/YY) and CVV for security
     const maskedCards = cards.map((card) => ({
       ...card,
@@ -166,6 +168,7 @@ export async function setCards(cards: Card[]): Promise<void> {
       expiry: undefined, // Remove expiry date (MM/YY) for masked storage
       // cardUser is kept for categorization (self vs other)
       // cardExpiresAt is kept for validity badges and auto-cleanup
+      // isPinned is kept for pin state persistence
     }));
 
     // Encrypt both versions

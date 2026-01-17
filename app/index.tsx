@@ -26,7 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   useScreenProtection();
   const { showAlert } = useAlert();
-  const { cards: contextCards, removeCard } = useCards();
+  const { cards: contextCards, removeCard, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
@@ -110,8 +110,9 @@ export default function HomeScreen() {
     }
   };
 
-  // Sync context cards to local state
+  // Sync context cards to local state whenever context updates
   React.useEffect(() => {
+    console.log(`🔄 Syncing ${contextCards.length} cards from context to local state`);
     setCards(contextCards);
   }, [contextCards]);
 
@@ -217,63 +218,123 @@ export default function HomeScreen() {
 
   const handlePinChange = React.useCallback((id: string, isPinned: boolean) => {
     console.log(`🔄 handlePinChange called for card ${id} with isPinned: ${isPinned}`);
-    setCards(currentCards => {
-      // Find the card being pinned/unpinned
-      const cardIndex = currentCards.findIndex(card => card.id === id);
-      if (cardIndex === -1) {
-        console.log(`❌ Card ${id} not found in current cards`);
-        return currentCards;
-      }
 
-      const card = currentCards[cardIndex];
-      console.log(`✅ Found card at index ${cardIndex}:`, card);
+    // Find the card being pinned/unpinned
+    const cardIndex = cards.findIndex(card => card.id === id);
+    if (cardIndex === -1) {
+      console.log(`❌ Card ${id} not found in current cards`);
+      return;
+    }
 
-      const updatedCard = {
-        ...card,
-        isPinned,
-      };
-      console.log(`📝 Updated card:`, updatedCard);
+    const card = cards[cardIndex];
+    console.log(`✅ Found card at index ${cardIndex}:`, card);
 
-      // Separate self and other cards
-      const selfCards = currentCards.filter(c => !c.cardUser || c.cardUser === "self");
-      const otherCards = currentCards.filter(c => c.cardUser === "other");
-      console.log(`📊 Self cards: ${selfCards.length}, Other cards: ${otherCards.length}`);
+    const updatedCard = {
+      ...card,
+      isPinned,
+    };
+    console.log(`📝 Updated card:`, updatedCard);
 
-      // Update the appropriate array
-      let reorderedCards;
-      if (!card.cardUser || card.cardUser === "self") {
-        // Remove from self cards
-        const selfWithoutCurrent = selfCards.filter(c => c.id !== id);
-        // Add to top if pinning, otherwise add to bottom
-        const updatedSelfCards = isPinned
-          ? [updatedCard, ...selfWithoutCurrent]
-          : [...selfWithoutCurrent, updatedCard];
-        // Combine with other cards
-        reorderedCards = [...updatedSelfCards, ...otherCards];
-        console.log(`🔄 Reordered SELF cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+    // Separate self and other cards
+    const selfCards = cards.filter(c => !c.cardUser || c.cardUser === "self");
+    const otherCards = cards.filter(c => c.cardUser === "other");
+    console.log(`📊 Self cards: ${selfCards.length}, Other cards: ${otherCards.length}`);
+
+    // Update the appropriate array
+    let reorderedCards;
+    if (!card.cardUser || card.cardUser === "self") {
+      // Remove from self cards
+      const selfWithoutCurrent = selfCards.filter(c => c.id !== id);
+
+      let updatedSelfCards;
+      if (isPinned) {
+        // Check if we're exceeding max 3 pinned cards (count in ORIGINAL array)
+        const pinnedCountInOriginal = selfCards.filter(c => c.isPinned).length;
+        if (pinnedCountInOriginal >= 3) {
+          // Find the oldest pinned card (LAST pinned card in the array, since newest are at top)
+          let oldestPinnedIndex = -1;
+          for (let i = selfCards.length - 1; i >= 0; i--) {
+            if (selfCards[i].isPinned) {
+              oldestPinnedIndex = i;
+              break;
+            }
+          }
+          if (oldestPinnedIndex !== -1) {
+            const oldestPinnedCard = selfCards[oldestPinnedIndex];
+            console.log(`📌 Max pinned cards (3) reached. Unpinning oldest card: ${oldestPinnedCard.id}`);
+            // Update it in the filtered array
+            const indexInFiltered = selfWithoutCurrent.findIndex(c => c.id === oldestPinnedCard.id);
+            if (indexInFiltered !== -1) {
+              selfWithoutCurrent[indexInFiltered] = {
+                ...selfWithoutCurrent[indexInFiltered],
+                isPinned: false,
+              };
+            }
+          }
+        }
+        // Add new pinned card to top
+        updatedSelfCards = [updatedCard, ...selfWithoutCurrent];
       } else {
-        // Remove from other cards
-        const otherWithoutCurrent = otherCards.filter(c => c.id !== id);
-        // Add to top if pinning, otherwise add to bottom
-        const updatedOtherCards = isPinned
-          ? [updatedCard, ...otherWithoutCurrent]
-          : [...otherWithoutCurrent, updatedCard];
-        // Combine with self cards
-        reorderedCards = [...selfCards, ...updatedOtherCards];
-        console.log(`🔄 Reordered OTHER cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+        // Add unpinned card to bottom
+        updatedSelfCards = [...selfWithoutCurrent, updatedCard];
       }
 
-      // Persist to storage
-      (async () => {
-        console.log(`💾 Persisting ${reorderedCards.length} cards to storage...`);
-        const { setCards: setCardsInStorage } = await import("@/utils/secureStorage");
-        await setCardsInStorage(reorderedCards);
-        console.log(`✅ Cards persisted to storage`);
-      })();
+      // Combine with other cards
+      reorderedCards = [...updatedSelfCards, ...otherCards];
+      console.log(`🔄 Reordered SELF cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+    } else {
+      // Remove from other cards
+      const otherWithoutCurrent = otherCards.filter(c => c.id !== id);
 
-      return reorderedCards;
-    });
-  }, []);
+      let updatedOtherCards;
+      if (isPinned) {
+        // Check if we're exceeding max 3 pinned cards (count in ORIGINAL array)
+        const pinnedCountInOriginal = otherCards.filter(c => c.isPinned).length;
+        if (pinnedCountInOriginal >= 3) {
+          // Find the oldest pinned card (LAST pinned card in the array, since newest are at top)
+          let oldestPinnedIndex = -1;
+          for (let i = otherCards.length - 1; i >= 0; i--) {
+            if (otherCards[i].isPinned) {
+              oldestPinnedIndex = i;
+              break;
+            }
+          }
+          if (oldestPinnedIndex !== -1) {
+            const oldestPinnedCard = otherCards[oldestPinnedIndex];
+            console.log(`📌 Max pinned cards (3) reached. Unpinning oldest card: ${oldestPinnedCard.id}`);
+            // Update it in the filtered array
+            const indexInFiltered = otherWithoutCurrent.findIndex(c => c.id === oldestPinnedCard.id);
+            if (indexInFiltered !== -1) {
+              otherWithoutCurrent[indexInFiltered] = {
+                ...otherWithoutCurrent[indexInFiltered],
+                isPinned: false,
+              };
+            }
+          }
+        }
+        // Add new pinned card to top
+        updatedOtherCards = [updatedCard, ...otherWithoutCurrent];
+      } else {
+        // Add unpinned card to bottom
+        updatedOtherCards = [...otherWithoutCurrent, updatedCard];
+      }
+
+      // Combine with self cards
+      reorderedCards = [...selfCards, ...updatedOtherCards];
+      console.log(`🔄 Reordered OTHER cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+    }
+
+    // Persist to storage and refresh
+    (async () => {
+      console.log(`💾 Persisting ${reorderedCards.length} cards to storage...`);
+      const { setCards: setCardsInStorage } = await import("@/utils/secureStorage");
+      await setCardsInStorage(reorderedCards);
+      console.log(`✅ Cards persisted to storage`);
+      // Refresh cards from storage to sync context and local state
+      await refreshCards();
+      console.log(`🔄 Cards refreshed from storage after pin change`);
+    })();
+  }, [cards, refreshCards]);
 
 
   const tabIndicatorStyle = useAnimatedStyle(() => {
@@ -350,9 +411,9 @@ export default function HomeScreen() {
                 ref={iconRef}
                 onPress={() => {
                   if (iconRef.current) {
-                    iconRef.current.measure((x, y, width, height, px, py) => {
+                    iconRef.current.measure((_x, _y, _width, height, _px, py) => {
                       setTooltipTop(py + height);
-                      setTooltipLeft(px);
+                      setTooltipLeft(_px);
                       setShowWarning(true);
                     });
                   }
@@ -442,8 +503,6 @@ export default function HomeScreen() {
     ]
   );
 
-  const renderFooter = () => null;
-
   const filteredCards = React.useMemo(() => {
     return cards.filter((card) => {
       if (activeTab === "self") {
@@ -521,6 +580,7 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#f2f2f2" },
