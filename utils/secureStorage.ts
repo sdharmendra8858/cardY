@@ -33,6 +33,7 @@ type Card = {
   dominantColor?: string;
   bank?: string;
   cardExpiresAt?: number;
+  isPinned?: boolean;
 };
 
 /**
@@ -199,7 +200,14 @@ export async function setCards(cards: Card[]): Promise<void> {
  * Mask a card number by showing only last 4 digits
  */
 function maskCardNumber(cardNumber: string): string {
-  if (!cardNumber || cardNumber.length < 4) return cardNumber;
+  if (!cardNumber) return cardNumber;
+
+  // If already masked (contains X's), return as-is
+  if (cardNumber.includes('X') || cardNumber.includes('x')) {
+    return cardNumber;
+  }
+
+  if (cardNumber.length < 4) return cardNumber;
 
   const clean = cardNumber.replace(/\D/g, "");
   if (clean.length <= 4) return clean;

@@ -4,7 +4,7 @@ type CardPinningContextType = {
     pinnedCards: Set<string>;
     togglePin: (cardId: string) => void;
     isPinned: (cardId: string) => boolean;
-    canPin: (cardType: "self" | "shared") => boolean;
+    canPin: (cardType: "self" | "shared" | "other") => boolean;
 };
 
 const CardPinningContext = createContext<CardPinningContextType | undefined>(undefined);
@@ -28,8 +28,8 @@ export const CardPinningProvider = ({ children }: { children: ReactNode }) => {
         return pinnedCards.has(cardId);
     }, [pinnedCards]);
 
-    const canPin = useCallback((cardType: "self" | "shared") => {
-        return cardType === "self";
+    const canPin = useCallback((cardType: "self" | "shared" | "other") => {
+        return true; // Allow pinning for all card types
     }, []);
 
     const value = React.useMemo(

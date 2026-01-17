@@ -53,6 +53,7 @@ export default function HomeScreen() {
       dominantColor?: string;
       cardExpiresAt?: number;
       isExpiring?: boolean; // For animation
+      isPinned?: boolean; // Whether the card is pinned
     }[]
   >([]);
 
@@ -213,6 +214,66 @@ export default function HomeScreen() {
       ],
     });
   }, [showAlert, removeCard]);
+
+  const handlePinChange = React.useCallback((id: string, isPinned: boolean) => {
+    console.log(`🔄 handlePinChange called for card ${id} with isPinned: ${isPinned}`);
+    setCards(currentCards => {
+      // Find the card being pinned/unpinned
+      const cardIndex = currentCards.findIndex(card => card.id === id);
+      if (cardIndex === -1) {
+        console.log(`❌ Card ${id} not found in current cards`);
+        return currentCards;
+      }
+
+      const card = currentCards[cardIndex];
+      console.log(`✅ Found card at index ${cardIndex}:`, card);
+
+      const updatedCard = {
+        ...card,
+        isPinned,
+      };
+      console.log(`📝 Updated card:`, updatedCard);
+
+      // Separate self and other cards
+      const selfCards = currentCards.filter(c => !c.cardUser || c.cardUser === "self");
+      const otherCards = currentCards.filter(c => c.cardUser === "other");
+      console.log(`📊 Self cards: ${selfCards.length}, Other cards: ${otherCards.length}`);
+
+      // Update the appropriate array
+      let reorderedCards;
+      if (!card.cardUser || card.cardUser === "self") {
+        // Remove from self cards
+        const selfWithoutCurrent = selfCards.filter(c => c.id !== id);
+        // Add to top if pinning, otherwise add to bottom
+        const updatedSelfCards = isPinned
+          ? [updatedCard, ...selfWithoutCurrent]
+          : [...selfWithoutCurrent, updatedCard];
+        // Combine with other cards
+        reorderedCards = [...updatedSelfCards, ...otherCards];
+        console.log(`🔄 Reordered SELF cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+      } else {
+        // Remove from other cards
+        const otherWithoutCurrent = otherCards.filter(c => c.id !== id);
+        // Add to top if pinning, otherwise add to bottom
+        const updatedOtherCards = isPinned
+          ? [updatedCard, ...otherWithoutCurrent]
+          : [...otherWithoutCurrent, updatedCard];
+        // Combine with self cards
+        reorderedCards = [...selfCards, ...updatedOtherCards];
+        console.log(`🔄 Reordered OTHER cards. New order:`, reorderedCards.map(c => ({ id: c.id, isPinned: c.isPinned })));
+      }
+
+      // Persist to storage
+      (async () => {
+        console.log(`💾 Persisting ${reorderedCards.length} cards to storage...`);
+        const { setCards: setCardsInStorage } = await import("@/utils/secureStorage");
+        await setCardsInStorage(reorderedCards);
+        console.log(`✅ Cards persisted to storage`);
+      })();
+
+      return reorderedCards;
+    });
+  }, []);
 
 
   const tabIndicatorStyle = useAnimatedStyle(() => {
@@ -407,9 +468,11 @@ export default function HomeScreen() {
         cardExpiresAt={item.cardExpiresAt}
         expiry={item.expiry}
         isExpiring={item.isExpiring}
+        isPinned={item.isPinned}
+        onPinChange={handlePinChange}
       />
     </View>
-  ), [handleRemoveCard]);
+  ), [handleRemoveCard, handlePinChange]);
 
 
   return (

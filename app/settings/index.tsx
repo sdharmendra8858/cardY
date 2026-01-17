@@ -1,6 +1,7 @@
 import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
 import { useAlert } from "@/context/AlertContext";
+import { useCards } from "@/context/CardContext";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -11,6 +12,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authenticateUser } from "@/utils/LockScreen";
 import Slider from "@react-native-community/slider";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -28,7 +30,9 @@ import Toast from "react-native-toast-message";
 const { CacheModule } = NativeModules;
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const { showAlert } = useAlert();
+  const { refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
@@ -156,10 +160,14 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await clearCards();
+              // Refresh the CardContext to update the UI
+              await refreshCards();
               Toast.show({
                 type: "success",
                 text1: "All cards cleared securely",
               });
+              // Navigate back to home screen
+              router.push("/");
             } catch (error) {
               console.error("Error clearing cards:", error);
               Toast.show({

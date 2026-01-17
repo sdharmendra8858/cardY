@@ -23,6 +23,8 @@ interface SwipeableCardProps {
     expiry?: string;
     isExpiring?: boolean;
     onPin?: (cardId: string, cardType: "self" | "shared") => void;
+    isPinned?: boolean;
+    onPinChange?: (cardId: string, isPinned: boolean) => void;
 }
 
 const SWIPE_THRESHOLD = 50;
@@ -44,9 +46,12 @@ export default function SwipeableCard({
     expiry,
     isExpiring = false,
     onPin,
+    isPinned: initialIsPinned = false,
+    onPinChange,
 }: SwipeableCardProps) {
     const router = useRouter();
-    const { isPinned, togglePin, canPin } = useCardPinning();
+    const { isPinned: isContextPinned, togglePin, canPin } = useCardPinning();
+    const [isPinned, setIsPinned] = useState(initialIsPinned);
     const fadeAnim = useRef(new Animated.Value(1)).current;
     const translateX = useRef(new Animated.Value(0)).current;
     const [isOpen, setIsOpen] = useState(false);
@@ -74,7 +79,7 @@ export default function SwipeableCard({
     }, [isExpiring, fadeAnim]);
 
     // Format card number properly with spaces and X's
-    const displayCardNumber = formatCardNumber(cardNumber.replace(/\*/g, 'X'));
+    const displayCardNumber = formatCardNumber(cardNumber);
 
     const handlePanGestureEvent = ({ nativeEvent }: any) => {
         const clampedX = Math.max(
@@ -90,7 +95,6 @@ export default function SwipeableCard({
         if (state === State.BEGAN) {
             panResponder.x = translationX;
             panResponder.isMoving = true;
-            setIsOpen(true);
         } else if (state === State.END || state === State.CANCELLED) {
             panResponder.isMoving = false;
             const currentValue = panResponder.currentOffset + translationX;
@@ -114,8 +118,10 @@ export default function SwipeableCard({
                 setIsOpen(false);
             } else if (shouldOpen && isSwipeLeft) {
                 targetValue = Math.max(-snapDistance, currentValue);
+                setIsOpen(true);
             } else if (shouldOpen && isSwipeRight) {
                 targetValue = Math.min(snapDistance, currentValue);
+                setIsOpen(true);
             } else {
                 targetValue = 0;
                 setIsOpen(false);
@@ -128,21 +134,9 @@ export default function SwipeableCard({
                 bounciness: 3,
             }).start();
 
-            // Update current offset for next gesture
             panResponder.currentOffset = targetValue;
         }
     };
-
-    useEffect(() => {
-        if (!isOpen) {
-            Animated.spring(translateX, {
-                toValue: 0,
-                useNativeDriver: false,
-                speed: 12,
-                bounciness: 3,
-            }).start();
-        }
-    }, [isOpen, translateX]);
 
     const handleCardLayout = (event: any) => {
         const { height, width } = event.nativeEvent.layout;
@@ -151,12 +145,44 @@ export default function SwipeableCard({
     };
 
     const handlePin = () => {
+        const newPinnedState = !isPinned;
+        console.log(`📌 Pin button pressed for card ${id}`);
+        console.log(`   Current isPinned: ${isPinned}`);
+        console.log(`   New isPinned: ${newPinnedState}`);
+        console.log(`   canPin result: ${canPin(cardUser as "self" | "shared" | "other")}`);
+        console.log(`   onPinChange callback exists: ${!!onPinChange}`);
+        setIsPinned(newPinnedState);
         togglePin(id);
+
+        // Close the swipe menu and animate back to original position
         setIsOpen(false);
+        Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: false,
+            speed: 12,
+            bounciness: 3,
+        }).start();
+        panResponder.currentOffset = 0;
+
+        if (onPinChange) {
+            console.log(`   Calling onPinChange callback with isPinned: ${newPinnedState}`);
+            onPinChange(id, newPinnedState);
+        } else {
+            console.log(`   ❌ onPinChange callback is NOT defined!`);
+        }
     };
 
     const handleDelete = () => {
+        // Close the swipe menu and animate back to original position
         setIsOpen(false);
+        Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: false,
+            speed: 12,
+            bounciness: 3,
+        }).start();
+        panResponder.currentOffset = 0;
+
         if (onDelete) {
             onDelete(id);
         }
@@ -183,41 +209,52 @@ export default function SwipeableCard({
                         borderRadius: 12,
                         overflow: "hidden",
                     }}
+                    pointerEvents="box-none"
                 >
                     {/* Top Section (50%) - Pin */}
-                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#999", gap: 0, marginBottom: -1 }}>
+                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#999", gap: 0, marginBottom: -1 }} pointerEvents="box-none">
                         {/* Left 25% - Pin Icon */}
-                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
-                            {canPin(cardUser as "self" | "shared") && (
+                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
+                            {canPin(cardUser as "self" | "shared" | "other") ? (
                                 <Pressable
                                     style={{ justifyContent: "center", alignItems: "center" }}
-                                    onPress={handlePin}
+                                    onPress={() => {
+                                        console.log(`🎯 Left pin button pressed for card ${id}`);
+                                        handlePin();
+                                    }}
                                 >
-                                    <PinIcon filled={isPinned(id)} size={20} color="#fff" />
+                                    <PinIcon filled={isPinned} size={20} color="#fff" />
                                 </Pressable>
+                            ) : (
+                                <Text style={{ color: "#fff", fontSize: 10 }}>N/A</Text>
                             )}
                         </View>
 
                         {/* Middle 50% */}
-                        <View style={{ flex: 0.5, backgroundColor: "#999" }} />
+                        <View style={{ flex: 0.5, backgroundColor: "#999" }} pointerEvents="none" />
 
                         {/* Right 25% - Pin Icon */}
-                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
-                            {canPin(cardUser as "self" | "shared") && (
+                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
+                            {canPin(cardUser as "self" | "shared" | "other") ? (
                                 <Pressable
                                     style={{ justifyContent: "center", alignItems: "center" }}
-                                    onPress={handlePin}
+                                    onPress={() => {
+                                        console.log(`🎯 Right pin button pressed for card ${id}`);
+                                        handlePin();
+                                    }}
                                 >
-                                    <PinIcon filled={isPinned(id)} size={20} color="#fff" />
+                                    <PinIcon filled={isPinned} size={20} color="#fff" />
                                 </Pressable>
+                            ) : (
+                                <Text style={{ color: "#fff", fontSize: 10 }}>N/A</Text>
                             )}
                         </View>
                     </View>
 
                     {/* Bottom Section (50%) - Delete */}
-                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#d32f2f", gap: 0 }}>
+                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#d32f2f", gap: 0 }} pointerEvents="box-none">
                         {/* Left 25% - Delete Icon */}
-                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
+                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
                             <Pressable
                                 style={{ justifyContent: "center", alignItems: "center" }}
                                 onPress={handleDelete}
@@ -227,10 +264,10 @@ export default function SwipeableCard({
                         </View>
 
                         {/* Middle 50% */}
-                        <View style={{ flex: 0.5, backgroundColor: "#d32f2f" }} />
+                        <View style={{ flex: 0.5, backgroundColor: "#d32f2f" }} pointerEvents="none" />
 
                         {/* Right 25% - Delete Icon */}
-                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
+                        <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }} pointerEvents="box-none">
                             <Pressable
                                 style={{ justifyContent: "center", alignItems: "center" }}
                                 onPress={handleDelete}
@@ -247,6 +284,7 @@ export default function SwipeableCard({
                     onHandlerStateChange={handlePanStateChange}
                     activeOffsetX={[-10, 10]}
                     failOffsetY={[-5, 5]}
+                    simultaneousHandlers={[]}
                 >
                     <Animated.View
                         style={{
@@ -257,7 +295,11 @@ export default function SwipeableCard({
                     >
                         {/* Main card pressable */}
                         <Pressable
-                            onPress={() => router.push(`/card-details/${encodeURIComponent(id)}`)}
+                            onPress={() => {
+                                if (!isOpen) {
+                                    router.push(`/card-details/${encodeURIComponent(id)}`);
+                                }
+                            }}
                             style={[styles.card, { backgroundColor: dominantColor, opacity: isExpired ? 0.5 : 1 }]}
                         >
                             {/* Top Section - Bank name and badges */}
@@ -297,6 +339,11 @@ export default function SwipeableCard({
                             {/* Bottom Section - Cardholder name */}
                             <View style={styles.cardFooter}>
                                 <Text style={styles.cardHolder}>{cardHolder}</Text>
+                                {isPinned && (
+                                    <View style={styles.pinnedIndicator}>
+                                        <PinIcon filled={true} size={16} color="#fff" />
+                                    </View>
+                                )}
                             </View>
 
                             {isExpired && (
@@ -308,20 +355,36 @@ export default function SwipeableCard({
                     </Animated.View>
                 </PanGestureHandler>
 
-                {/* Click-outside overlay to close swipe */}
+                {/* Click-outside overlay to close swipe - only on middle sections */}
                 {isOpen && (
-                    <Pressable
-                        style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: "transparent",
-                            zIndex: 2,
-                        }}
-                        onPress={() => setIsOpen(false)}
-                    />
+                    <>
+                        {/* Top middle section overlay */}
+                        <Pressable
+                            style={{
+                                position: "absolute",
+                                top: 0,
+                                left: "25%",
+                                right: "25%",
+                                height: "50%",
+                                backgroundColor: "transparent",
+                                zIndex: 2,
+                            }}
+                            onPress={() => setIsOpen(false)}
+                        />
+                        {/* Bottom middle section overlay */}
+                        <Pressable
+                            style={{
+                                position: "absolute",
+                                bottom: 0,
+                                left: "25%",
+                                right: "25%",
+                                height: "50%",
+                                backgroundColor: "transparent",
+                                zIndex: 2,
+                            }}
+                            onPress={() => setIsOpen(false)}
+                        />
+                    </>
                 )}
             </View>
         </Animated.View>
@@ -380,12 +443,23 @@ const styles = StyleSheet.create({
         opacity: 0.9,
     },
     cardFooter: {
-        justifyContent: "flex-end",
+        justifyContent: "flex-start",
+        alignItems: "center",
+        flexDirection: "row",
+        position: "relative",
+        minHeight: 20,
     },
     cardHolder: {
         color: "white",
         fontSize: 14,
         fontWeight: "500",
+        flex: 1,
+    },
+    pinnedIndicator: {
+        position: "absolute",
+        right: 0,
+        justifyContent: "center",
+        alignItems: "center",
     },
     expiredOverlay: {
         position: "absolute",

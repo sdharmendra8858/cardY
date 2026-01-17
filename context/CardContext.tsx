@@ -17,7 +17,11 @@ type Card = {
   dominantColor?: string;
   bank?: string;
   cardExpiresAt?: number; // Unix timestamp - when imported card should be auto-removed
+  isPinned?: boolean; // Whether the card is pinned
 };
+
+// Export Card type for use in other modules
+export type { Card };
 
 type CardContextType = {
   cards: Card[];
