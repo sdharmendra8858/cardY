@@ -238,112 +238,111 @@ export default function ReceiveCardScreen() {
           </View>
         )}
 
-        {qrString && !isExpired && (
-          <View style={[styles.qrContainer, { backgroundColor: palette.card }]}>
-            <ThemedText style={[styles.qrLabel, { color: palette.secondary }]}>Session QR Code</ThemedText>
-            <ThemedText style={[styles.qrDescription, { color: palette.text }]}>
-              Show this QR code to the sender to securely share a card
-            </ThemedText>
-            <View style={styles.qrCodeWrapper}>
-              <QRCode
-                value={qrString}
-                size={180}
-                color="black"
-                backgroundColor="white"
-              />
+        {/* Step-by-step flow */}
+        <View style={[styles.flowContainer, { backgroundColor: palette.card }]}>
+          {/* Step 1: Generate QR */}
+          <View style={styles.stepBox}>
+            <View style={[styles.stepHeader, { backgroundColor: palette.primary + '15' }]}>
+              <View style={[styles.stepNumber, { backgroundColor: palette.primary }]}>
+                <ThemedText style={{ color: palette.onPrimary, fontWeight: '700', fontSize: 14 }}>1</ThemedText>
+              </View>
+              <ThemedText style={[styles.stepTitle, { color: palette.text }]}>Your QR Code</ThemedText>
             </View>
-            <TouchableOpacity
-              style={[styles.regenerateCodeButton, { borderColor: palette.secondary }]}
-              onPress={regenerateSession}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="refresh" size={16} color={palette.secondary} />
-              <ThemedText style={[styles.regenerateCodeButtonText, { color: palette.secondary }]}>
-                Generate New Code
+            <View style={styles.stepContent}>
+              {qrString && !isExpired && (
+                <View style={styles.qrCodeWrapper}>
+                  <QRCode
+                    value={qrString}
+                    size={140}
+                    color="black"
+                    backgroundColor="white"
+                  />
+                </View>
+              )}
+              {isExpired && (
+                <View style={[styles.expiredBox, { backgroundColor: palette.danger + '15' }]}>
+                  <MaterialIcons name="schedule" size={32} color={palette.danger} />
+                  <ThemedText style={[styles.expiredText, { color: palette.danger }]}>Session Expired</ThemedText>
+                </View>
+              )}
+              {!session && !generationError && (
+                <View style={[styles.loadingBox, { backgroundColor: palette.primary + '15' }]}>
+                  <MaterialIcons name="hourglass-empty" size={32} color={palette.primary} />
+                  <ThemedText style={[styles.loadingText, { color: palette.primary }]}>Generating...</ThemedText>
+                </View>
+              )}
+              {generationError && (
+                <View style={[styles.errorBox, { backgroundColor: palette.danger + '15' }]}>
+                  <MaterialIcons name="error-outline" size={32} color={palette.danger} />
+                  <ThemedText style={[styles.errorText, { color: palette.danger }]}>Generation Failed</ThemedText>
+                </View>
+              )}
+              <ThemedText style={[styles.stepDescription, { color: palette.secondary }]}>
+                Show this QR code to the person who wants to share a card with you
               </ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={[styles.timer, { color: palette.secondary }]}>
-              Expires in {formatTime(timeLeft)}
-            </ThemedText>
+              {qrString && !isExpired && (
+                <ThemedText style={[styles.timerText, { color: palette.secondary }]}>
+                  Expires in {formatTime(timeLeft)}
+                </ThemedText>
+              )}
+              <TouchableOpacity
+                style={[styles.regenerateCodeButton, { borderColor: palette.secondary }]}
+                onPress={regenerateSession}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="refresh" size={16} color={palette.secondary} />
+                <ThemedText style={[styles.regenerateCodeButtonText, { color: palette.secondary }]}>
+                  Generate New Code
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
 
-        {isExpired && (
-          <View style={[styles.expiredContainer, { backgroundColor: palette.card }]}>
-            <MaterialIcons name="schedule" size={32} color={palette.danger} />
-            <ThemedText style={styles.expiredTitle}>Session Expired</ThemedText>
-            <ThemedText style={styles.expiredText}>
-              This session code has expired. Generate a new one to continue.
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.regenerateButton, { backgroundColor: palette.primary }]}
-              onPress={regenerateSession}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="refresh" size={18} color={palette.onPrimary} />
-              <ThemedText style={[styles.regenerateButtonText, { color: palette.onPrimary }]}>
-                Generate New Code
+          {/* Step 2: Wait for sender */}
+          <View style={[styles.stepConnector, { backgroundColor: palette.border }]} />
+
+          <View style={styles.stepBox}>
+            <View style={[styles.stepHeader, { backgroundColor: palette.tint + '15' }]}>
+              <View style={[styles.stepNumber, { backgroundColor: palette.tint }]}>
+                <ThemedText style={{ color: palette.onPrimary, fontWeight: '700', fontSize: 14 }}>2</ThemedText>
+              </View>
+              <ThemedText style={[styles.stepTitle, { color: palette.text }]}>Sender Shares Card</ThemedText>
+            </View>
+            <View style={styles.stepContent}>
+              <View style={[styles.infoBox, { backgroundColor: palette.tint + '15' }]}>
+                <MaterialIcons name="info" size={20} color={palette.tint} />
+                <ThemedText style={[styles.infoText, { color: palette.tint }]}>
+                  The sender will scan your QR code and share their card with you
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+
+          {/* Step 3: Scan sender's QR */}
+          <View style={[styles.stepConnector, { backgroundColor: palette.border }]} />
+
+          <View style={styles.stepBox}>
+            <View style={[styles.stepHeader, { backgroundColor: palette.secondary + '15' }]}>
+              <View style={[styles.stepNumber, { backgroundColor: palette.secondary }]}>
+                <ThemedText style={{ color: palette.onPrimary, fontWeight: '700', fontSize: 14 }}>3</ThemedText>
+              </View>
+              <ThemedText style={[styles.stepTitle, { color: palette.text }]}>Scan Their QR Code</ThemedText>
+            </View>
+            <View style={styles.stepContent}>
+              <ThemedText style={[styles.stepDescription, { color: palette.secondary }]}>
+                Once the sender generates their encrypted QR code, tap the button below to scan it and import their card
               </ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!session && !generationError && (
-          <View style={[styles.loadingContainer, { backgroundColor: palette.card }]}>
-            <MaterialIcons name="hourglass-empty" size={48} color={palette.secondary} />
-            <ThemedText style={styles.loadingText}>Generating secure session...</ThemedText>
-          </View>
-        )}
-
-        {generationError && (
-          <View style={[styles.errorContainer, { backgroundColor: palette.card }]}>
-            <MaterialIcons name="error-outline" size={48} color={palette.danger} />
-            <ThemedText style={styles.errorTitle}>Generation Failed</ThemedText>
-            <ThemedText style={styles.errorText}>{generationError}</ThemedText>
-            <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: palette.primary }]}
-              onPress={async () => {
-                setGenerationError("");
-                setSession(null);
-                setQrString("");
-                setTimeLeft(SESSION_DURATION);
-                await generateNewSession();
-              }}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="refresh" size={18} color={palette.onPrimary} />
-              <ThemedText style={[styles.retryButtonText, { color: palette.onPrimary }]}>
-                Try Again
-              </ThemedText>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={[styles.instructions, { backgroundColor: palette.card }]}>
-          <ThemedText style={[styles.instructionTitle, { color: palette.text }]}>How it works:</ThemedText>
-          <View style={styles.instructionItem}>
-            <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>1</ThemedText>
-            <ThemedText style={styles.instructionText}>
-              Show this QR code to the person who wants to share a card with you
-            </ThemedText>
-          </View>
-          <View style={styles.instructionItem}>
-            <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>2</ThemedText>
-            <ThemedText style={styles.instructionText}>
-              They will scan this code and select a card to share
-            </ThemedText>
-          </View>
-          <View style={styles.instructionItem}>
-            <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>3</ThemedText>
-            <ThemedText style={styles.instructionText}>
-              They will generate an encrypted QR code for you to scan
-            </ThemedText>
-          </View>
-          <View style={styles.instructionItem}>
-            <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>4</ThemedText>
-            <ThemedText style={styles.instructionText}>
-              Scan their QR code to import the card securely
-            </ThemedText>
+              <TouchableOpacity
+                style={[styles.scanButton, { backgroundColor: palette.secondary }]}
+                onPress={() => router.push('/share-card/import')}
+                activeOpacity={0.8}
+              >
+                <MaterialIcons name="qr-code-scanner" size={20} color={palette.onPrimary} />
+                <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
+                  Scan Sender's QR Code
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -471,123 +470,58 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
-  },
-  expiredContainer: {
-    alignItems: "center",
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  expiredTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  expiredText: {
-    textAlign: "center",
-    fontSize: 14,
-    opacity: 0.7,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  loadingContainer: {
-    alignItems: "center",
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  loadingText: {
-    fontSize: 16,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  errorContainer: {
-    alignItems: "center",
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  errorText: {
-    textAlign: "center",
-    fontSize: 14,
-    opacity: 0.7,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  retryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    gap: 6,
-  },
-  retryButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  instructions: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  instructionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
-  instructionItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
     marginBottom: 12,
   },
-  instructionNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    color: "white",
-    textAlign: "center",
-    textAlignVertical: "center",
-    fontSize: 12,
-    fontWeight: "700",
-    marginRight: 12,
-    marginTop: 2,
-    minWidth: 24,
+  expiredBox: {
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 12,
   },
-  instructionText: {
-    flex: 1,
+  expiredText: {
     fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.8,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  loadingBox: {
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  errorBox: {
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  errorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  timerText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    gap: 10,
+    marginBottom: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   securityNotice: {
     flexDirection: "row",
@@ -611,18 +545,6 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
   },
-  regenerateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  regenerateButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
   infoBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -636,5 +558,64 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "500",
+  },
+  flowContainer: {
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  stepBox: {
+    marginBottom: 16,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
+    gap: 10,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  stepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  stepContent: {
+    paddingHorizontal: 8,
+  },
+  stepDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  stepConnector: {
+    height: 2,
+    marginVertical: 8,
+    borderRadius: 1,
+  },
+  scanButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+  },
+  scanButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
