@@ -1,7 +1,7 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
-import CardItem from "@/components/CardItem";
 import NoCards from "@/components/NoCards";
+import SwipeableCard from "@/components/SwipeableCard";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
@@ -37,8 +37,8 @@ export default function HomeScreen() {
     );
   }, [contextCards]);
 
-  // Conditionally use timer only when needed for optimization
-  const { timerTick } = hasExpiringOtherCards ? useTimer() : { timerTick: 0 };
+  // Always call the hook (required by React rules), but only use it when needed
+  const { timerTick } = useTimer();
   const [cards, setCards] = useState<
     {
       id: string;
@@ -394,7 +394,7 @@ export default function HomeScreen() {
 
   const renderCardItem = React.useCallback(({ item }: { item: any }) => (
     <View style={{ paddingHorizontal: 16 }}>
-      <CardItem
+      <SwipeableCard
         id={item.id}
         cardName={item.bank || item.cardName || `Unknown Bank`}
         cardNumber={item.cardNumber}
@@ -423,16 +423,20 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderCardItem}
           ListHeaderComponent={ListHeader}
-          ListEmptyComponent={React.useMemo(() => () => (
-            <NoCards
-              showButton={cards.length === 0}
-              message={
-                cards.length === 0
-                  ? "No cards listed yet."
-                  : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
-              }
-            />
-          ), [cards.length, activeTab])}
+          ListEmptyComponent={React.useMemo(() => {
+            const EmptyComponent = () => (
+              <NoCards
+                showButton={cards.length === 0}
+                message={
+                  cards.length === 0
+                    ? "No cards listed yet."
+                    : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
+                }
+              />
+            );
+            EmptyComponent.displayName = "EmptyCardsList";
+            return EmptyComponent;
+          }, [cards.length, activeTab])}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />
