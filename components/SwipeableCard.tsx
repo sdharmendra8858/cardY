@@ -55,6 +55,7 @@ export default function SwipeableCard({
     const panResponder = useRef({
         x: 0,
         isMoving: false,
+        currentOffset: 0,
     }).current;
 
     // Calculate expiry status
@@ -76,7 +77,10 @@ export default function SwipeableCard({
     const displayCardNumber = formatCardNumber(cardNumber.replace(/\*/g, 'X'));
 
     const handlePanGestureEvent = ({ nativeEvent }: any) => {
-        const clampedX = Math.max(-maxSwipeDistance, Math.min(maxSwipeDistance, nativeEvent.translationX));
+        const clampedX = Math.max(
+            -maxSwipeDistance,
+            Math.min(maxSwipeDistance, panResponder.currentOffset + nativeEvent.translationX)
+        );
         translateX.setValue(clampedX);
     };
 
@@ -89,6 +93,7 @@ export default function SwipeableCard({
             setIsOpen(true);
         } else if (state === State.END || state === State.CANCELLED) {
             panResponder.isMoving = false;
+            const currentValue = panResponder.currentOffset + translationX;
             const distance = Math.abs(translationX);
             const velocity = Math.abs(velocityX);
 
@@ -96,29 +101,35 @@ export default function SwipeableCard({
             const isSwipeLeft = translationX < 0;
             const isSwipeRight = translationX > 0;
 
-            if (shouldOpen && isSwipeLeft) {
-                Animated.spring(translateX, {
-                    toValue: -snapDistance,
-                    useNativeDriver: false,
-                    speed: 12,
-                    bounciness: 3,
-                }).start();
+            let targetValue = currentValue;
+
+            // If swiping in opposite direction to close
+            if (panResponder.currentOffset > 0 && isSwipeLeft) {
+                // Currently swiped right, now swiping left to close
+                targetValue = 0;
+                setIsOpen(false);
+            } else if (panResponder.currentOffset < 0 && isSwipeRight) {
+                // Currently swiped left, now swiping right to close
+                targetValue = 0;
+                setIsOpen(false);
+            } else if (shouldOpen && isSwipeLeft) {
+                targetValue = Math.max(-snapDistance, currentValue);
             } else if (shouldOpen && isSwipeRight) {
-                Animated.spring(translateX, {
-                    toValue: snapDistance,
-                    useNativeDriver: false,
-                    speed: 12,
-                    bounciness: 3,
-                }).start();
+                targetValue = Math.min(snapDistance, currentValue);
             } else {
-                Animated.spring(translateX, {
-                    toValue: 0,
-                    useNativeDriver: false,
-                    speed: 12,
-                    bounciness: 3,
-                }).start();
+                targetValue = 0;
                 setIsOpen(false);
             }
+
+            Animated.spring(translateX, {
+                toValue: targetValue,
+                useNativeDriver: false,
+                speed: 12,
+                bounciness: 3,
+            }).start();
+
+            // Update current offset for next gesture
+            panResponder.currentOffset = targetValue;
         }
     };
 
@@ -167,7 +178,6 @@ export default function SwipeableCard({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        height: cardHeight,
                         zIndex: 0,
                         flexDirection: "column",
                         borderRadius: 12,
@@ -175,7 +185,7 @@ export default function SwipeableCard({
                     }}
                 >
                     {/* Top Section (50%) - Pin */}
-                    <View style={{ flex: 0.5, flexDirection: "row", backgroundColor: "#999" }}>
+                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#999", gap: 0, marginBottom: -1 }}>
                         {/* Left 25% - Pin Icon */}
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
                             {canPin(cardUser as "self" | "shared") && (
@@ -189,7 +199,7 @@ export default function SwipeableCard({
                         </View>
 
                         {/* Middle 50% */}
-                        <View style={{ flex: 0.5 }} />
+                        <View style={{ flex: 0.5, backgroundColor: "#999" }} />
 
                         {/* Right 25% - Pin Icon */}
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
@@ -205,7 +215,7 @@ export default function SwipeableCard({
                     </View>
 
                     {/* Bottom Section (50%) - Delete */}
-                    <View style={{ flex: 0.5, flexDirection: "row", backgroundColor: "#d32f2f" }}>
+                    <View style={{ height: cardHeight / 2, flexDirection: "row", backgroundColor: "#d32f2f", gap: 0 }}>
                         {/* Left 25% - Delete Icon */}
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
                             <Pressable
@@ -217,7 +227,7 @@ export default function SwipeableCard({
                         </View>
 
                         {/* Middle 50% */}
-                        <View style={{ flex: 0.5 }} />
+                        <View style={{ flex: 0.5, backgroundColor: "#d32f2f" }} />
 
                         {/* Right 25% - Delete Icon */}
                         <View style={{ flex: 0.25, justifyContent: "center", alignItems: "center" }}>
