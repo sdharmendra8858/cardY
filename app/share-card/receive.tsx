@@ -1,4 +1,5 @@
 import AlertBox from "@/components/AlertBox";
+import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
@@ -9,6 +10,7 @@ import {
   createSessionPayload,
   deleteSession,
   getCurrentSession,
+  SESSION_DURATION,
   SessionState,
   storeSession
 } from "@/utils/session";
@@ -22,8 +24,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
-
-const SESSION_DURATION = 300; // 5 minutes in seconds
 
 export default function ReceiveCardScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -403,16 +403,15 @@ export default function ReceiveCardScreen() {
                 </ThemedText>
               )}
               {qrString && !isExpired && (
-                <TouchableOpacity
-                  style={[styles.shareButton, { backgroundColor: palette.primary }]}
+                <AppButton
+                  title="Share QR Code"
                   onPress={shareQRCode}
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons name="share" size={18} color={palette.onPrimary} />
-                  <ThemedText style={[styles.shareButtonText, { color: palette.onPrimary }]}>
-                    Share QR Code
-                  </ThemedText>
-                </TouchableOpacity>
+                  variant="primary"
+                  icon="share"
+                  iconLibrary="material"
+                  fullWidth
+                  style={{ marginBottom: 12 }}
+                />
               )}
               <TouchableOpacity
                 style={[styles.regenerateCodeButton, { borderColor: palette.secondary }]}
@@ -768,21 +767,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scanButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  shareButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    gap: 8,
-    marginBottom: 12,
-  },
-
-  shareButtonText: {
     fontSize: 14,
     fontWeight: "600",
   },

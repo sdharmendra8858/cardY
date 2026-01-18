@@ -8,7 +8,8 @@ export {
     createSessionPayload,
     generateSessionCode,
     generateSessionId,
-    isSessionValid
+    isSessionValid,
+    SESSION_DURATION
 } from "./sessionGenerator";
 
 export {

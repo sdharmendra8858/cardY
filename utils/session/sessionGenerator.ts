@@ -3,10 +3,11 @@
  * Implements session creation per spec 5
  */
 
+import { SESSION_DURATION } from "../../constants/session";
 import { bytesToBase64, generateEphemeralKeyPair } from "../crypto";
 import { SessionPayload, SessionState } from "./sessionTypes";
 
-const SESSION_DURATION = 120; // 2 minutes
+export { SESSION_DURATION };
 
 /**
  * Generate 6-digit session code

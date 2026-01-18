@@ -6,7 +6,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useNavigation, useRouter } from "expo-router";
-import { useCallback, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getAvatarById } from "../../constants/avatars";
@@ -27,9 +27,24 @@ export default function ProfileScreen() {
 
   const navigation = useNavigation();
   const router = useRouter();
+
   useLayoutEffect(() => {
     navigation.setOptions({ title: "Profile" });
   }, [navigation]);
+
+  // Handle back gesture navigation (iOS swipe back) and clear stack
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // If the user is trying to go back, navigate to home and clear stack
+      if (e.data.action.type === 'GO_BACK') {
+        e.preventDefault();
+        router.dismissAll();
+        router.replace("/");
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,7 +74,10 @@ export default function ProfileScreen() {
       <View style={{ flex: 1 }}>
         <View style={styles.profileHeader}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              router.dismissAll();
+              router.replace("/");
+            }}
             style={styles.backButton}
             activeOpacity={0.7}
           >

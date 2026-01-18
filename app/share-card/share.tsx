@@ -1,5 +1,6 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
+import QRScanSection from "@/components/QRScanSection";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -15,7 +16,7 @@ import {
 import { decodeQRFromImage } from "@/utils/qrDecoder";
 import { CardPayload, SessionPayload } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Camera, CameraView } from "expo-camera";
+import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import * as ScreenCapture from "expo-screen-capture";
@@ -112,6 +113,16 @@ export default function ShareCardScreen() {
       setSelectedCardId(availableCards[0].id);
     }
   }, [cards, selectedCardId]);
+
+  // Auto-select the first card when card selection screen is shown
+  useEffect(() => {
+    if (showCardSelection && !selectedCardId) {
+      const availableCards = cards.filter((card) => card.cardUser !== "other");
+      if (availableCards.length > 0) {
+        setSelectedCardId(availableCards[0].id);
+      }
+    }
+  }, [showCardSelection, cards, selectedCardId]);
 
 
 
@@ -510,94 +521,50 @@ export default function ShareCardScreen() {
           subtitle="Scan the receiver's session QR code to share your card"
           showBackButton={true}
         />
-        <View style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.content}>
-            <View style={[styles.scanArea, { backgroundColor: palette.card }]}>
-              <CameraView
-                style={styles.camera}
-                facing="back"
-                barcodeScannerSettings={{
-                  barcodeTypes: ["qr"],
-                }}
-                onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
-                onCameraReady={() => {
-                  console.log('Camera is ready for scanning');
-                }}
-                onMountError={(error) => {
-                  console.error('Camera mount error:', error);
-                  setAlertConfig({
-                    title: 'Camera Error',
-                    message: 'Unable to access camera. Please check permissions.',
-                    buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-                  });
-                  setAlertVisible(true);
-                  setIsScanning(false);
-                  scanLineAnimation.stopAnimation();
-                }}
-              >
-                <View style={styles.cameraOverlay}>
-                  <View style={styles.scanFrame}>
-                    <Animated.View
-                      style={[
-                        styles.scanLine,
-                        {
-                          backgroundColor: palette.primary,
-                          transform: [{
-                            translateY: scanLineAnimation.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0, 200],
-                            }),
-                          }],
-                        },
-                      ]}
-                    />
-                  </View>
-                  <ThemedText style={[styles.cameraText, { backgroundColor: "rgba(0,0,0,0.7)" }]}>
-                    Center the QR code in the frame
-                  </ThemedText>
-                </View>
-              </CameraView>
-            </View>
-
-            <View style={[styles.instructions, { backgroundColor: palette.card }]}>
-              <ThemedText style={[styles.instructionTitle, { color: palette.text }]}>Ready to share?</ThemedText>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>1</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Have the receiver show you their session QR code
-                </ThemedText>
-              </View>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>2</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Tap &quot;Scan QR Code&quot; below
-                </ThemedText>
-              </View>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>3</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Hold your camera over the QR code
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.cancelButton, { backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }]}
-              onPress={() => {
+            <QRScanSection
+              isScanning={isScanning}
+              scanLineAnimation={scanLineAnimation}
+              onBarcodeScanned={handleBarCodeScanned}
+              onCameraError={(error: any) => {
+                setAlertConfig({
+                  title: 'Camera Error',
+                  message: 'Unable to access camera. Please check permissions.',
+                  buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+                });
+                setAlertVisible(true);
                 setIsScanning(false);
                 scanLineAnimation.stopAnimation();
               }}
-              activeOpacity={0.7}
-              accessibilityLabel="Cancel QR scanning"
-            >
-              <ThemedText style={[styles.cancelButtonText, { color: palette.text }]}>
-                Stop Scanning
-              </ThemedText>
-            </TouchableOpacity>
+              onScanPress={handleScanQRCode}
+              onUploadPress={handleUploadSessionQR}
+              onStopPress={() => {
+                setIsScanning(false);
+                scanLineAnimation.stopAnimation();
+              }}
+              title="Ready to share?"
+              instructions={[
+                {
+                  number: 1,
+                  text: "Have the receiver show you their session QR code",
+                },
+                {
+                  number: 2,
+                  text: 'Tap "Scan QR Code" below',
+                },
+                {
+                  number: 3,
+                  text: "Hold your camera over the QR code",
+                },
+              ]}
+            />
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -618,7 +585,11 @@ export default function ShareCardScreen() {
             setSelectedCardId(null);
           }}
         />
-        <View style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.cardsList}>
             {isLoading ? (
               <View style={styles.emptyState}>
@@ -919,7 +890,7 @@ export default function ShareCardScreen() {
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -939,68 +910,44 @@ export default function ShareCardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <View style={[styles.scanArea, { backgroundColor: palette.card }]}>
-            <View style={styles.scanPlaceholder}>
-              <View style={[styles.placeholderIcon, { backgroundColor: palette.card }]}>
-                <MaterialIcons name="qr-code-2" size={80} color={palette.secondary} />
-              </View>
-              <ThemedText style={[styles.scanPlaceholderText, { color: palette.text }]}>
-                Ready to scan when you tap the button below
-              </ThemedText>
-            </View>
-          </View>
-
-          <View style={[styles.instructions, { backgroundColor: palette.card }]}>
-            <ThemedText style={[styles.instructionTitle, { color: palette.text }]}>Ready to share?</ThemedText>
-            <View style={styles.instructionItem}>
-              <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>1</ThemedText>
-              <ThemedText style={styles.instructionText}>
-                Have the receiver show you their session QR code
-              </ThemedText>
-            </View>
-            <View style={styles.instructionItem}>
-              <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>2</ThemedText>
-              <ThemedText style={styles.instructionText}>
-                Tap &quot;Scan QR Code&quot; below
-              </ThemedText>
-            </View>
-            <View style={styles.instructionItem}>
-              <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>3</ThemedText>
-              <ThemedText style={styles.instructionText}>
-                Hold your camera over the QR code
-              </ThemedText>
-            </View>
-          </View>
+          <QRScanSection
+            isScanning={isScanning}
+            scanLineAnimation={scanLineAnimation}
+            onBarcodeScanned={handleBarCodeScanned}
+            onCameraError={(error: any) => {
+              setAlertConfig({
+                title: 'Camera Error',
+                message: 'Unable to access camera. Please check permissions.',
+                buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+              });
+              setAlertVisible(true);
+              setIsScanning(false);
+              scanLineAnimation.stopAnimation();
+            }}
+            onScanPress={handleScanQRCode}
+            onUploadPress={handleUploadSessionQR}
+            onStopPress={() => {
+              setIsScanning(false);
+              scanLineAnimation.stopAnimation();
+            }}
+            title="Ready to share?"
+            instructions={[
+              {
+                number: 1,
+                text: "Have the receiver show you their session QR code",
+              },
+              {
+                number: 2,
+                text: 'Tap "Scan QR Code" below',
+              },
+              {
+                number: 3,
+                text: "Hold your camera over the QR code",
+              },
+            ]}
+          />
         </View>
       </ScrollView>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.scanButton, { backgroundColor: palette.primary, marginTop: 24 }]}
-          onPress={handleScanQRCode}
-          activeOpacity={0.8}
-          accessibilityLabel="Scan QR code to share card"
-          accessibilityHint="Opens camera to scan receiver's session QR code"
-        >
-          <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
-          <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
-            Scan QR Code
-          </ThemedText>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.uploadButton, { backgroundColor: palette.card, borderColor: palette.border, borderWidth: 1 }]}
-          onPress={handleUploadSessionQR}
-          activeOpacity={0.8}
-          accessibilityLabel="Upload QR code image"
-          accessibilityHint="Select an image from gallery containing receiver's session QR code"
-        >
-          <MaterialIcons name="photo-library" size={24} color={palette.text} />
-          <ThemedText style={[styles.uploadButtonText, { color: palette.text }]}>
-            Upload Image
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
 
       <AlertBox
         visible={alertVisible}
@@ -1166,7 +1113,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 32,
     gap: 12,
   },
@@ -1176,40 +1123,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   continueButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  scanButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  scanButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  uploadButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  uploadButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-  },
-  cancelButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },
