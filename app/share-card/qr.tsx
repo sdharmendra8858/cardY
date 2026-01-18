@@ -5,7 +5,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
@@ -186,12 +186,21 @@ export default function QRCodeScreen() {
 
                   {qrData ? (
                     <View style={styles.qrCodeContainer}>
-                      <QRCode
-                        value={qrData}
-                        size={200}
-                        color="black"
-                        backgroundColor="white"
-                      />
+                      <View style={styles.qrWrapper}>
+                        <QRCode
+                          value={qrData}
+                          size={200}
+                          color="black"
+                          backgroundColor="white"
+                        />
+                        {/* App icon overlay in center */}
+                        <View style={styles.iconOverlay}>
+                          <Image
+                            source={require("@/assets/images/cc.png")}
+                            style={styles.icon}
+                          />
+                        </View>
+                      </View>
                       <View style={styles.encryptionNotice}>
                         <MaterialIcons name="security" size={16} color={palette.primary} />
                         <ThemedText style={styles.encryptionText}>
@@ -431,6 +440,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
+  },
+  qrWrapper: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconOverlay: {
+    position: "absolute",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   qrPlaceholder: {
     alignItems: "center",

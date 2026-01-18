@@ -1,5 +1,6 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
+import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { sessionPayloadToQRString } from "@/utils/qr";
@@ -13,10 +14,13 @@ import {
 } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import RNFS from "react-native-fs";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Share from "react-native-share";
+import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
 
 const SESSION_DURATION = 300; // 5 minutes in seconds
@@ -26,6 +30,8 @@ export default function ReceiveCardScreen() {
   const palette = Colors[scheme];
   const navigation = useNavigation();
   const router = useRouter();
+  const snapshotRef = useRef<ViewShot>(null);
+  const lastTempFileRef = useRef<string | null>(null);
 
   const [session, setSession] = useState<SessionState | null>(null);
   const [qrString, setQrString] = useState<string>("");
@@ -115,10 +121,76 @@ export default function ReceiveCardScreen() {
     loadOrGenerateSession();
   }, []);
 
+  const shareQRCode = useCallback(async () => {
+    try {
+      console.log("📤 Share button pressed");
+
+      if (!snapshotRef.current) {
+        console.error("❌ snapshotRef.current is null");
+        throw new Error("Snapshot reference not available");
+      }
+
+      if (!qrString) {
+        console.error("❌ qrString is empty");
+        throw new Error("QR string not available");
+      }
+
+      console.log("⏳ Waiting for snapshot to render...");
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log("📸 Capturing snapshot...");
+      const uri = await snapshotRef.current.capture?.();
+
+      console.log("📁 Captured URI:", uri);
+
+      if (!uri) {
+        console.error("❌ Capture returned empty URI");
+        throw new Error("Failed to capture snapshot");
+      }
+
+      // Save the URI for cleanup when new QR is generated
+      lastTempFileRef.current = uri;
+
+      console.log("🔗 Sharing file:", uri);
+
+      await Share.open({
+        url: uri,
+        title: "Share QR Code",
+        message: "Scan this QR code to securely receive a card",
+        failOnCancel: false,
+      });
+
+      console.log("✅ Share successful");
+
+    } catch (error) {
+      console.error("❌ Share failed:", error);
+
+      setAlertConfig({
+        title: "Share Failed",
+        message: error instanceof Error ? error.message : "Unable to share QR code. Please try again.",
+        buttons: [{ text: "OK", onPress: () => setAlertVisible(false) }],
+      });
+      setAlertVisible(true);
+    }
+  }, [qrString]);
+
   // Helper function to generate a new session
   const generateNewSession = useCallback(async () => {
     try {
       console.log("🔐 Starting new session generation...");
+
+      // Clean up old temporary file if it exists
+      if (lastTempFileRef.current) {
+        try {
+          console.log("🗑️ Cleaning up old temporary QR file:", lastTempFileRef.current);
+          await RNFS.unlink(lastTempFileRef.current);
+          console.log("✅ Old temporary file deleted");
+          lastTempFileRef.current = null;
+        } catch (cleanupError) {
+          console.warn("⚠️ Failed to delete old temporary file:", cleanupError);
+          // Don't throw - continue with session generation
+        }
+      }
 
       // Delete old session if it exists
       if (session?.sessionId) {
@@ -166,9 +238,27 @@ export default function ReceiveCardScreen() {
     }
   }, [session?.sessionId]);
 
-  // Countdown timer and session expiry cleanup (only on timeout, not on app background)
+  // Countdown timer (runs continuously)
   useEffect(() => {
     if (timeLeft <= 0) {
+      return; // Don't start timer if already expired
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []); // Empty dependency array - timer runs once and continues
+
+  // Session expiry cleanup (separate effect)
+  useEffect(() => {
+    if (timeLeft <= 0 && !isExpired) {
       setIsExpired(true);
       // Clean up expired session
       (async () => {
@@ -183,15 +273,8 @@ export default function ReceiveCardScreen() {
           }
         }
       })();
-      return;
     }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, session?.sessionId]);
+  }, [timeLeft, isExpired, session?.sessionId]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -228,6 +311,30 @@ export default function ReceiveCardScreen() {
         subtitle="Share this QR code to securely receive card details"
         showBackButton={true}
       />
+      <View
+        style={{
+          position: "absolute",
+          left: -1000, // Move it far off-screen instead of just zIndex
+          top: 0,
+          width: 300,
+          height: 400, // Adjust to fit your ShareQRTemplate perfectly
+        }}
+        pointerEvents="none"
+      >
+        <ViewShot
+          ref={snapshotRef}
+          options={{
+            format: "png",
+            quality: 1,
+            result: "tmpfile", // ✅ CORRECT
+          }}
+        >
+          <ShareQRTemplate
+            qrValue={qrString}
+            expiresInSeconds={timeLeft}
+          />
+        </ViewShot>
+      </View>
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {showRegenerateInfo && (
           <View style={[styles.infoBar, { backgroundColor: palette.primary + '20', borderColor: palette.primary }]}>
@@ -251,12 +358,21 @@ export default function ReceiveCardScreen() {
             <View style={styles.stepContent}>
               {qrString && !isExpired && (
                 <View style={styles.qrCodeWrapper}>
-                  <QRCode
-                    value={qrString}
-                    size={140}
-                    color="black"
-                    backgroundColor="white"
-                  />
+                  <View style={styles.qrWrapper}>
+                    <QRCode
+                      value={qrString}
+                      size={140}
+                      color="black"
+                      backgroundColor="white"
+                    />
+                    {/* App icon overlay in center */}
+                    <View style={styles.iconOverlay}>
+                      <Image
+                        source={require("@/assets/images/cc.png")}
+                        style={styles.icon}
+                      />
+                    </View>
+                  </View>
                 </View>
               )}
               {isExpired && (
@@ -284,6 +400,18 @@ export default function ReceiveCardScreen() {
                 <ThemedText style={[styles.timerText, { color: palette.secondary }]}>
                   Expires in {formatTime(timeLeft)}
                 </ThemedText>
+              )}
+              {qrString && !isExpired && (
+                <TouchableOpacity
+                  style={[styles.shareButton, { backgroundColor: palette.primary }]}
+                  onPress={shareQRCode}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons name="share" size={18} color={palette.onPrimary} />
+                  <ThemedText style={[styles.shareButtonText, { color: palette.onPrimary }]}>
+                    Share QR Code
+                  </ThemedText>
+                </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.regenerateCodeButton, { borderColor: palette.secondary }]}
@@ -472,6 +600,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
+  qrWrapper: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconOverlay: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  icon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   expiredBox: {
     alignItems: 'center',
     padding: 20,
@@ -615,6 +767,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scanButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  shareButtonText: {
     fontSize: 14,
     fontWeight: "600",
   },
