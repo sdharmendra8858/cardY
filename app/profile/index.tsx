@@ -23,7 +23,7 @@ export default function ProfileScreen() {
     DEFAULT_PROFILE.avatarUrl
   );
   const [showSharingInfo, setShowSharingInfo] = useState(false);
-  const [sharingTab, setSharingTab] = useState<'receive' | 'share'>('share');
+  const [sharingTab, setSharingTab] = useState<'receive' | 'share'>('receive');
 
   const navigation = useNavigation();
   const router = useRouter();

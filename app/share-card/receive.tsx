@@ -155,8 +155,8 @@ export default function ReceiveCardScreen() {
 
       await Share.open({
         url: uri,
-        title: "Share QR Code",
-        message: "Scan this QR code to securely receive a card",
+        title: "Receive My Card",
+        message: "Share this QR code so I can securely receive your card details",
         failOnCancel: false,
       });
 
@@ -332,6 +332,7 @@ export default function ReceiveCardScreen() {
           <ShareQRTemplate
             qrValue={qrString}
             expiresInSeconds={timeLeft}
+            intent="receive"
           />
         </ViewShot>
       </View>

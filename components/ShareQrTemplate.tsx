@@ -5,11 +5,13 @@ import QRCode from "react-native-qrcode-svg";
 interface ShareQRTemplateProps {
     qrValue: string;
     expiresInSeconds?: number;
+    intent?: 'send' | 'receive';
 }
 
 export default function ShareQRTemplate({
     qrValue,
     expiresInSeconds,
+    intent = 'send',
 }: ShareQRTemplateProps) {
     // ⛔ Never render QR without data (prevents crashes)
     if (!qrValue) return null;
@@ -21,17 +23,28 @@ export default function ShareQRTemplate({
         return `${m}:${String(s).padStart(2, "0")}`;
     };
 
+    const intentText = intent === 'send'
+        ? 'Scan to receive my card'
+        : 'Scan to share your card';
+
+    const footerText = intent === 'send'
+        ? 'I want to share my card with you'
+        : 'Ready to receive your card';
+
     return (
         <View style={styles.container}>
             {/* Brand */}
             <ThemedText style={styles.brand}>
-                cardywall
+                cardyWall
             </ThemedText>
 
-            {/* Subtitle (receipt-style context) */}
+            {/* Intent subtitle */}
             <ThemedText style={styles.subtitle}>
-                Secure Card Sharing
+                {intentText}
             </ThemedText>
+
+            {/* Decorative line */}
+            <View style={styles.decorativeLine} />
 
             {/* QR with centered icon */}
             <View style={styles.qrWrapper}>
@@ -50,10 +63,10 @@ export default function ShareQRTemplate({
                 </View>
             </View>
 
-            {/* Footer info (like UPI receipts) */}
+            {/* Footer info with indicator */}
             <View style={styles.footer}>
                 <ThemedText style={styles.footerText}>
-                    Scan to receive card details
+                    {footerText}
                 </ThemedText>
 
                 {expiresInSeconds !== undefined && (
@@ -71,9 +84,11 @@ const styles = StyleSheet.create({
         width: 300,
         paddingVertical: 24,
         paddingHorizontal: 20,
+        paddingBottom: 32,
         backgroundColor: "#FFFFFF",
         borderRadius: 24,
         alignItems: "center",
+        overflow: "hidden",
     },
 
     brand: {
@@ -87,6 +102,14 @@ const styles = StyleSheet.create({
         marginTop: 4,
         marginBottom: 16,
         opacity: 0.6,
+    },
+
+    decorativeLine: {
+        width: 40,
+        height: 2,
+        backgroundColor: "#007AFF",
+        marginBottom: 16,
+        borderRadius: 1,
     },
 
     qrWrapper: {
@@ -128,6 +151,8 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 13,
         opacity: 0.75,
+        textAlign: "center",
+        fontWeight: "500",
     },
 
     expiry: {

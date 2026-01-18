@@ -12,9 +12,11 @@ import {
   parseSessionQRString,
   qrPayloadToQRString,
 } from "@/utils/qr";
+import { decodeQRFromImage } from "@/utils/qrDecoder";
 import { CardPayload, SessionPayload } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera, CameraView } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import * as ScreenCapture from "expo-screen-capture";
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -24,6 +26,7 @@ import {
   Easing,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   View
@@ -180,6 +183,22 @@ export default function ShareCardScreen() {
         throw new Error("Invalid session payload");
       }
 
+      // 3. Check if session has expired (spec 6.1)
+      const now = Math.floor(Date.now() / 1000); // Current Unix timestamp
+      if (payload.expiresAt < now) {
+        console.log("⏰ Session expired:", {
+          expiresAt: payload.expiresAt,
+          now: now,
+          expiredSeconds: now - payload.expiresAt,
+        });
+        setAlertConfig({
+          title: "Session Expired",
+          message: "This QR code has expired. Please ask the receiver to generate a new one.",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
 
       setSessionPayload(payload);
 
@@ -201,6 +220,58 @@ export default function ShareCardScreen() {
       setAlertVisible(true);
     }
   }, [cards.length, isLoading, refreshCards]);
+
+  const handleUploadSessionQR = useCallback(async () => {
+    try {
+      console.log('📤 Opening image picker...');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== "granted") {
+        setAlertConfig({
+          title: "Permission Denied",
+          message: "Please enable photo library permissions to upload QR codes",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      console.log('📁 Image selected, decoding QR...');
+      const qrResult = await decodeQRFromImage(result.assets[0].uri);
+
+      if (!qrResult.success || !qrResult.data) {
+        setAlertConfig({
+          title: "Decode Failed",
+          message: qrResult.error || "Could not decode QR code from image",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      console.log('✅ QR decoded successfully');
+      handleSessionQRScanned(qrResult.data);
+    } catch (error) {
+      console.error('❌ Error:', error);
+      setAlertConfig({
+        title: "Error",
+        message: "Failed to process image",
+        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+      });
+      setAlertVisible(true);
+    }
+  }, [handleSessionQRScanned]);
+
 
 
   // Handle redirect from add card screen
@@ -805,11 +876,13 @@ export default function ShareCardScreen() {
                   ))}
                 </View>
               </View>
+              {/* Add padding at the end of scrollable content */}
+              <View style={{ height: 32 }} />
             </View>
           )}
 
           {!isLoading && availableCards.length > 0 && (
-            <View style={[styles.buttonContainer, { paddingTop: 0 }]}>
+            <View style={[styles.buttonContainer, { paddingTop: 0, marginTop: 0 }]}>
               <TouchableOpacity
                 style={[
                   styles.generateButton,
@@ -860,7 +933,11 @@ export default function ShareCardScreen() {
         subtitle="Scan the receiver's session QR code to share your card"
         showBackButton={true}
       />
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
           <View style={[styles.scanArea, { backgroundColor: palette.card }]}>
             <View style={styles.scanPlaceholder}>
@@ -895,21 +972,34 @@ export default function ShareCardScreen() {
             </View>
           </View>
         </View>
+      </ScrollView>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[styles.scanButton, { backgroundColor: palette.primary, marginTop: 24 }]}
-            onPress={handleScanQRCode}
-            activeOpacity={0.8}
-            accessibilityLabel="Scan QR code to share card"
-            accessibilityHint="Opens camera to scan receiver's session QR code"
-          >
-            <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
-            <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
-              Scan QR Code
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.scanButton, { backgroundColor: palette.primary, marginTop: 24 }]}
+          onPress={handleScanQRCode}
+          activeOpacity={0.8}
+          accessibilityLabel="Scan QR code to share card"
+          accessibilityHint="Opens camera to scan receiver's session QR code"
+        >
+          <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
+          <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
+            Scan QR Code
+          </ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.uploadButton, { backgroundColor: palette.card, borderColor: palette.border, borderWidth: 1 }]}
+          onPress={handleUploadSessionQR}
+          activeOpacity={0.8}
+          accessibilityLabel="Upload QR code image"
+          accessibilityHint="Select an image from gallery containing receiver's session QR code"
+        >
+          <MaterialIcons name="photo-library" size={24} color={palette.text} />
+          <ThemedText style={[styles.uploadButtonText, { color: palette.text }]}>
+            Upload Image
+          </ThemedText>
+        </TouchableOpacity>
       </View>
 
       <AlertBox
@@ -926,7 +1016,9 @@ export default function ShareCardScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
-  content: { flex: 1, padding: 20 },
+  content: {
+    padding: 20,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1037,6 +1129,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     marginTop: 16,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 2 },
@@ -1073,6 +1166,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 20,
+    paddingTop: 0,
     paddingBottom: 32,
     gap: 12,
   },
@@ -1094,6 +1188,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scanButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  uploadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  uploadButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },

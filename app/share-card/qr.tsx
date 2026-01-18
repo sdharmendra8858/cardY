@@ -1,13 +1,16 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
+import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Share from "react-native-share";
+import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
 import { useCards } from "../../context/CardContext";
 
@@ -26,6 +29,7 @@ export default function QRCodeScreen() {
   const [error, setError] = useState<string>("");
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const snapshotRef = useRef<any>(null);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -96,6 +100,44 @@ export default function QRCodeScreen() {
     });
     setAlertVisible(true);
   }, [router]);
+
+  const handleShareQR = useCallback(async () => {
+    try {
+      if (!qrData) {
+        setAlertConfig({
+          title: "Error",
+          message: "QR code is not ready yet. Please wait a moment and try again.",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      console.log("📸 Capturing QR code snapshot...");
+      const uri = await snapshotRef.current?.capture?.();
+
+      console.log("📁 Captured URI:", uri);
+
+      if (!uri) {
+        console.error("❌ Capture returned empty URI");
+        throw new Error("Failed to capture QR code");
+      }
+
+      console.log("🔗 Sharing QR code...");
+
+      await Share.open({
+        url: uri,
+        title: "Share My Card",
+        message: "Scan this QR code with CardyWall to securely receive my card details",
+        failOnCancel: false,
+      });
+
+      console.log("✅ Share successful");
+    } catch (error) {
+      console.error("❌ Share failed:", error);
+      // User cancelled share, no need to show error
+    }
+  }, [qrData]);
 
   if (!card) {
     return (
@@ -247,6 +289,18 @@ export default function QRCodeScreen() {
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity
+              style={[styles.shareQRButton, { backgroundColor: palette.card, borderColor: palette.border, borderWidth: 1 }]}
+              onPress={handleShareQR}
+              activeOpacity={0.8}
+              disabled={!qrData}
+            >
+              <MaterialIcons name="share" size={20} color={palette.text} />
+              <ThemedText style={[styles.shareQRButtonText, { color: palette.text }]}>
+                Share QR
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={[styles.doneButton, { backgroundColor: palette.primary }]}
               onPress={handleShareComplete}
               activeOpacity={0.8}
@@ -267,6 +321,35 @@ export default function QRCodeScreen() {
         buttons={alertConfig.buttons}
         onRequestClose={() => setAlertVisible(false)}
       />
+
+      {/* Off-screen template for sharing */}
+      {qrData && (
+        <View
+          style={{
+            position: "absolute",
+            left: -1000,
+            top: 0,
+            width: 300,
+            height: 400,
+          }}
+          pointerEvents="none"
+        >
+          <ViewShot
+            ref={snapshotRef}
+            options={{
+              format: "png",
+              quality: 0.9,
+              result: "tmpfile",
+            }}
+            style={{
+              width: 300,
+              height: 400,
+            }}
+          >
+            <ShareQRTemplate qrValue={qrData} intent="send" />
+          </ViewShot>
+        </View>
+      )}
     </>
   );
 }
@@ -398,6 +481,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   doneButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  shareQRButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  shareQRButtonText: {
     fontSize: 16,
     fontWeight: "600",
   },
