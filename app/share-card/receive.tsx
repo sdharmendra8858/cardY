@@ -477,7 +477,7 @@ export default function ReceiveCardScreen() {
         <View style={[styles.securityNotice, { backgroundColor: palette.card }]}>
           <MaterialIcons name="security" size={20} color={palette.primary} />
           <ThemedText style={styles.securityText}>
-            This QR code is encrypted and can only be used once. It expires in 5 minutes.
+            This QR code is encrypted and can only be used once. It expires in 10 minutes.
           </ThemedText>
         </View>
       </ScrollView>
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   qrContainer: {
     alignItems: "center",
-    padding: 20,
+    // padding: 20,
     borderRadius: 16,
     marginBottom: 24,
     shadowColor: "#000",
@@ -593,17 +593,26 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   qrCodeWrapper: {
-    padding: 12,
-    backgroundColor: "#ffffff",
-    borderRadius: 12,
+    padding: 0,
+    backgroundColor: "transparent",
+    borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
+    marginHorizontal: 0,
   },
   qrWrapper: {
     position: "relative",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
   iconOverlay: {
     position: "absolute",

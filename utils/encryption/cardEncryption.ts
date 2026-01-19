@@ -97,7 +97,7 @@ export async function decryptCardData(encryptionResult: EncryptionResult): Promi
     return cardData;
   } catch (error) {
     console.error("❌ Card decryption failed:", error);
-    return "";
+    throw error; // Re-throw to let caller handle it
   }
 }
 
@@ -107,6 +107,15 @@ export async function encryptCards(cards: any[]): Promise<EncryptionResult> {
 }
 
 export async function decryptCards(encryptionResult: EncryptionResult): Promise<any[]> {
-  const cardJSON = await decryptCardData(encryptionResult);
-  return JSON.parse(cardJSON);
+  try {
+    const cardJSON = await decryptCardData(encryptionResult);
+    if (!cardJSON) {
+      console.error("❌ Decryption returned empty string");
+      return [];
+    }
+    return JSON.parse(cardJSON);
+  } catch (error) {
+    console.error("❌ Failed to decrypt cards:", error);
+    return [];
+  }
 }

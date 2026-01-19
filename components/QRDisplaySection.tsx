@@ -12,6 +12,7 @@ interface QRDisplaySectionProps {
     card: any;
     onShareQR: () => void;
     onCardShared: () => void;
+    expiresInSeconds?: number;
 }
 
 export default function QRDisplaySection({
@@ -19,9 +20,16 @@ export default function QRDisplaySection({
     card,
     onShareQR,
     onCardShared,
+    expiresInSeconds,
 }: QRDisplaySectionProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
+
+    const formatTime = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, "0")}`;
+    };
 
     return (
         <>
@@ -63,7 +71,7 @@ export default function QRDisplaySection({
                                 <View style={styles.encryptionNotice}>
                                     <MaterialIcons name="security" size={16} color={palette.primary} />
                                     <ThemedText style={styles.encryptionText}>
-                                        End-to-end encrypted • Expires in 5 minutes
+                                        End-to-end encrypted • Expires in {expiresInSeconds !== undefined ? formatTime(expiresInSeconds) : "10 minutes"}
                                     </ThemedText>
                                 </View>
                             </>
@@ -260,6 +268,14 @@ const styles = StyleSheet.create({
         position: "relative",
         alignItems: "center",
         justifyContent: "center",
+        backgroundColor: "#FFFFFF",
+        padding: 16,
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 4,
+        elevation: 3,
     },
     iconOverlay: {
         position: "absolute",

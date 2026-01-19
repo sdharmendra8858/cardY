@@ -478,6 +478,7 @@ export default function ShareCardScreen() {
           params: {
             encryptedQRString: qrString,
             cardId: selectedCardId,
+            expiresAt: sessionPayload.expiresAt.toString(),
           },
         });
       } catch (error) {

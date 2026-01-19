@@ -24,9 +24,11 @@ export default function QRCodeScreen() {
 
   const encryptedQRString = params.encryptedQRString as string;
   const cardId = params.cardId as string;
+  const expiresAt = params.expiresAt ? parseInt(params.expiresAt as string) : null;
 
   const [qrData, setQrData] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [timeLeft, setTimeLeft] = useState<number>(0);
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const snapshotRef = useRef<any>(null);
@@ -86,6 +88,22 @@ export default function QRCodeScreen() {
 
     generateEncryptedQR();
   }, [card, encryptedQRString, cardId]);
+
+  // Calculate and update remaining time
+  useEffect(() => {
+    if (!expiresAt) return;
+
+    const updateTimeLeft = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = Math.max(0, expiresAt - now);
+      setTimeLeft(remaining);
+    };
+
+    updateTimeLeft();
+
+    const timer = setInterval(updateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt]);
 
   const handleShareComplete = useCallback(() => {
     setAlertConfig({
@@ -212,6 +230,7 @@ export default function QRCodeScreen() {
             card={card}
             onShareQR={handleShareQR}
             onCardShared={handleShareComplete}
+            expiresInSeconds={timeLeft}
           />
         </View>
       </SafeAreaView>
