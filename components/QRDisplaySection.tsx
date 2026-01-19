@@ -71,7 +71,7 @@ export default function QRDisplaySection({
                                 <View style={styles.encryptionNotice}>
                                     <MaterialIcons name="security" size={16} color={palette.primary} />
                                     <ThemedText style={styles.encryptionText}>
-                                        End-to-end encrypted • Expires in {expiresInSeconds !== undefined ? formatTime(expiresInSeconds) : "10 minutes"}
+                                        End-to-end encrypted
                                     </ThemedText>
                                 </View>
                             </>

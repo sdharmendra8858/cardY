@@ -71,6 +71,8 @@ export default function ShareCardScreen() {
   const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(15); // 15 minutes default
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
 
@@ -123,6 +125,47 @@ export default function ShareCardScreen() {
       }
     }
   }, [showCardSelection, cards, selectedCardId]);
+
+  // Session timer - starts when sessionPayload is set
+  useEffect(() => {
+    if (!sessionPayload) {
+      setSessionTimeLeft(0);
+      setSessionExpired(false);
+      return;
+    }
+
+    const updateTimeLeft = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = Math.max(0, sessionPayload.expiresAt - now);
+      setSessionTimeLeft(remaining);
+
+      if (remaining === 0 && !sessionExpired) {
+        setSessionExpired(true);
+        // Show expiry alert
+        setAlertConfig({
+          title: "Session Expired",
+          message: "Your session has expired. Please scan the receiver's QR code again.",
+          buttons: [
+            {
+              text: "OK",
+              onPress: () => {
+                setAlertVisible(false);
+                // Reset to scanning screen
+                setSessionPayload(null);
+                setShowCardSelection(false);
+                setSelectedCardId(null);
+              },
+            },
+          ],
+        });
+        setAlertVisible(true);
+      }
+    };
+
+    updateTimeLeft();
+    const timer = setInterval(updateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, [sessionPayload, sessionExpired]);
 
 
 
@@ -478,6 +521,7 @@ export default function ShareCardScreen() {
           params: {
             encryptedQRString: qrString,
             cardId: selectedCardId,
+            sessionExpiresAt: sessionPayload.expiresAt.toString(),
             expiresAt: sessionPayload.expiresAt.toString(),
           },
         });
@@ -509,6 +553,12 @@ export default function ShareCardScreen() {
     if (number.startsWith('3')) return 'AMEX';
     return 'OTHER';
   }
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   // ✅ ALL HOOKS CALLED - NOW SAFE TO HAVE CONDITIONAL RETURNS
   // Show camera if scanning
@@ -586,6 +636,14 @@ export default function ShareCardScreen() {
             setSelectedCardId(null);
           }}
         />
+        {sessionTimeLeft > 0 && (
+          <View style={[styles.sessionTimerBar, { backgroundColor: palette.primary + '15', borderBottomColor: palette.primary }]}>
+            <MaterialIcons name="schedule" size={16} color={palette.primary} />
+            <ThemedText style={[styles.sessionTimerText, { color: palette.primary }]}>
+              Session expires in {formatTime(sessionTimeLeft)}
+            </ThemedText>
+          </View>
+        )}
         <ScrollView
           style={styles.container}
           contentContainerStyle={{ flexGrow: 1 }}
@@ -1299,5 +1357,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500",
     letterSpacing: 0.2,
+  },
+  sessionTimerBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  sessionTimerText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
