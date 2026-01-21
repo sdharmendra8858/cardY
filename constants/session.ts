@@ -3,4 +3,4 @@
  * Centralized configuration for session management
  */
 
-export const SESSION_DURATION = 600; // 10 minutes in seconds
+export const SESSION_DURATION = 300; // 5 minutes in seconds

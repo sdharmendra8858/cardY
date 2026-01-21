@@ -49,9 +49,11 @@ export default function AlertBox({
   // Handle Android back press
   useEffect(() => {
     const backAction = () => {
-      if (visible && cancelable) {
-        onRequestClose?.();
-        return true;
+      if (visible) {
+        if (cancelable) {
+          onRequestClose?.();
+        }
+        return true; // Always return true to consume the event and prevent dismissal
       }
       return false;
     };
@@ -64,7 +66,9 @@ export default function AlertBox({
       animationType="fade"
       transparent
       visible={visible}
-      onRequestClose={onRequestClose}
+      onRequestClose={() => {
+        if (cancelable) onRequestClose?.();
+      }}
     >
       <TouchableWithoutFeedback
         onPress={() => {
@@ -72,7 +76,7 @@ export default function AlertBox({
         }}
       >
         <View style={[styles.overlay, { backgroundColor: overlayBg }]}>
-          <TouchableWithoutFeedback onPress={() => {}}>
+          <TouchableWithoutFeedback onPress={() => { }}>
             <ThemedView style={[styles.card, { backgroundColor: cardBg }]}>
               {title ? (
                 <ThemedText type="subtitle" style={styles.title}>
@@ -89,10 +93,10 @@ export default function AlertBox({
                     btn.style === "destructive"
                       ? "danger"
                       : btn.style === "cancel"
-                      ? "secondary"
-                      : index === 0
-                      ? "primary"
-                      : "secondary";
+                        ? "secondary"
+                        : index === 0
+                          ? "primary"
+                          : "secondary";
                   return (
                     <AppButton
                       key={`${btn.text}-${index}`}
