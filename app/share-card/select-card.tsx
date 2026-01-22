@@ -287,6 +287,27 @@ export default function SelectCardScreen() {
                             <ThemedText style={styles.emptyText}>
                                 You need to add some cards before you can share them.
                             </ThemedText>
+                            <TouchableOpacity
+                                style={[
+                                    styles.addCardButton,
+                                    { backgroundColor: palette.primary }
+                                ]}
+                                onPress={() => router.push({
+                                    pathname: "/add-card",
+                                    params: {
+                                        redirectTo: "/share-card/select-card",
+                                        sessionId,
+                                        receiverPublicKey,
+                                        expiresAt: expiresAtStr,
+                                    }
+                                })}
+                                activeOpacity={0.8}
+                            >
+                                <MaterialIcons name="add" size={24} color={palette.onPrimary} />
+                                <ThemedText style={[styles.addCardButtonText, { color: palette.onPrimary }]}>
+                                    Add Card
+                                </ThemedText>
+                            </TouchableOpacity>
                         </View>
                     ) : (
                         <Animated.FlatList
@@ -682,6 +703,20 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     generateButtonText: {
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    addCardButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+        marginTop: 24,
+    },
+    addCardButtonText: {
         fontSize: 16,
         fontWeight: "600",
     },

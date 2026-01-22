@@ -1,5 +1,4 @@
-import { ThemedText } from "@/components/themed-text";
-import { Image, StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
 interface ShareQRTemplateProps {
@@ -11,10 +10,10 @@ interface ShareQRTemplateProps {
 export default function ShareQRTemplate({
     qrValue,
     expiresInSeconds,
-    intent = 'send',
+    intent,
 }: ShareQRTemplateProps) {
     // ⛔ Never render QR without data (prevents crashes)
-    if (!qrValue) return null;
+    if (!qrValue || !intent) return null;
 
     const formatTime = (seconds?: number) => {
         if (!seconds || seconds <= 0) return "Expired";
@@ -34,14 +33,14 @@ export default function ShareQRTemplate({
     return (
         <View style={styles.container}>
             {/* Brand */}
-            <ThemedText style={styles.brand}>
+            <Text style={styles.brand}>
                 cardyWall
-            </ThemedText>
+            </Text>
 
             {/* Intent subtitle */}
-            <ThemedText style={styles.subtitle}>
+            <Text style={styles.subtitle}>
                 {intentText}
-            </ThemedText>
+            </Text>
 
             {/* Decorative line */}
             <View style={styles.decorativeLine} />
@@ -52,27 +51,23 @@ export default function ShareQRTemplate({
                     value={qrValue}
                     size={180}
                     color="#000"
+                    logo={require("@/assets/images/cc.png")}
+                    logoSize={40}
+                    logoBorderRadius={50}
                     backgroundColor="#fff"
                 />
-                {/* App icon overlay in center */}
-                <View style={styles.iconOverlay}>
-                    <Image
-                        source={require("@/assets/images/cc.png")}
-                        style={styles.icon}
-                    />
-                </View>
             </View>
 
             {/* Footer info with indicator */}
             <View style={styles.footer}>
-                <ThemedText style={styles.footerText}>
+                <Text style={styles.footerText}>
                     {footerText}
-                </ThemedText>
+                </Text>
 
                 {expiresInSeconds !== undefined && (
-                    <ThemedText style={styles.expiry}>
+                    <Text style={styles.expiry}>
                         Expires in {formatTime(expiresInSeconds)}
-                    </ThemedText>
+                    </Text>
                 )}
             </View>
         </View>
@@ -120,27 +115,6 @@ const styles = StyleSheet.create({
         position: "relative",
         alignItems: "center",
         justifyContent: "center",
-    },
-
-    iconOverlay: {
-        position: "absolute",
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: "#FFFFFF",
-        alignItems: "center",
-        justifyContent: "center",
-        elevation: 5,
-        shadowColor: "#000",
-        shadowOpacity: 0.15,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-    },
-
-    icon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
     },
 
     footer: {
