@@ -2,7 +2,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { Colors } from "../constants/theme";
 import AppButton from "./AppButton";
@@ -20,16 +20,9 @@ export default function QRDisplaySection({
     card,
     onShareQR,
     onCardShared,
-    expiresInSeconds,
 }: QRDisplaySectionProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
-
-    const formatTime = (seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, "0")}`;
-    };
 
     return (
         <>
@@ -59,14 +52,10 @@ export default function QRDisplaySection({
                                         size={200}
                                         color="black"
                                         backgroundColor="white"
+                                        logo={require("@/assets/images/cc.png")}
+                                        logoSize={40}
+                                        logoBorderRadius={20}
                                     />
-                                    {/* App icon overlay in center */}
-                                    <View style={styles.iconOverlay}>
-                                        <Image
-                                            source={require("@/assets/images/cc.png")}
-                                            style={styles.icon}
-                                        />
-                                    </View>
                                 </View>
                                 <View style={styles.encryptionNotice}>
                                     <MaterialIcons name="security" size={16} color={palette.primary} />
@@ -276,25 +265,6 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 4,
         elevation: 3,
-    },
-    iconOverlay: {
-        position: "absolute",
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: "#FFFFFF",
-        alignItems: "center",
-        justifyContent: "center",
-        elevation: 5,
-        shadowColor: "#000",
-        shadowOpacity: 0.15,
-        shadowOffset: { width: 0, height: 2 },
-        shadowRadius: 4,
-    },
-    icon: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
     },
     qrPlaceholder: {
         alignItems: "center",

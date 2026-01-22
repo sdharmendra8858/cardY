@@ -4,6 +4,7 @@ import QRDisplaySection from "@/components/QRDisplaySection";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import {
     encryptCardForSharing,
 } from "@/utils/cardSharing";
@@ -35,8 +36,7 @@ export default function GenerateQRScreen() {
 
     const [qrData, setQrData] = useState<string>("");
     const [error, setError] = useState<string>("");
-    const [timeLeft, setTimeLeft] = useState<number>(0);
-    const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
+    const { timeLeft, isExpired, formatTime } = useCountdown(expiresAt);
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
     const snapshotRef = useRef<any>(null);
@@ -213,57 +213,28 @@ export default function GenerateQRScreen() {
         generateEncryptedQR();
     }, [card, selectedCardId, sessionId, receiverPublicKey, expiresAt, cardValidityMinutes, revealCard]);
 
-    // Calculate and update remaining time for QR code display
+    // Session timer effect for expiry redirection
     useEffect(() => {
-        if (!expiresAt) return;
-
-        const updateTimeLeft = () => {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = Math.max(0, expiresAt - now);
-            setTimeLeft(remaining);
-        };
-
-        updateTimeLeft();
-
-        const timer = setInterval(updateTimeLeft, 1000);
-        return () => clearInterval(timer);
-    }, [expiresAt]);
-
-    // Session timer - calculates from expiresAt timestamp (for display only)
-    useEffect(() => {
-        if (!expiresAt) return;
-
-        const updateSessionTimeLeft = () => {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = Math.max(0, expiresAt - now);
-            setSessionTimeLeft(remaining);
-
-            // Show modal when session expires
-            if (remaining === 0 && !hasRedirectedRef.current && navigation.isFocused()) {
-                hasRedirectedRef.current = true;
-                setAlertConfig({
-                    title: "Session Expired",
-                    message: "Your sharing session has expired. Please scan the QR code again.",
-                    cancelable: false,
-                    buttons: [
-                        {
-                            text: "OK",
-                            onPress: () => {
-                                setAlertVisible(false);
-                                router.dismissAll();
-                                router.push("/share-card/share");
-                            }
+        if (isExpired && !hasRedirectedRef.current && navigation.isFocused()) {
+            hasRedirectedRef.current = true;
+            setAlertConfig({
+                title: "Session Expired",
+                message: "Your sharing session has expired. Please scan the QR code again.",
+                cancelable: false,
+                buttons: [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            setAlertVisible(false);
+                            router.dismissAll();
+                            router.push("/share-card/share");
                         }
-                    ]
-                });
-                setAlertVisible(true);
-            }
-        };
-
-        updateSessionTimeLeft();
-        const timer = setInterval(updateSessionTimeLeft, 1000);
-        return () => clearInterval(timer);
-    }, [expiresAt, router]);
+                    }
+                ]
+            });
+            setAlertVisible(true);
+        }
+    }, [isExpired, router]);
 
     // Remove the separate expiry effect - it's now handled in the timer
 
@@ -374,11 +345,6 @@ export default function GenerateQRScreen() {
         );
     }
 
-    const formatTime = (seconds: number): string => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins}:${secs.toString().padStart(2, "0")}`;
-    };
 
     return (
         <>
@@ -390,11 +356,11 @@ export default function GenerateQRScreen() {
                     subtitle="Show this QR code to securely share your card"
                     showBackButton={true}
                 />
-                {sessionTimeLeft > 0 && (
+                {timeLeft > 0 && (
                     <View style={[styles.sessionTimerBar, { backgroundColor: palette.primary + '15', borderBottomColor: palette.primary }]}>
                         <MaterialIcons name="schedule" size={16} color={palette.primary} />
                         <ThemedText style={[styles.sessionTimerText, { color: palette.primary }]}>
-                            Session expires in {formatTime(sessionTimeLeft)}
+                            Session expires in {formatTime(timeLeft)}
                         </ThemedText>
                     </View>
                 )}

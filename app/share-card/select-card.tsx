@@ -2,6 +2,7 @@ import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import { formatCardNumber } from "@/utils/formatCardNumber";
 import { authenticateUser } from "@/utils/LockScreen";
 import { SessionPayload } from "@/utils/session";
@@ -53,7 +54,7 @@ export default function SelectCardScreen() {
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
-    const [sessionTimeLeft, setSessionTimeLeft] = useState<number>(0);
+    const { timeLeft: sessionTimeLeft, isExpired } = useCountdown(sessionPayload?.expiresAt ?? null);
     const scrollX = useRef(new Animated.Value(0)).current;
     const hasRedirectedRef = useRef(false);
 
@@ -100,11 +101,6 @@ export default function SelectCardScreen() {
                 expiresAt: expiresAtNum,
             };
             setSessionPayload(payload);
-
-            // Calculate and set initial time left
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = Math.max(0, expiresAtNum - now);
-            setSessionTimeLeft(remaining);
         }
     }, [sessionId, receiverPublicKey, expiresAtStr]);
 
@@ -132,44 +128,28 @@ export default function SelectCardScreen() {
         }
     }, [cards, selectedCardId]);
 
-    // Session timer
+    // Session timer effect for expiry redirection
     useEffect(() => {
-        if (!sessionPayload) {
-            setSessionTimeLeft(0);
-            return;
-        }
-
-        const updateTimeLeft = () => {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = Math.max(0, sessionPayload.expiresAt - now);
-            setSessionTimeLeft(remaining);
-
-            // Show modal when session expires
-            if (remaining === 0 && !hasRedirectedRef.current && navigation.isFocused()) {
-                hasRedirectedRef.current = true;
-                setAlertConfig({
-                    title: "Session Expired",
-                    message: "Your sharing session has expired. Please scan the QR code again.",
-                    cancelable: false,
-                    buttons: [
-                        {
-                            text: "OK",
-                            onPress: () => {
-                                setAlertVisible(false);
-                                router.dismissAll();
-                                router.push("/share-card/share");
-                            }
+        if (isExpired && !hasRedirectedRef.current && navigation.isFocused()) {
+            hasRedirectedRef.current = true;
+            setAlertConfig({
+                title: "Session Expired",
+                message: "Your sharing session has expired. Please scan the QR code again.",
+                cancelable: false,
+                buttons: [
+                    {
+                        text: "OK",
+                        onPress: () => {
+                            setAlertVisible(false);
+                            router.dismissAll();
+                            router.push("/share-card/share");
                         }
-                    ]
-                });
-                setAlertVisible(true);
-            }
-        };
-
-        updateTimeLeft();
-        const timer = setInterval(updateTimeLeft, 1000);
-        return () => clearInterval(timer);
-    }, [sessionPayload, router]);
+                    }
+                ]
+            });
+            setAlertVisible(true);
+        }
+    }, [isExpired, router]);
 
     // Remove the separate expiry effect - it's now handled in the timer
 

@@ -4,12 +4,14 @@ import Hero from "@/components/Hero";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import { sessionPayloadToQRString } from "@/utils/qr";
 import {
   createSession,
   createSessionPayload,
   deleteSession,
   getCurrentSession,
+  isSessionValid,
   SESSION_DURATION,
   SessionState,
   storeSession
@@ -17,7 +19,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Image, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import RNFS from "react-native-fs";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,8 +37,7 @@ export default function ReceiveCardScreen() {
 
   const [session, setSession] = useState<SessionState | null>(null);
   const [qrString, setQrString] = useState<string>("");
-  const [timeLeft, setTimeLeft] = useState<number>(SESSION_DURATION);
-  const [isExpired, setIsExpired] = useState<boolean>(false);
+  const { timeLeft, isExpired, formatTime } = useCountdown(session?.expiresAt ?? null);
   const [generationError, setGenerationError] = useState<string>("");
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
@@ -67,10 +68,7 @@ export default function ReceiveCardScreen() {
 
         if (existingSession) {
           // Check if session is still valid
-          const now = Math.floor(Date.now() / 1000);
-          const timeRemaining = existingSession.expiresAt - now;
-
-          if (timeRemaining > 0) {
+          if (isSessionValid(existingSession.expiresAt)) {
             // Session is still valid, use it
             console.log("✅ Using existing session:", existingSession.sessionId);
             const payload = createSessionPayload(existingSession);
@@ -78,7 +76,6 @@ export default function ReceiveCardScreen() {
 
             setSession(existingSession);
             setQrString(qr);
-            setTimeLeft(timeRemaining);
             setGenerationError("");
             return;
           } else {
@@ -97,12 +94,10 @@ export default function ReceiveCardScreen() {
 
         setSession(newSession);
         setQrString(qr);
-        setTimeLeft(SESSION_DURATION);
         setGenerationError("");
 
         console.log("✅ Session generation complete:", {
           sessionId: newSession.sessionId,
-          code: newSession.sessionCode,
           expiresAt: new Date(newSession.expiresAt * 1000).toISOString(),
         });
       } catch (error) {
@@ -212,8 +207,6 @@ export default function ReceiveCardScreen() {
 
       setSession(newSession);
       setQrString(qr);
-      setTimeLeft(SESSION_DURATION);
-      setIsExpired(false);
       setGenerationError("");
       setShowRegenerateInfo(true);
 
@@ -222,7 +215,6 @@ export default function ReceiveCardScreen() {
 
       console.log("✅ Session generation complete:", {
         sessionId: newSession.sessionId,
-        code: newSession.sessionCode,
         expiresAt: new Date(newSession.expiresAt * 1000).toISOString(),
       });
     } catch (error) {
@@ -238,57 +230,28 @@ export default function ReceiveCardScreen() {
     }
   }, [session?.sessionId]);
 
-  // Countdown timer (runs continuously)
+  // Session expiry cleanup
   useEffect(() => {
-    if (timeLeft <= 0) {
-      return; // Don't start timer if already expired
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []); // Empty dependency array - timer runs once and continues
-
-  // Session expiry cleanup (separate effect)
-  useEffect(() => {
-    if (timeLeft <= 0 && !isExpired) {
-      setIsExpired(true);
+    if (isExpired && session?.sessionId) {
       // Clean up expired session
       (async () => {
-        if (session?.sessionId) {
-          try {
-            console.log("⏰ Session expired, cleaning up...");
-            const { deleteSession } = await import("@/utils/session");
-            await deleteSession(session.sessionId);
-            console.log("✅ Expired session cleaned up");
-          } catch (error) {
-            console.error("❌ Failed to cleanup expired session:", error);
-          }
+        try {
+          console.log("⏰ Session expired, cleaning up...");
+          await deleteSession(session.sessionId);
+          console.log("✅ Expired session cleaned up");
+        } catch (error) {
+          console.error("❌ Failed to cleanup expired session:", error);
         }
       })();
     }
-  }, [timeLeft, isExpired, session?.sessionId]);
+  }, [isExpired, session?.sessionId]);
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const regenerateSession = useCallback(async () => {
     try {
       setGenerationError("");
       setSession(null);
       setQrString("");
-      setTimeLeft(SESSION_DURATION);
-      setIsExpired(false);
 
       await generateNewSession();
     } catch (error) {
@@ -365,14 +328,10 @@ export default function ReceiveCardScreen() {
                       size={140}
                       color="black"
                       backgroundColor="white"
+                      logo={require("@/assets/images/cc.png")}
+                      logoSize={32}
+                      logoBorderRadius={16}
                     />
-                    {/* App icon overlay in center */}
-                    <View style={styles.iconOverlay}>
-                      <Image
-                        source={require("@/assets/images/cc.png")}
-                        style={styles.icon}
-                      />
-                    </View>
                   </View>
                 </View>
               )}
@@ -477,7 +436,7 @@ export default function ReceiveCardScreen() {
         <View style={[styles.securityNotice, { backgroundColor: palette.card }]}>
           <MaterialIcons name="security" size={20} color={palette.primary} />
           <ThemedText style={styles.securityText}>
-            This QR code is encrypted and can only be used once. It expires in 10 minutes.
+            This QR code is encrypted and can only be used once. It expires in {Math.floor(SESSION_DURATION / 60)} minutes.
           </ThemedText>
         </View>
       </ScrollView>
@@ -499,30 +458,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 32,
-  },
-  codeContainer: {
-    alignItems: "center",
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  codeLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  code: {
-    fontSize: 36,
-    fontWeight: "bold",
-    letterSpacing: 4,
-    marginBottom: 20,
   },
   actionButtons: {
     flexDirection: "row",
@@ -613,25 +548,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 3,
-  },
-  iconOverlay: {
-    position: "absolute",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
   },
   expiredBox: {
     alignItems: 'center',

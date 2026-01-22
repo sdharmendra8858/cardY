@@ -4,6 +4,7 @@ import QRScanSection from "@/components/QRScanSection";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
+import { isSessionValid } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -105,8 +106,7 @@ export default function ShareScreen() {
                     }
 
                     // Check if session is expired
-                    const now = Math.floor(Date.now() / 1000);
-                    if (now > sessionPayload.expiresAt) {
+                    if (!isSessionValid(sessionPayload.expiresAt)) {
                         setAlertConfig({
                             title: "QR Code Expired",
                             message: "This QR code has expired. Please ask the receiver to generate a new one.",
@@ -170,8 +170,7 @@ export default function ShareScreen() {
             });
 
             // Check if session is expired
-            const now = Math.floor(Date.now() / 1000);
-            if (now > sessionPayload.expiresAt) {
+            if (!isSessionValid(sessionPayload.expiresAt)) {
                 setAlertConfig({
                     title: "QR Code Expired",
                     message: "This QR code has expired. Please ask the receiver to generate a new one.",

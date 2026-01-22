@@ -1,3 +1,4 @@
+import { formatTimeMMSS } from "@/utils/time";
 import { StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
@@ -15,12 +16,6 @@ export default function ShareQRTemplate({
     // ⛔ Never render QR without data (prevents crashes)
     if (!qrValue || !intent) return null;
 
-    const formatTime = (seconds?: number) => {
-        if (!seconds || seconds <= 0) return "Expired";
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
-        return `${m}:${String(s).padStart(2, "0")}`;
-    };
 
     const intentText = intent === 'send'
         ? 'Scan to receive my card'
@@ -34,7 +29,7 @@ export default function ShareQRTemplate({
         <View style={styles.container}>
             {/* Brand */}
             <Text style={styles.brand}>
-                cardyWall
+                Cardy Wall
             </Text>
 
             {/* Intent subtitle */}
@@ -43,7 +38,7 @@ export default function ShareQRTemplate({
             </Text>
 
             {/* Decorative line */}
-            <View style={styles.decorativeLine} />
+            <View style={[styles.decorativeLine, { backgroundColor: intent === 'send' ? "#007AFF" : "#34C759" }]} />
 
             {/* QR with centered icon */}
             <View style={styles.qrWrapper}>
@@ -66,7 +61,7 @@ export default function ShareQRTemplate({
 
                 {expiresInSeconds !== undefined && (
                     <Text style={styles.expiry}>
-                        Expires in {formatTime(expiresInSeconds)}
+                        Expires in {expiresInSeconds > 0 ? formatTimeMMSS(expiresInSeconds) : "Expired"}
                     </Text>
                 )}
             </View>

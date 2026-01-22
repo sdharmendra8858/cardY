@@ -4,12 +4,10 @@
  */
 
 export {
-    canUseSession, createSession,
+    SESSION_DURATION, canUseSession, createSession,
     createSessionPayload,
-    generateSessionCode,
     generateSessionId,
-    isSessionValid,
-    SESSION_DURATION
+    isSessionValid
 } from "./sessionGenerator";
 
 export {

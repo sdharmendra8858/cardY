@@ -3,21 +3,12 @@
  * Implements session creation per spec 5
  */
 
+import * as Crypto from "expo-crypto";
 import { SESSION_DURATION } from "../../constants/session";
 import { bytesToBase64, generateEphemeralKeyPair } from "../crypto";
 import { SessionPayload, SessionState } from "./sessionTypes";
 
 export { SESSION_DURATION };
-
-/**
- * Generate 6-digit session code
- * Spec 5.2: sessionCode = 6-digit random number (UX only)
- * 
- * @returns 6-digit code as string
- */
-export function generateSessionCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 /**
  * Generate session ID (UUIDv4)
@@ -26,21 +17,7 @@ export function generateSessionCode(): string {
  * @returns UUIDv4 string
  */
 export function generateSessionId(): string {
-  // Generate UUIDv4 using random values
-  const chars = "0123456789abcdef";
-  let uuid = "";
-  for (let i = 0; i < 36; i++) {
-    if (i === 8 || i === 13 || i === 18 || i === 23) {
-      uuid += "-";
-    } else if (i === 14) {
-      uuid += "4"; // Version 4
-    } else if (i === 19) {
-      uuid += chars[(Math.random() * 4 + 8) | 0]; // Variant bits
-    } else {
-      uuid += chars[(Math.random() * 16) | 0];
-    }
-  }
-  return uuid;
+  return Crypto.randomUUID();
 }
 
 /**
@@ -54,7 +31,6 @@ export async function createSession(): Promise<SessionState> {
   try {
     // Generate session metadata
     const sessionId = generateSessionId();
-    const sessionCode = generateSessionCode();
     const expiresAt = Math.floor(Date.now() / 1000) + SESSION_DURATION;
 
     // Generate ephemeral key pair
@@ -64,7 +40,6 @@ export async function createSession(): Promise<SessionState> {
 
     return {
       sessionId,
-      sessionCode,
       receiverPublicKey,
       receiverPrivateKey,
       expiresAt,

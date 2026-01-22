@@ -62,7 +62,6 @@ export interface CardPayload {
  */
 export interface SessionState {
   sessionId: string;
-  sessionCode: string; // 6-digit code
   receiverPublicKey: string; // base64
   receiverPrivateKey: string; // base64 (encrypted in SecureStore)
   expiresAt: number;
