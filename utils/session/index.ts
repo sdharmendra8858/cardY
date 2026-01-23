@@ -4,9 +4,8 @@
  */
 
 export {
-    canUseSession, createSession,
+    SESSION_DURATION, canUseSession, createSession,
     createSessionPayload,
-    generateSessionCode,
     generateSessionId,
     isSessionValid
 } from "./sessionGenerator";

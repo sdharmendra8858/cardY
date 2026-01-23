@@ -122,21 +122,60 @@ export async function getUnmaskedCards(): Promise<Card[]> {
  * @param cardId ID of the card to reveal
  * @returns The revealed card with full data, or null if not found
  */
+/**
+ * Reveal a specific card by decrypting its full data from unmasked storage
+ *
+ * @param cardId ID of the card to reveal
+ * @returns The revealed card with full data, or null if not found
+ */
 export async function revealCard(cardId: string): Promise<Card | null> {
   try {
     if (__DEV__) console.log(`🔓 Revealing card: ${cardId}`);
 
     const cards = await getUnmaskedCards();
+    if (!cards || cards.length === 0) {
+      if (__DEV__) console.log(`⚠️ No unmasked cards found in storage, trying fallback...`);
+      // Fallback: try to get from masked cards (they might have the data we need)
+      const maskedCards = await getMaskedCards();
+      const card = maskedCards.find((c: Card) => c.id === cardId);
+      if (card) {
+        if (__DEV__) console.log(`✅ Found card in masked storage (fallback): ${cardId}`);
+        return card;
+      }
+      return null;
+    }
+
     const card = cards.find((c: Card) => c.id === cardId);
 
     if (card) {
       if (__DEV__) console.log(`✅ Revealed card: ${cardId}`);
       return card;
     }
+    
+    if (__DEV__) console.log(`⚠️ Card ${cardId} not found in unmasked cards, trying masked fallback...`);
+    // Fallback: try masked cards
+    const maskedCards = await getMaskedCards();
+    const maskedCard = maskedCards.find((c: Card) => c.id === cardId);
+    if (maskedCard) {
+      if (__DEV__) console.log(`✅ Found card in masked storage (fallback): ${cardId}`);
+      return maskedCard;
+    }
+    
     return null;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("❌ Failed to reveal card:", message);
+    // Last resort fallback
+    try {
+      const maskedCards = await getMaskedCards();
+      const card = maskedCards.find((c: Card) => c.id === cardId);
+      if (card) {
+        console.log(`✅ Found card in masked storage (error fallback): ${cardId}`);
+        return card;
+      }
+    } catch (fallbackError) {
+      console.error("❌ Fallback also failed:", fallbackError);
+    }
     return null;
   }
 }

@@ -33,8 +33,15 @@ export default function AddCardScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [isNfcSupported, setIsNfcSupported] = useState(true);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
-  const { from, sessionId, receiverPublicKey, expiresAt } = useLocalSearchParams<{
+  const {
+    from,
+    redirectTo,
+    sessionId,
+    receiverPublicKey,
+    expiresAt
+  } = useLocalSearchParams<{
     from?: string;
+    redirectTo?: string;
     sessionId?: string;
     receiverPublicKey?: string;
     expiresAt?: string;
@@ -258,6 +265,24 @@ export default function AddCardScreen() {
       if (isEditMode) {
         // Go back to card details page
         router.back();
+      } else if (redirectTo) {
+        // Custom redirect path provided (e.g., from select-card screen)
+        // If it's the select-card screen, we should go back instead of replace
+        // as the screen is already in the stack and will refresh on focus.
+        if (redirectTo === "/share-card/select-card") {
+          router.back();
+        } else {
+          const params: any = {};
+          if (sessionId && receiverPublicKey && expiresAt) {
+            params.sessionId = sessionId;
+            params.receiverPublicKey = receiverPublicKey;
+            params.expiresAt = expiresAt;
+          }
+          router.replace({
+            pathname: redirectTo as any,
+            params
+          });
+        }
       } else if (from === "share") {
         // Coming from share screen - go back to share screen with new card selected and force card selection mode
         const params: any = { selectedCardId: card.id, showCardSelection: "true" };
@@ -266,14 +291,16 @@ export default function AddCardScreen() {
           params.receiverPublicKey = receiverPublicKey;
           params.expiresAt = expiresAt;
         }
-        router.replace({
-          pathname: "/share-card/share",
+        router.navigate({
+          pathname: "/share-card/share" as any,
           params
         });
       } else {
-        // Navigate to home screen for new cards and switch to the correct tab
+        // Navigate back to home screen for new cards and switch to the correct tab.
+        // dismissAll() ensures the stack is emptied so home becomes the root.
+        router.dismissAll();
         router.replace({
-          pathname: "/",
+          pathname: "/" as any,
           params: { redirectToTab: card.cardUser || "self" }
         });
       }

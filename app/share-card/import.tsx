@@ -1,12 +1,14 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
+import QRScanSection from "@/components/QRScanSection";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   decryptCardFromQR,
   validateQRPayload,
 } from "@/utils/cardSharing";
-import { parseCardQRString } from "@/utils/qr";
+import { parseCardQRString, parseSessionQRString } from "@/utils/qr";
+import { decodeQRFromImage } from "@/utils/qrDecoder";
 import {
   canUseSession,
   deleteSession,
@@ -14,10 +16,11 @@ import {
   retrieveSession,
 } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Camera, CameraView } from "expo-camera";
+import { Camera } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Animated, AppState, Easing, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, AppState, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useCards } from "../../context/CardContext";
@@ -116,128 +119,249 @@ export default function ImportCardScreen() {
         // Spec 10: Card decryption on Device A
         console.log("🔐 Starting card import process (spec 10)...");
 
-        // Parse QR code string to QR payload
-        const qrPayload = parseCardQRString(data);
-
-        // Validate QR payload structure (spec 9.1)
-        if (!validateQRPayload(qrPayload)) {
-          setIsProcessing(false);
-          setAlertConfig({
-            title: "Invalid QR Code",
-            message: "This QR code doesn't contain a valid CardyWall card. Make sure you're scanning a card shared from CardyWall.",
-            buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-          });
-          setAlertVisible(true);
-          return;
-        }
-
-        // Retrieve receiver's session from storage (spec 10.1)
-        const sessionId = qrPayload.sessionId;
-        const session = await retrieveSession(sessionId);
-
-        if (!session) {
-          setIsProcessing(false);
-          setAlertConfig({
-            title: "Session Not Found",
-            message: "This QR code doesn't match any active session on this device. Make sure you're using the same device that initiated the card sharing.",
-            buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-          });
-          setAlertVisible(true);
-          return;
-        }
-
-        // Validate session can be used (spec 10.1)
-        if (!canUseSession(session)) {
-          setIsProcessing(false);
-          setAlertConfig({
-            title: "Session Expired or Already Used",
-            message: "This card sharing session has expired or was already used. Please ask the sender to generate a new QR code.",
-            buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-          });
-          setAlertVisible(true);
-          return;
-        }
-
+        // Try to parse as card QR first
         try {
-          // Decrypt card from QR (spec 10.2-10.4)
-          const cardData = await decryptCardFromQR(
-            qrPayload,
-            session.receiverPrivateKey
-          );
-          console.log("✅ Card data decrypted (spec 10):", cardData);
+          const qrPayload = parseCardQRString(data);
 
-          // Map decrypted card data to Card format
-          const cardToImport = {
-            id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-            cardNumber: cardData.cardNumber,
-            cardHolder: cardData.cardholderName,
-            expiry: `${cardData.expiryMonth}/${cardData.expiryYear}`,
-            cvv: "",
-            cardName: `${cardData.brand} Card`,
-            cardKind: cardData.cardKind || "credit" as "credit" | "debit", // Use shared value or default
-            cobrandName: cardData.cobrandName || "", // Use shared value or empty
-            cardUser: "other" as "self" | "other",
-            dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
-            bank: cardData.bank || "", // Use shared bank or empty
-            cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
-          };
+          // Validate QR payload structure (spec 9.1)
+          if (!validateQRPayload(qrPayload)) {
+            throw new Error("Invalid card QR payload");
+          }
 
-          console.log("💳 Importing card:", cardToImport);
+          // This is a card QR - proceed with import
+          console.log("📋 Detected card QR code");
 
-          // Save the imported card
-          await addCard(cardToImport);
+          // Retrieve receiver's session from storage (spec 10.1)
+          const sessionId = qrPayload.sessionId;
+          const session = await retrieveSession(sessionId);
 
-          // Mark session as used (spec 10.5)
-          await markSessionAsUsed(sessionId);
+          if (!session) {
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Session Not Found",
+              message: "This QR code doesn't match any active session on this device. Make sure you're using the same device that initiated the card sharing.",
+              buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+            });
+            setAlertVisible(true);
+            return;
+          }
 
-          // Delete session after successful import (spec 10.5)
-          await deleteSession(sessionId);
-          console.log("✅ Session cleaned up after successful import");
+          // Validate session can be used (spec 10.1)
+          if (!canUseSession(session)) {
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Session Expired or Already Used",
+              message: "This card sharing session has expired or was already used. Please ask the sender to generate a new QR code.",
+              buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+            });
+            setAlertVisible(true);
+            return;
+          }
 
-          setIsProcessing(false);
-          setAlertConfig({
-            title: "Card Added Successfully",
-            message: `Imported ${cardToImport.bank || cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
-            buttons: [
-              {
-                text: "View Card Details",
-                onPress: () => router.replace(`/card-details/${cardToImport.id}`),
-              },
-              {
-                text: "View All Cards",
-                onPress: () => router.replace("/"),
-              },
-              {
-                text: "Done",
-                style: "cancel",
-                onPress: () => router.replace("/profile"),
-              },
-            ]
-          });
-          setAlertVisible(true);
-        } catch (decryptError) {
-          console.error("Failed to decrypt card data:", decryptError);
-          setIsProcessing(false);
-          setAlertConfig({
-            title: "Decryption Failed",
-            message: "Could not decrypt the card data. The QR code may be corrupted or from a different session.",
-            buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-          });
-          setAlertVisible(true);
-          return;
+          try {
+            // Decrypt card from QR (spec 10.2-10.4)
+            const cardData = await decryptCardFromQR(
+              qrPayload,
+              session.receiverPrivateKey
+            );
+            console.log("✅ Card data decrypted (spec 10):", cardData);
+
+            // Map decrypted card data to Card format
+            const cardToImport = {
+              id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+              cardNumber: cardData.cardNumber,
+              cardHolder: cardData.cardholderName,
+              expiry: `${cardData.expiryMonth}/${cardData.expiryYear}`,
+              cvv: "",
+              cardName: `${cardData.brand} Card`,
+              cardKind: cardData.cardKind || "credit" as "credit" | "debit", // Use shared value or default
+              cobrandName: cardData.cobrandName || "", // Use shared value or empty
+              cardUser: "other" as "self" | "other",
+              dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
+              bank: cardData.bank || "", // Use shared bank or empty
+              cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
+              isPinned: false, // Imported cards always start unpinned (device-specific property)
+            };
+
+            console.log("💳 Importing card:", cardToImport);
+
+            // Save the imported card
+            await addCard(cardToImport);
+
+            // Mark session as used (spec 10.5)
+            await markSessionAsUsed(sessionId);
+
+            // Delete session after successful import (spec 10.5)
+            await deleteSession(sessionId);
+            console.log("✅ Session cleaned up after successful import");
+
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Card Added Successfully",
+              message: `Imported ${cardToImport.bank || cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
+              buttons: [
+                {
+                  text: "View Card Details",
+                  onPress: () => router.replace(`/card-details/${cardToImport.id}`),
+                },
+                {
+                  text: "View All Cards",
+                  onPress: () => router.replace("/"),
+                },
+                {
+                  text: "Done",
+                  style: "cancel",
+                  onPress: () => router.replace("/profile"),
+                },
+              ]
+            });
+            setAlertVisible(true);
+          } catch (decryptError) {
+            console.error("Failed to decrypt card data:", decryptError);
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Decryption Failed",
+              message: "Could not decrypt the card data. The QR code may be corrupted or from a different session.",
+              buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+            });
+            setAlertVisible(true);
+            return;
+          }
+        } catch (cardParseError) {
+          // Not a card QR, try parsing as session QR
+          console.log("📱 Not a card QR, checking if it's a session QR...");
+
+          try {
+            const sessionPayload = parseSessionQRString(data);
+            console.log("📱 Detected session QR code - redirecting to share screen");
+
+            // This is a session QR - redirect to share screen
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Session QR Detected",
+              message: "This is a receiver's session QR code. You should use this on the Share Card screen to share your card.",
+              buttons: [
+                {
+                  text: "Go to Share Screen",
+                  onPress: () => {
+                    router.push({
+                      pathname: "/share-card/share",
+                      params: {
+                        sessionId: sessionPayload.sessionId,
+                        receiverPublicKey: sessionPayload.receiverPublicKey,
+                        expiresAt: sessionPayload.expiresAt.toString(),
+                        showCardSelection: "true",
+                      },
+                    });
+                  },
+                },
+                {
+                  text: "Cancel",
+                  style: "cancel",
+                  onPress: () => setAlertVisible(false),
+                },
+              ]
+            });
+            setAlertVisible(true);
+            return;
+          } catch (sessionParseError) {
+            // Neither card nor session QR
+            console.error("Failed to parse QR code:", sessionParseError);
+            setIsProcessing(false);
+            setAlertConfig({
+              title: "Couldn't Read Card",
+              message: "This QR code doesn't contain valid card information. Try scanning again with a QR code shared from CardyWall.",
+              buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+            });
+            setAlertVisible(true);
+          }
         }
       } catch (error) {
-        console.error("Failed to parse QR code:", error);
+        console.error("Failed to process QR code:", error);
         setIsProcessing(false);
         setAlertConfig({
-          title: "Couldn't Read Card",
-          message: "This QR code doesn't contain card information. Try scanning again with a card shared from CardyWall.",
+          title: "Error",
+          message: "An error occurred while processing the QR code. Please try again.",
           buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
         });
         setAlertVisible(true);
       }
     }, 1500);
   }, [router, scanLineAnimation, addCard]);
+
+  const handleUploadImage = useCallback(async () => {
+    try {
+      console.log('Requesting media library permissions...');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Media library permission status:', status);
+
+      if (status !== "granted") {
+        setAlertConfig({
+          title: "Permission Denied",
+          message: "Please enable photo library permissions in settings to upload QR code images",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+        return;
+      }
+
+      console.log('Opening image picker...');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled) {
+        console.log('Image picker canceled');
+        return;
+      }
+
+      console.log('Image selected:', result.assets[0].uri);
+      setIsProcessing(true);
+
+      try {
+        console.log('🔍 Decoding QR code from image...');
+        const qrResult = await decodeQRFromImage(result.assets[0].uri);
+
+        if (qrResult.success && qrResult.data) {
+          console.log('✅ QR Code decoded successfully!');
+          console.log('📋 QR Code data:', qrResult.data);
+
+          // Process the decoded QR code data using existing handler
+          handleBarCodeScanned({ type: 'QR', data: qrResult.data });
+        } else {
+          console.log('❌ No QR code found in image');
+          setIsProcessing(false);
+          setAlertConfig({
+            title: "No QR Code Found",
+            message: qrResult.error || "Could not find a QR code in the selected image. Please try another image with a clear QR code.",
+            buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+          });
+          setAlertVisible(true);
+        }
+      } catch (decodeError) {
+        console.error('❌ Error decoding QR from image:', decodeError);
+        setIsProcessing(false);
+        setAlertConfig({
+          title: "Decoding Failed",
+          message: "Failed to decode QR code from the image. Please ensure the image contains a clear QR code.",
+          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        });
+        setAlertVisible(true);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      setIsProcessing(false);
+      setAlertConfig({
+        title: "Error",
+        message: "An error occurred while uploading the image. Please try again.",
+        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+      });
+      setAlertVisible(true);
+    }
+  }, [decodeQRFromImage]);
+
 
 
   return (
@@ -250,10 +374,14 @@ export default function ImportCardScreen() {
           subtitle="Scan a QR code to securely add a shared card"
           showBackButton={true}
         />
-        <View style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ flexGrow: 1 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.content}>
-            <View style={[styles.scanArea, { backgroundColor: palette.card }]}>
-              {isProcessing ? (
+            {isProcessing ? (
+              <View style={[styles.scanArea, { backgroundColor: palette.card }]}>
                 <View style={styles.processingContainer}>
                   <View style={styles.processingAnimation}>
                     <MaterialIcons name="security" size={60} color={palette.primary} />
@@ -266,127 +394,48 @@ export default function ImportCardScreen() {
                     This card will only work on your device
                   </ThemedText>
                 </View>
-              ) : isScanning ? (
-                <CameraView
-                  style={styles.camera}
-                  facing="back"
-                  barcodeScannerSettings={{
-                    barcodeTypes: ["qr"],
-                  }}
-                  onBarcodeScanned={isScanning ? handleBarCodeScanned : undefined}
-                  onCameraReady={() => {
-                    console.log('Camera is ready for scanning');
-                  }}
-                  onMountError={(error) => {
-                    console.error('Camera mount error:', error);
-                    setAlertConfig({
-                      title: 'Camera Error',
-                      message: 'Unable to access camera. Please check permissions.',
-                      buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-                    });
-                    setAlertVisible(true);
-                    setIsScanning(false);
-                    scanLineAnimation.stopAnimation();
-                  }}
-                >
-                  <View style={styles.cameraOverlay}>
-                    <View style={styles.scanFrame}>
-                      <Animated.View
-                        style={[
-                          styles.scanLine,
-                          {
-                            backgroundColor: palette.primary,
-                            transform: [{
-                              translateY: scanLineAnimation.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 200],
-                              }),
-                            }],
-                          },
-                        ]}
-                      />
-                    </View>
-                    <ThemedText style={[styles.cameraText, { backgroundColor: "rgba(0,0,0,0.7)" }]}>
-                      Center the QR code in the frame
-                    </ThemedText>
-                  </View>
-                </CameraView>
-              ) : (
-                <View style={styles.scanPlaceholder}>
-                  <View style={[styles.placeholderIcon, { backgroundColor: palette.card }]}>
-                    <MaterialIcons name="qr-code-2" size={80} color={palette.secondary} />
-                  </View>
-                  <ThemedText style={[styles.scanPlaceholderText, { color: palette.text }]}>
-                    Ready to scan when you tap the button below
-                  </ThemedText>
-                </View>
-              )}
-            </View>
-
-            <View style={[styles.instructions, { backgroundColor: palette.card }]}>
-              <ThemedText style={[styles.instructionTitle, { color: palette.text }]}>Ready to add a card?</ThemedText>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>1</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Have the person show you their QR code
-                </ThemedText>
               </View>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>2</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Tap &quot;Scan QR Code&quot; below
-                </ThemedText>
-              </View>
-              <View style={styles.instructionItem}>
-                <ThemedText style={[styles.instructionNumber, { backgroundColor: palette.primary }]}>3</ThemedText>
-                <ThemedText style={styles.instructionText}>
-                  Hold your camera over the QR code
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            {!isScanning && !isProcessing && (
-              <TouchableOpacity
-                style={[styles.scanButton, { backgroundColor: palette.primary, marginTop: 24 }]}
-                onPress={handleScanQR}
-                activeOpacity={0.8}
-                accessibilityLabel="Scan QR code to import card"
-                accessibilityHint="Opens camera to scan a QR code containing card information"
-              >
-                <MaterialIcons name="qr-code-scanner" size={24} color={palette.onPrimary} />
-                <ThemedText style={[styles.scanButtonText, { color: palette.onPrimary }]}>
-                  Scan QR Code
-                </ThemedText>
-              </TouchableOpacity>
-            )}
-
-            {isScanning && (
-              <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: palette.surface, borderColor: palette.border, borderWidth: 1 }]}
-                onPress={() => {
+            ) : (
+              <QRScanSection
+                isScanning={isScanning}
+                scanLineAnimation={scanLineAnimation}
+                onBarcodeScanned={handleBarCodeScanned}
+                onCameraError={(error: any) => {
+                  setAlertConfig({
+                    title: 'Camera Error',
+                    message: 'Unable to access camera. Please check permissions.',
+                    buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+                  });
+                  setAlertVisible(true);
                   setIsScanning(false);
                   scanLineAnimation.stopAnimation();
                 }}
-                activeOpacity={0.7}
-                accessibilityLabel="Cancel QR scanning"
-              >
-                <ThemedText style={[styles.cancelButtonText, { color: palette.text }]}>
-                  Stop Scanning
-                </ThemedText>
-              </TouchableOpacity>
-            )}
-
-            {isProcessing && (
-              <View style={[styles.processingButton, { backgroundColor: palette.card }]}>
-                <ThemedText style={[styles.processingButtonText, { color: palette.secondary }]}>
-                  Please wait...
-                </ThemedText>
-              </View>
+                onScanPress={handleScanQR}
+                onUploadPress={handleUploadImage}
+                onStopPress={() => {
+                  setIsScanning(false);
+                  scanLineAnimation.stopAnimation();
+                }}
+                isProcessing={isProcessing}
+                title="Ready to add a card?"
+                instructions={[
+                  {
+                    number: 1,
+                    text: "Have the person show you their QR code",
+                  },
+                  {
+                    number: 2,
+                    text: 'Tap "Scan QR Code" below',
+                  },
+                  {
+                    number: 3,
+                    text: "Hold your camera over the QR code",
+                  },
+                ]}
+              />
             )}
           </View>
-        </View>
+        </ScrollView>
       </SafeAreaView>
 
       <AlertBox
@@ -572,55 +621,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     opacity: 0.8,
-  },
-  buttonContainer: {
-    padding: 20,
-    paddingBottom: 32,
-    gap: 12,
-  },
-  scanButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  scanButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  manualButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  manualButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  processingButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderRadius: 12,
-  },
-  processingButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
 

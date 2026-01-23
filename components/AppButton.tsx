@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import {
   GestureResponderEvent,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 type ButtonVariant = "primary" | "danger" | "secondary";
+type IconLibrary = "ionicons" | "material";
 
 type AppButtonProp = {
   title: string;
@@ -22,7 +23,8 @@ type AppButtonProp = {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap | keyof typeof MaterialIcons.glyphMap;
+  iconLibrary?: IconLibrary;
   iconSize?: number;
 };
 
@@ -35,6 +37,7 @@ export default function AppButton({
   style,
   textStyle,
   icon,
+  iconLibrary = "ionicons",
   iconSize = 20,
 }: AppButtonProp) {
   const scheme = useColorScheme() ?? "light";
@@ -51,6 +54,8 @@ export default function AppButton({
       : variant === "secondary"
         ? palette.onSecondary
         : palette.onPrimary;
+
+  const IconComponent = iconLibrary === "material" ? MaterialIcons : Ionicons;
 
   return (
     <TouchableOpacity
@@ -69,8 +74,8 @@ export default function AppButton({
     >
       <View style={styles.content}>
         {icon && (
-          <Ionicons
-            name={icon}
+          <IconComponent
+            name={icon as any}
             size={iconSize}
             color={textColor}
             style={styles.icon}
