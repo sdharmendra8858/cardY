@@ -9,9 +9,9 @@
 
 import * as SecureStore from "expo-secure-store";
 import {
-    decryptCards,
-    encryptCards,
-    EncryptionResult,
+  decryptCards,
+  encryptCards,
+  EncryptionResult,
 } from "./encryption/cardEncryption";
 
 const STORAGE_KEY_MASKED = "cards_masked";
@@ -33,6 +33,7 @@ type Card = {
   dominantColor?: string;
   bank?: string;
   cardExpiresAt?: number;
+  isPinned?: boolean;
 };
 
 /**
@@ -73,6 +74,7 @@ export async function getMaskedCards(): Promise<Card[]> {
             expiry: card.expiry, // Should be undefined in masked storage
             cardUser: card.cardUser, // "self" or "other"
             cardExpiresAt: card.cardExpiresAt, // Unix timestamp for validity
+            isPinned: card.isPinned, // Pinned status
           }))
         );
       }
@@ -157,6 +159,7 @@ export async function setCards(cards: Card[]): Promise<void> {
 
     // Create masked version for list display
     // Keep cardUser and cardExpiresAt for categorization and validity tracking
+    // Keep isPinned for pin state persistence
     // Remove expiry (MM/YY) and CVV for security
     const maskedCards = cards.map((card) => ({
       ...card,
@@ -165,6 +168,7 @@ export async function setCards(cards: Card[]): Promise<void> {
       expiry: undefined, // Remove expiry date (MM/YY) for masked storage
       // cardUser is kept for categorization (self vs other)
       // cardExpiresAt is kept for validity badges and auto-cleanup
+      // isPinned is kept for pin state persistence
     }));
 
     // Encrypt both versions
@@ -199,7 +203,14 @@ export async function setCards(cards: Card[]): Promise<void> {
  * Mask a card number by showing only last 4 digits
  */
 function maskCardNumber(cardNumber: string): string {
-  if (!cardNumber || cardNumber.length < 4) return cardNumber;
+  if (!cardNumber) return cardNumber;
+
+  // If already masked (contains X's), return as-is
+  if (cardNumber.includes('X') || cardNumber.includes('x')) {
+    return cardNumber;
+  }
+
+  if (cardNumber.length < 4) return cardNumber;
 
   const clean = cardNumber.replace(/\D/g, "");
   if (clean.length <= 4) return clean;

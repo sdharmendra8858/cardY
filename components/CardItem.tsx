@@ -1,5 +1,4 @@
 // components/CardItem.tsx
-import { Ionicons } from "@expo/vector-icons"; // ✅ icon library included with Expo
 import { useRouter } from "expo-router";
 import React from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
@@ -61,19 +60,12 @@ export default function CardItem({
 
   return (
     <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
-      {/* 🗑️ Delete button */}
-      {onDelete && (
-        <Pressable style={styles.deleteButton} onPress={() => onDelete(id)}>
-          <Ionicons name="trash-outline" size={20} color="#fff" />
-        </Pressable>
-      )}
-
       {/* Main card pressable */}
       <Pressable
         onPress={() => router.push(`/card-details/${encodeURIComponent(id)}`)}
         style={[styles.card, { backgroundColor: dominantColor, opacity: isExpired ? 0.5 : 1 }]}
       >
-        {/* Card type and kind badges */}
+        {/* Top Section - Bank name and badges */}
         <View style={styles.cardHeader}>
           <Text style={styles.cardName}>{cardName}</Text>
           <View style={styles.badges}>
@@ -95,14 +87,18 @@ export default function CardItem({
           </View>
         </View>
 
-        <Text style={[styles.cardNumber, { opacity: isExpired ? 0.6 : 1 }]}>{displayCardNumber}</Text>
+        {/* Middle Section - Card number and cobrand */}
+        <View style={styles.cardMiddle}>
+          <Text style={[styles.cardNumber, { opacity: isExpired ? 0.6 : 1 }]}>{displayCardNumber}</Text>
+          {cobrandName && (
+            <Text style={[styles.cobrandName, { opacity: isExpired ? 0.6 : 1 }]}>{cobrandName}</Text>
+          )}
+        </View>
 
-        {/* Cobrand name if present */}
-        {cobrandName && (
-          <Text style={[styles.cobrandName, { opacity: isExpired ? 0.6 : 1 }]}>{cobrandName}</Text>
-        )}
-
-        <Text style={styles.cardHolder}>{cardHolder}</Text>
+        {/* Bottom Section - Cardholder name */}
+        <View style={styles.cardFooter}>
+          <Text style={styles.cardHolder}>{cardHolder}</Text>
+        </View>
 
         {isExpired && (
           <View style={styles.expiredOverlay}>
@@ -121,23 +117,16 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#4b7bec",
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
-  },
-  deleteButton: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    zIndex: 2,
-    backgroundColor: "rgba(255, 0, 0, 0.7)",
-    borderRadius: 20,
-    padding: 6,
+    minHeight: 140,
+    justifyContent: "space-between",
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   cardName: { color: "white", fontSize: 18, fontWeight: "bold" },
   badges: {
@@ -155,15 +144,32 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "bold",
   },
-  cardNumber: { color: "white", fontSize: 18, fontWeight: "bold", marginBottom: 4, flexShrink: 1 },
+  cardMiddle: {
+    flex: 1,
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+  cardNumber: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 4,
+    flexShrink: 1
+  },
   cobrandName: {
     color: "white",
     fontSize: 14,
     fontStyle: "italic",
-    marginBottom: 4,
     opacity: 0.9,
   },
-  cardHolder: { color: "white", marginTop: 4 },
+  cardFooter: {
+    justifyContent: "flex-end",
+  },
+  cardHolder: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "500",
+  },
   expiry: { color: "white", marginTop: 2, fontSize: 12 },
   expiredOverlay: {
     position: "absolute",

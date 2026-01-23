@@ -8,12 +8,14 @@ import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Text, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
 import TermsPopup from "@/components/TermsPopup";
 import { AlertProvider } from "@/context/AlertContext";
 import { CardProvider, TimerProvider } from "@/context/CardContext";
+import { CardPinningProvider } from "@/context/CardPinningContext";
 import { SecurityProvider } from "@/context/SecurityContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -169,18 +171,20 @@ function AppShell() {
         <AlertProvider>
           <SecurityProvider>
             <CardProvider>
-              <TimerProvider>
-                <CompromisedDeviceModal />
-                <Stack screenOptions={{ headerShown: false }} />
-                <TermsPopup />
-                <StatusBar
-                  style={barStyle}
-                  backgroundColor={barBg}
-                  translucent={false}
-                  animated
-                />
-                <Toast position="bottom" visibilityTime={3000} />
-              </TimerProvider>
+              <CardPinningProvider>
+                <TimerProvider>
+                  <CompromisedDeviceModal />
+                  <Stack screenOptions={{ headerShown: false }} />
+                  <TermsPopup />
+                  <StatusBar
+                    style={barStyle}
+                    backgroundColor={barBg}
+                    translucent={false}
+                    animated
+                  />
+                  <Toast position="bottom" visibilityTime={3000} />
+                </TimerProvider>
+              </CardPinningProvider>
             </CardProvider>
           </SecurityProvider>
         </AlertProvider>
@@ -191,8 +195,10 @@ function AppShell() {
 
 export default function RootLayout() {
   return (
-    <ThemeOverrideProvider>
-      <AppShell />
-    </ThemeOverrideProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeOverrideProvider>
+        <AppShell />
+      </ThemeOverrideProvider>
+    </GestureHandlerRootView>
   );
 }
