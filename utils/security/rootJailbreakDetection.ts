@@ -27,6 +27,7 @@ const SIMULATE_COMPROMISED = false;
  */
 export interface DeviceSecurityCheckResult {
   isCompromised: boolean;
+  isDebuggingEnabled: boolean;
   reason?: string;
   platform: "ios" | "android";
   detectionMethod: string;
@@ -47,6 +48,7 @@ export async function checkDeviceSecurity(): Promise<DeviceSecurityCheckResult> 
     if (__DEV__ && !SIMULATE_COMPROMISED) {
       return {
         isCompromised: false,
+        isDebuggingEnabled: false,
         platform: Platform.OS as "ios" | "android",
         detectionMethod: "dev-mode-skipped",
       };
@@ -56,6 +58,7 @@ export async function checkDeviceSecurity(): Promise<DeviceSecurityCheckResult> 
       console.warn("🚨 SIMULATING COMPROMISED DEVICE 🚨");
       return {
         isCompromised: true,
+        isDebuggingEnabled: true,
         reason: "Simulated Compromise (Active Dev Flag)",
         platform: Platform.OS as "ios" | "android",
         detectionMethod: "simulation",
@@ -70,6 +73,7 @@ export async function checkDeviceSecurity(): Promise<DeviceSecurityCheckResult> 
 
     return {
       isCompromised: false,
+      isDebuggingEnabled: false,
       platform: Platform.OS as "ios" | "android",
       detectionMethod: "unsupported",
     };
@@ -78,6 +82,7 @@ export async function checkDeviceSecurity(): Promise<DeviceSecurityCheckResult> 
     // Fail safe: if we can't determine, assume compromised
     return {
       isCompromised: true,
+      isDebuggingEnabled: true,
       reason: "Security check failed - assuming compromised for safety",
       platform: Platform.OS as "ios" | "android",
       detectionMethod: "error",
@@ -103,6 +108,7 @@ async function checkAndroidSecurity(): Promise<DeviceSecurityCheckResult> {
         console.warn("⚠️ Android device appears to be rooted");
         return {
           isCompromised: true,
+          isDebuggingEnabled: false,
           reason: "Device is rooted",
           platform: "android",
           detectionMethod: "native-module",
@@ -110,22 +116,17 @@ async function checkAndroidSecurity(): Promise<DeviceSecurityCheckResult> {
       }
     }
 
-    // Method 2: Check for common root indicators
-    // (These are best-effort checks that may not work on all devices)
-    const rootIndicators = [
-      "/system/app/Superuser.apk",
-      "/system/xbin/su",
-      "/system/bin/su",
-      "/data/local/tmp/su",
-      "/data/adb/su",
-    ];
+    // Method 3: Developer Options / USB Debugging
+    let isDebuggingEnabled = false;
+    if (RootDetection && RootDetection.isDeveloperOptionsEnabled) {
+      isDebuggingEnabled = await RootDetection.isDeveloperOptionsEnabled();
+    }
 
-    // Note: We can't directly check file existence in React Native without native code
-    // This is a placeholder for native implementation
-    if (__DEV__) console.log("✅ Android device security check passed");
+    if (__DEV__) console.log("✅ Android device security check complete", { isRooted: false, isDebuggingEnabled });
 
     return {
       isCompromised: false,
+      isDebuggingEnabled,
       platform: "android",
       detectionMethod: "native-module",
     };
@@ -133,6 +134,7 @@ async function checkAndroidSecurity(): Promise<DeviceSecurityCheckResult> {
     console.error("Android security check error:", error);
     return {
       isCompromised: true,
+      isDebuggingEnabled: false,
       reason: "Android security check failed",
       platform: "android",
       detectionMethod: "error",
@@ -158,6 +160,7 @@ async function checkIOSSecurity(): Promise<DeviceSecurityCheckResult> {
         console.warn("⚠️ iOS device appears to be jailbroken");
         return {
           isCompromised: true,
+          isDebuggingEnabled: false,
           reason: "Device is jailbroken",
           platform: "ios",
           detectionMethod: "native-module",
@@ -165,22 +168,17 @@ async function checkIOSSecurity(): Promise<DeviceSecurityCheckResult> {
       }
     }
 
-    // Method 2: Check for common jailbreak indicators
-    // (These are best-effort checks)
-    const jailbreakIndicators = [
-      "/Applications/Cydia.app",
-      "/Library/MobileSubstrate/MobileSubstrate.dylib",
-      "/bin/bash",
-      "/usr/sbin/sshd",
-      "/etc/apt",
-    ];
+    // Method 3: Debugger check
+    let isDebuggingEnabled = false;
+    if (RootDetection && RootDetection.isDeveloperOptionsEnabled) {
+      isDebuggingEnabled = await RootDetection.isDeveloperOptionsEnabled();
+    }
 
-    // Note: We can't directly check file existence in React Native without native code
-    // This is a placeholder for native implementation
-    if (__DEV__) console.log("✅ iOS device security check passed");
+    if (__DEV__) console.log("✅ iOS device security check complete", { isJailbroken: false, isDebuggingEnabled });
 
     return {
       isCompromised: false,
+      isDebuggingEnabled,
       platform: "ios",
       detectionMethod: "native-module",
     };
@@ -188,6 +186,7 @@ async function checkIOSSecurity(): Promise<DeviceSecurityCheckResult> {
     console.error("iOS security check error:", error);
     return {
       isCompromised: true,
+      isDebuggingEnabled: false,
       reason: "iOS security check failed",
       platform: "ios",
       detectionMethod: "error",

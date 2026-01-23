@@ -10,6 +10,7 @@ import React, { ReactNode, createContext, useContext, useEffect, useState } from
 
 interface SecurityContextType {
     isDeviceCompromised: boolean;
+    isDebuggingEnabled: boolean;
     isSecurityCheckComplete: boolean;
     securityCheckError?: string;
 }
@@ -18,6 +19,7 @@ const SecurityContext = createContext<SecurityContextType | undefined>(undefined
 
 export const SecurityProvider = ({ children }: { children: ReactNode }) => {
     const [isDeviceCompromised, setIsDeviceCompromised] = useState(false);
+    const [isDebuggingEnabled, setIsDebuggingEnabled] = useState(false);
     const [isSecurityCheckComplete, setIsSecurityCheckComplete] = useState(false);
     const [securityCheckError, setSecurityCheckError] = useState<string>();
 
@@ -35,8 +37,15 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
                     // Spec 11: Mandatory wipe on compromised device
                     await handleCompromisedDevice();
                 } else {
-                    console.log("✅ Device security check passed");
+                    console.log("✅ Device security check passed (Compromise)");
                     setIsDeviceCompromised(false);
+                }
+
+                if (result.isDebuggingEnabled) {
+                    console.warn("🚨 USB Debugging/Developer Options enabled");
+                    setIsDebuggingEnabled(true);
+                } else {
+                    setIsDebuggingEnabled(false);
                 }
             } catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
@@ -55,6 +64,7 @@ export const SecurityProvider = ({ children }: { children: ReactNode }) => {
 
     const value = {
         isDeviceCompromised,
+        isDebuggingEnabled,
         isSecurityCheckComplete,
         securityCheckError,
     };

@@ -1,8 +1,15 @@
+import Amex from "@/assets/icons/cards/amex.svg";
+import Diners from "@/assets/icons/cards/dinersclub.svg";
+import Discover from "@/assets/icons/cards/discover.svg";
+import JCB from "@/assets/icons/cards/jcb.svg";
+import Maestro from "@/assets/icons/cards/maestro.svg";
+import MasterCard from "@/assets/icons/cards/mastercard.svg";
+import RuPay from "@/assets/icons/cards/rupay.svg";
+import Visa from "@/assets/icons/cards/visa.svg";
 import { CARD_TYPES } from "@/constants/cardTypes";
 import { getCardType } from "@/utils/CardType";
 import { formatCardNumber } from "@/utils/formatCardNumber";
 import { maskAndFormatCardNumber } from "@/utils/mask";
-import { FontAwesome } from "@expo/vector-icons";
 import React, { forwardRef, useImperativeHandle, useRef } from "react";
 import {
   Animated,
@@ -78,40 +85,36 @@ const PipCard = forwardRef<PipCardHandle, Props>(
             <View style={styles.cardTypeIcon}>
               {(() => {
                 const detectedCardType = getCardType(cardNumber);
+                const iconProps = {
+                  width: 32,
+                  height: 20,
+                  fill: contentColor,
+                  color: contentColor,
+                };
+
                 if (detectedCardType === CARD_TYPES.VISA) {
-                  return <FontAwesome name="cc-visa" size={24} color={contentColor} />;
+                  return <Visa {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.MASTERCARD) {
-                  return (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#EB001B', marginRight: -4, opacity: 0.9 }} />
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#F79E1B', opacity: 0.9 }} />
-                    </View>
-                  );
+                  return <MasterCard {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.AMEX) {
-                  return <FontAwesome name="cc-amex" size={24} color={contentColor} />;
+                  return <Amex {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.DISCOVER) {
-                  return <FontAwesome name="cc-discover" size={24} color={contentColor} />;
+                  return <Discover {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.RUPAY) {
-                  return (
-                    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                      <Text style={[styles.cardTypeLabel, { color: contentColor, fontSize: 10, fontWeight: 'bold', opacity: 0.8 }]}>
-                        RuPay
-                      </Text>
-                    </View>
-                  );
+                  return <RuPay {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.MAESTRO) {
-                  return <FontAwesome name="cc-mastercard" size={24} color={contentColor} />;
+                  return <Maestro {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.JCB) {
-                  return <FontAwesome name="cc-jcb" size={24} color={contentColor} />;
+                  return <JCB {...iconProps} />;
                 }
                 if (detectedCardType === CARD_TYPES.DINERS) {
-                  return <FontAwesome name="cc-diners-club" size={24} color={contentColor} />;
+                  return <Diners {...iconProps} />;
                 }
                 return detectedCardType ? (
                   <Text style={[styles.cardTypeLabel, { color: contentColor, opacity: 0.7, fontSize: 10, fontWeight: 'bold' }]}>

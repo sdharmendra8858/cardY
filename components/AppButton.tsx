@@ -1,5 +1,6 @@
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
   GestureResponderEvent,
@@ -7,6 +8,7 @@ import {
   Text,
   TextStyle,
   TouchableOpacity,
+  View,
   ViewStyle,
 } from "react-native";
 
@@ -20,6 +22,8 @@ type AppButtonProp = {
   fullWidth?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: keyof typeof Ionicons.glyphMap;
+  iconSize?: number;
 };
 
 export default function AppButton({
@@ -30,6 +34,8 @@ export default function AppButton({
   fullWidth = false,
   style,
   textStyle,
+  icon,
+  iconSize = 20,
 }: AppButtonProp) {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -37,14 +43,14 @@ export default function AppButton({
     variant === "danger"
       ? palette.danger
       : variant === "secondary"
-      ? palette.secondary
-      : palette.primary;
+        ? palette.secondary
+        : palette.primary;
   const textColor =
     variant === "danger"
       ? palette.onDanger
       : variant === "secondary"
-      ? palette.onSecondary
-      : palette.onPrimary;
+        ? palette.onSecondary
+        : palette.onPrimary;
 
   return (
     <TouchableOpacity
@@ -58,12 +64,22 @@ export default function AppButton({
         },
         style,
       ]}
-      onPress={onPress || (() => {})}
+      onPress={onPress || (() => { })}
       disabled={disabled}
     >
-      <Text style={[styles.text, { color: textColor }, textStyle]}>
-        {title}
-      </Text>
+      <View style={styles.content}>
+        {icon && (
+          <Ionicons
+            name={icon}
+            size={iconSize}
+            color={textColor}
+            style={styles.icon}
+          />
+        )}
+        <Text style={[styles.text, { color: textColor }, textStyle]}>
+          {title}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -75,6 +91,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
+  },
+  content: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  icon: {
+    marginRight: 8,
   },
   text: { color: "#fff", fontSize: 16, fontWeight: "bold" },
 });

@@ -2,13 +2,9 @@ import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  authenticateWithBiometric,
-  isBiometricAvailable,
-} from "@/utils/security";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { maskAndFormatCardNumber } from "@/utils/mask";
 import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
@@ -31,9 +27,6 @@ export default function QRCodeScreen() {
   const [error, setError] = useState<string>("");
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
-  const [biometricRequired, setBiometricRequired] = useState<boolean>(false);
-  const [biometricAuthenticated, setBiometricAuthenticated] = useState<boolean>(false);
-  const [biometricAvailable, setBiometricAvailable] = useState<boolean>(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -50,38 +43,6 @@ export default function QRCodeScreen() {
   }, [navigation, palette.text, router]);
 
   const card = cards.find((c) => c.id === cardId);
-
-  // Check biometric availability (spec 13)
-  useEffect(() => {
-    const checkBiometric = async () => {
-      const available = await isBiometricAvailable();
-      setBiometricAvailable(available);
-      if (available) {
-        setBiometricRequired(true);
-      }
-    };
-    checkBiometric();
-  }, []);
-
-  // Handle biometric authentication (spec 13)
-  const handleBiometricAuth = useCallback(async () => {
-    console.log("🔐 Requesting biometric authentication (spec 13)...");
-    const result = await authenticateWithBiometric(
-      "Authenticate to share this card securely"
-    );
-
-    if (result.success) {
-      console.log("✅ Biometric authentication successful");
-      setBiometricAuthenticated(true);
-    } else {
-      setAlertConfig({
-        title: "Authentication Failed",
-        message: result.error || "Biometric authentication failed. Please try again.",
-        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-      });
-      setAlertVisible(true);
-    }
-  }, []);
 
   // Check if required params are available
   useEffect(() => {
@@ -106,12 +67,6 @@ export default function QRCodeScreen() {
   useEffect(() => {
     const generateEncryptedQR = async () => {
       try {
-        // Check biometric authentication (spec 13)
-        if (biometricRequired && !biometricAuthenticated) {
-          console.log("⏳ Waiting for biometric authentication...");
-          return;
-        }
-
         if (!card || !encryptedQRString || !cardId) {
           console.log("QR Screen - Missing data:", { cardId, encryptedQRString: !!encryptedQRString, card: !!card });
           return;
@@ -127,7 +82,7 @@ export default function QRCodeScreen() {
     };
 
     generateEncryptedQR();
-  }, [card, encryptedQRString, cardId, biometricRequired, biometricAuthenticated]);
+  }, [card, encryptedQRString, cardId]);
 
   const handleShareComplete = useCallback(() => {
     setAlertConfig({
@@ -199,48 +154,6 @@ export default function QRCodeScreen() {
     );
   }
 
-  // Show biometric authentication prompt if required (spec 13)
-  if (biometricRequired && !biometricAuthenticated) {
-    return (
-      <SafeAreaView
-        style={[styles.safeArea, { backgroundColor: palette.surface }]}
-      >
-        <Hero
-          title="Authenticate"
-          subtitle="Verify your identity to share this card"
-          showBackButton={true}
-        />
-        <View style={styles.container}>
-          <View style={styles.biometricContainer}>
-            <View style={[styles.biometricIcon, { backgroundColor: palette.card }]}>
-              <MaterialIcons name="fingerprint" size={80} color={palette.primary} />
-            </View>
-            <ThemedText style={[styles.biometricTitle, { color: palette.text }]}>
-              Biometric Authentication Required
-            </ThemedText>
-            <ThemedText style={[styles.biometricSubtitle, { color: palette.secondary }]}>
-              For security, please authenticate with your biometric to share this card.
-            </ThemedText>
-            <TouchableOpacity
-              style={[styles.biometricButton, { backgroundColor: palette.primary }]}
-              onPress={handleBiometricAuth}
-              activeOpacity={0.8}
-            >
-              <MaterialIcons name="fingerprint" size={24} color={palette.onPrimary} />
-              <ThemedText style={[styles.biometricButtonText, { color: palette.onPrimary }]}>
-                Authenticate
-              </ThemedText>
-            </TouchableOpacity>
-            {!biometricAvailable && (
-              <ThemedText style={[styles.biometricWarning, { color: palette.secondary }]}>
-                Biometric authentication is not available on this device.
-              </ThemedText>
-            )}
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <>

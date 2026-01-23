@@ -9,28 +9,29 @@ import { useCards } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
-import { decryptCards, EncryptionResult } from "@/utils/encryption/cardEncryption";
-import { getMaskedCards as secureGetCards, setCards, STORAGE_KEY_UNMASKED } from "@/utils/secureStorage";
+import { getUnmaskedCards, getMaskedCards as secureGetCards } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import NfcManager from "react-native-nfc-manager";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
+import NfcScanButton from "./components/NfcScanButton";
 import ScanButton from "./components/ScanButton";
 
 export default function AddCardScreen() {
   useScreenProtection();
   const router = useRouter();
   const navigation = useNavigation();
-  const { addCard } = useCards();
+  const { addCard, updateCard } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+  const [isNfcSupported, setIsNfcSupported] = useState(true);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const { from, sessionId, receiverPublicKey, expiresAt } = useLocalSearchParams<{
     from?: string;
@@ -139,6 +140,17 @@ export default function AddCardScreen() {
 
   // Load existing card data for edit mode
   useEffect(() => {
+    // Check NFC support
+    const checkNfcSupport = async () => {
+      try {
+        const supported = await NfcManager.isSupported();
+        setIsNfcSupported(supported);
+      } catch (err) {
+        setIsNfcSupported(false);
+      }
+    };
+    checkNfcSupport();
+
     if (isEditMode && editId) {
       const loadCardForEdit = async () => {
         try {
@@ -181,23 +193,6 @@ export default function AddCardScreen() {
       };
 
       // Check for duplicate card numbers (excluding current card in edit mode)
-      // Get unmasked cards for proper duplicate detection
-      const getUnmaskedCards = async () => {
-        try {
-          const value = await SecureStore.getItemAsync(STORAGE_KEY_UNMASKED, {
-            keychainService: STORAGE_KEY_UNMASKED,
-          });
-          if (!value) return [];
-
-          const encryptionResult: EncryptionResult = JSON.parse(value);
-          const decrypted = await decryptCards(encryptionResult);
-          return Array.isArray(decrypted) ? decrypted : [];
-        } catch (error) {
-          console.error("Failed to get unmasked cards for duplicate check:", error);
-          return [];
-        }
-      };
-
       const existingCards = await getUnmaskedCards();
       const duplicateCard = existingCards.find((existingCard: any) => {
         // In edit mode, exclude the current card being edited
@@ -212,14 +207,11 @@ export default function AddCardScreen() {
       }
 
       if (isEditMode && editId) {
-        // Update existing card
-        const updatedCards = existingCards.map((c: any) =>
-          c.id === editId ? { ...c, ...cardWithDefaults, id: editId } : c
-        );
-        await setCards(updatedCards);
+        // Update existing card via context to ensure UI stays in sync
+        await updateCard(editId, cardWithDefaults as any);
       } else {
         // Add new card
-        await addCard(cardWithDefaults);
+        await addCard(cardWithDefaults as any);
       }
       // Only clean up images after successful save
       await clearImageDump();
@@ -234,6 +226,10 @@ export default function AddCardScreen() {
 
   const handleScan = () => {
     router.push("/add-card/scan");
+  };
+
+  const handleNfcScan = () => {
+    router.push("/add-card/nfc");
   };
 
   const handleManualAdd = async (card: {
@@ -334,7 +330,16 @@ export default function AddCardScreen() {
       >
         {!hideScanButton && (
           <>
-            <ScanButton onPress={handleScan} />
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <ScanButton onPress={handleScan} />
+              </View>
+              {isNfcSupported && (
+                <View style={{ flex: 1 }}>
+                  <NfcScanButton onPress={handleNfcScan} />
+                </View>
+              )}
+            </View>
 
             <View style={styles.orSeparatorContainer}>
               <View
