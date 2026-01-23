@@ -1,16 +1,20 @@
+import InterstitialAd, { showInterstitialAd } from "@/components/AdInterstitial";
 import AlertBox from "@/components/AlertBox";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
-import InterstitialAd, { showInterstitialAd } from "@/components/InterstitialAd";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
+import { useCards } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { addCard as secureAddCard, getCards as secureGetCards, setCards } from "@/utils/secureStorage";
+import { getCardType } from "@/utils/CardType";
+import { decryptCards, EncryptionResult } from "@/utils/encryption/cardEncryption";
+import { getMaskedCards as secureGetCards, setCards, STORAGE_KEY_UNMASKED } from "@/utils/secureStorage";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
@@ -22,6 +26,7 @@ export default function AddCardScreen() {
   useScreenProtection();
   const router = useRouter();
   const navigation = useNavigation();
+  const { addCard } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
@@ -165,14 +170,35 @@ export default function AddCardScreen() {
     dominantColor?: string;
   }) => {
     try {
-      // Ensure cardUser defaults to "self" if not specified
+      if (__DEV__) console.log("💾 saveCardLocally - Card number received:", card.cardNumber, "(Length:", card.cardNumber.length, ")");
+      // Ensure cardUser defaults to "self" if not specified and detect card type
+      const detectedCardType = getCardType(card.cardNumber);
+
       const cardWithDefaults = {
         ...card,
-        cardUser: card.cardUser || "self"
+        cardUser: card.cardUser || "self",
+        cardType: detectedCardType || undefined // Auto-detect card type
       };
 
       // Check for duplicate card numbers (excluding current card in edit mode)
-      const existingCards = await secureGetCards();
+      // Get unmasked cards for proper duplicate detection
+      const getUnmaskedCards = async () => {
+        try {
+          const value = await SecureStore.getItemAsync(STORAGE_KEY_UNMASKED, {
+            keychainService: STORAGE_KEY_UNMASKED,
+          });
+          if (!value) return [];
+
+          const encryptionResult: EncryptionResult = JSON.parse(value);
+          const decrypted = await decryptCards(encryptionResult);
+          return Array.isArray(decrypted) ? decrypted : [];
+        } catch (error) {
+          console.error("Failed to get unmasked cards for duplicate check:", error);
+          return [];
+        }
+      };
+
+      const existingCards = await getUnmaskedCards();
       const duplicateCard = existingCards.find((existingCard: any) => {
         // In edit mode, exclude the current card being edited
         if (isEditMode && editId && existingCard.id === editId) {
@@ -193,7 +219,7 @@ export default function AddCardScreen() {
         await setCards(updatedCards);
       } else {
         // Add new card
-        await secureAddCard(cardWithDefaults);
+        await addCard(cardWithDefaults);
       }
       // Only clean up images after successful save
       await clearImageDump();
@@ -223,6 +249,7 @@ export default function AddCardScreen() {
     cardUser?: "self" | "other";
     dominantColor?: string;
   }) => {
+    if (__DEV__) console.log("📝 handleManualAdd - Card number from form:", card.cardNumber, "(Length:", card.cardNumber.length, ")");
     if (isSaving) return; // Prevent double submission
 
     setIsSaving(true);

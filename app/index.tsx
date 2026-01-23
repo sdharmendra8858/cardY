@@ -1,27 +1,22 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
-import InfoBox from "@/components/InfoBox";
 import NoCards from "@/components/NoCards";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
-import { useTimer } from "@/context/CardContext";
+import { useCards, useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { maskAndFormatCardNumber } from "@/utils/mask";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
-import {
-  getCards as secureGetCards,
-  removeCard as secureRemoveCards,
-} from "@/utils/secureStorage";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -31,9 +26,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   useScreenProtection();
   const { showAlert } = useAlert();
-  const { timerTick } = useTimer();
+  const { cards: contextCards, removeCard } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+
+  // Only subscribe to timer if there are "other" cards with non-infinity expiry
+  const hasExpiringOtherCards = React.useMemo(() => {
+    return contextCards.some(card =>
+      card.cardUser === "other" && card.cardExpiresAt !== undefined
+    );
+  }, [contextCards]);
+
+  // Conditionally use timer only when needed for optimization
+  const { timerTick } = hasExpiringOtherCards ? useTimer() : { timerTick: 0 };
   const [cards, setCards] = useState<
     {
       id: string;
@@ -52,6 +57,10 @@ export default function HomeScreen() {
   >([]);
 
   const router = useRouter();
+  const [showWarning, setShowWarning] = useState(false);
+  const [tooltipTop, setTooltipTop] = useState(0);
+  const [tooltipLeft, setTooltipLeft] = useState(0);
+  const iconRef = useRef<View>(null);
   const [profileName, setProfileName] = useState<string>(DEFAULT_PROFILE.name);
   const [avatarSource, setAvatarSource] = useState<any>(
     (DEFAULT_PROFILE.avatarId && getAvatarById(DEFAULT_PROFILE.avatarId)) ||
@@ -100,14 +109,11 @@ export default function HomeScreen() {
     }
   };
 
-  const fetchCards = async () => {
-    try {
-      const cardList = await secureGetCards();
-      setCards(cardList.map((c: any) => ({ id: c.id, ...c })));
-    } catch (err) {
-      console.error("Failed to load cards", err);
-    }
-  };
+  // Sync context cards to local state
+  React.useEffect(() => {
+    setCards(contextCards);
+  }, [contextCards]);
+
 
   // Check for expired cards and animate their removal
   const checkExpiredCards = React.useCallback(async () => {
@@ -160,10 +166,13 @@ export default function HomeScreen() {
     }
   }, [cards, showAlert]);
 
-  // Check for expired cards every second
+  // Check for expired cards every second (only when there are expiring cards)
   React.useEffect(() => {
+    // Skip if no expiring cards exist
+    if (!hasExpiringOtherCards) return;
+
     checkExpiredCards();
-  }, [timerTick, checkExpiredCards]);
+  }, [timerTick, checkExpiredCards, hasExpiringOtherCards]);
 
   const fetchProfile = async () => {
     try {
@@ -180,16 +189,15 @@ export default function HomeScreen() {
     }
   };
 
-  // Load saved cards and profile
+  // Load profile and settings
   useFocusEffect(
     useCallback(() => {
-      fetchCards();
       fetchProfile();
       checkSecuritySettings();
     }, [])
   );
 
-  const handleRemoveCard = (id: string) => {
+  const handleRemoveCard = React.useCallback((id: string) => {
     showAlert({
       title: "Remove Card",
       message: "Are you sure you want to delete this card?",
@@ -199,13 +207,13 @@ export default function HomeScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await secureRemoveCards(id);
-            await fetchCards();
+            await removeCard(id);
           },
         },
       ],
     });
-  };
+  }, [showAlert, removeCard]);
+
 
   const tabIndicatorStyle = useAnimatedStyle(() => {
     const tabWidth = (containerWidth - 8) / 2;
@@ -273,14 +281,50 @@ export default function HomeScreen() {
         {/* Title and Info */}
         {cards.length !== 0 && (
           <View style={styles.listHeaderTitleContainer}>
-            <ThemedText type="title" style={styles.title}>
-              Your Cards
-            </ThemedText>
-            <InfoBox
-              message="⚠️ Please note: Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
-              type="warning"
-              style={{ marginHorizontal: 16, marginBottom: 12 }}
-            />
+            <View style={styles.titleRow}>
+              <ThemedText type="title" style={styles.title}>
+                Your Cards
+              </ThemedText>
+              <Pressable
+                ref={iconRef}
+                onPress={() => {
+                  if (iconRef.current) {
+                    iconRef.current.measure((x, y, width, height, px, py) => {
+                      setTooltipTop(py + height);
+                      setTooltipLeft(px);
+                      setShowWarning(true);
+                    });
+                  }
+                }}
+                hitSlop={20}
+              >
+                <Ionicons
+                  name={showWarning ? "information-circle" : "information-circle-outline"}
+                  size={22}
+                  color={showWarning ? palette.primary : palette.icon}
+                />
+              </Pressable>
+            </View>
+
+            <Modal
+              transparent
+              visible={showWarning}
+              onRequestClose={() => setShowWarning(false)}
+              animationType="fade"
+            >
+              <Pressable
+                style={styles.backdrop}
+                onPress={() => setShowWarning(false)}
+              />
+              <View
+                style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
+              >
+                <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
+                <ThemedText style={styles.tooltipText}>
+                  Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently.
+                </ThemedText>
+              </View>
+            </Modal>
           </View>
         )}
 
@@ -331,17 +375,42 @@ export default function HomeScreen() {
       activeTab,
       containerWidth,
       router,
+      showWarning,
+      tooltipTop,
+      tooltipLeft,
     ]
   );
 
   const renderFooter = () => null;
 
-  const filteredCards = cards.filter((card) => {
-    if (activeTab === "self") {
-      return !card.cardUser || card.cardUser === "self";
-    }
-    return card.cardUser === "other";
-  });
+  const filteredCards = React.useMemo(() => {
+    return cards.filter((card) => {
+      if (activeTab === "self") {
+        return !card.cardUser || card.cardUser === "self";
+      }
+      return card.cardUser === "other";
+    });
+  }, [cards, activeTab]);
+
+  const renderCardItem = React.useCallback(({ item }: { item: any }) => (
+    <View style={{ paddingHorizontal: 16 }}>
+      <CardItem
+        id={item.id}
+        cardName={item.bank || item.cardName || `Unknown Bank`}
+        cardNumber={item.cardNumber}
+        cardHolder={item.cardHolder}
+        onDelete={handleRemoveCard}
+        cardKind={item.cardKind}
+        cobrandName={item.cobrandName}
+        cardUser={item.cardUser}
+        dominantColor={item.dominantColor}
+        cardExpiresAt={item.cardExpiresAt}
+        expiry={item.expiry}
+        isExpiring={item.isExpiring}
+      />
+    </View>
+  ), [handleRemoveCard]);
+
 
   return (
     <SafeAreaView
@@ -352,26 +421,9 @@ export default function HomeScreen() {
         <FlatList
           data={filteredCards}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={{ paddingHorizontal: 16 }}>
-              <CardItem
-                id={item.id}
-                cardName={item.bank || item.cardName || `Unknown Bank`}
-                cardNumber={maskAndFormatCardNumber(item.cardNumber)}
-                cardHolder={item.cardHolder}
-                expiry={item.expiry}
-                onDelete={handleRemoveCard}
-                cardKind={item.cardKind}
-                cobrandName={item.cobrandName}
-                cardUser={item.cardUser}
-                dominantColor={item.dominantColor}
-                cardExpiresAt={item.cardExpiresAt}
-                isExpiring={item.isExpiring}
-              />
-            </View>
-          )}
+          renderItem={renderCardItem}
           ListHeaderComponent={ListHeader}
-          ListEmptyComponent={() => (
+          ListEmptyComponent={React.useMemo(() => () => (
             <NoCards
               showButton={cards.length === 0}
               message={
@@ -380,7 +432,7 @@ export default function HomeScreen() {
                   : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
               }
             />
-          )}
+          ), [cards.length, activeTab])}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />
@@ -470,12 +522,56 @@ const styles = StyleSheet.create({
   },
   listHeaderTitleContainer: {
     marginBottom: 12,
+    paddingHorizontal: 16,
+    zIndex: 1000, // Ensure tooltip appears above list items
+    elevation: 1000, // Android z-index equivalent
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginHorizontal: 16,
-    marginBottom: 12,
+    marginRight: 8,
+  },
+  tooltipContainer: {
+    position: 'absolute',
+    // top is set dynamically via style prop
+    left: 20,
+    right: 20,
+    padding: 12,
+    backgroundColor: '#FFF4E5', // Warning background
+    borderRadius: 8,
+    // Remove zIndex/elevation as Modal handles stacking
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    top: -8,
+    // left is set dynamically via style prop
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#FFF4E5', // Match warning background
+  },
+  tooltipText: {
+    color: '#BF360C', // Warning text color
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   footerButton: {
     marginHorizontal: 16,

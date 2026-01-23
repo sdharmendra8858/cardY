@@ -6,8 +6,8 @@
 export function formatCardNumber(cardNumber: string): string {
   if (!cardNumber) return "";
 
-  // Allow digits and masking chars (• or x)
-  const clean = cardNumber.replace(/[^0-9x]/g, "");
+  // Allow digits and masking chars (• or x or X)
+  const clean = cardNumber.replace(/[^0-9xX]/gi, "");
   const len = clean.length;
   let groups: number[] = [];
 

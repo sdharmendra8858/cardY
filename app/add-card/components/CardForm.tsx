@@ -6,7 +6,6 @@ import { getCardType } from "@/utils/CardType";
 import { generateRandomString } from "@/utils/random";
 import { useEffect, useState } from "react";
 import {
-  LayoutAnimation,
   StyleSheet, Text, TextInput,
   TouchableOpacity,
   View
@@ -217,9 +216,7 @@ export default function CardForm({
     });
   };
 
-  useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [bank]);
+
 
   // Ensure only one dropdown is open at a time
   useEffect(() => {
