@@ -13,6 +13,8 @@ interface QRDisplaySectionProps {
     onShareQR: () => void;
     onCardShared: () => void;
     expiresInSeconds?: number;
+    isGenerating?: boolean;
+    isSharing?: boolean;
 }
 
 export default function QRDisplaySection({
@@ -20,6 +22,8 @@ export default function QRDisplaySection({
     card,
     onShareQR,
     onCardShared,
+    isGenerating = false,
+    isSharing = false,
 }: QRDisplaySectionProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
@@ -99,11 +103,11 @@ export default function QRDisplaySection({
 
             <View style={styles.buttonContainer}>
                 <AppButton
-                    title="Share QR Code"
+                    title={isGenerating ? "Generating QR..." : isSharing ? "Sharing..." : "Share QR Code"}
                     onPress={onShareQR}
-                    disabled={!qrData}
+                    disabled={!qrData || isGenerating || isSharing}
                     variant="secondary"
-                    icon="share"
+                    icon={isGenerating || isSharing ? "hourglass-top" : "share"}
                     iconLibrary="material"
                     fullWidth
                 />

@@ -32,18 +32,25 @@ export default function GenerateQRScreen() {
     const sessionId = params.sessionId as string;
     const receiverPublicKey = params.receiverPublicKey as string;
     const expiresAt = params.expiresAt ? parseInt(params.expiresAt as string) : null;
-    const cardValidityMinutes = params.cardValidityMinutes ? parseInt(params.cardValidityMinutes as string) : 15;
+    const cardValidityMinutes = params.cardValidityMinutes !== undefined ? parseInt(params.cardValidityMinutes as string) : 15;
 
     const [qrData, setQrData] = useState<string>("");
     const [error, setError] = useState<string>("");
-    const { timeLeft, isExpired, formatTime } = useCountdown(expiresAt);
+    const countdown = expiresAt ? useCountdown(expiresAt) : null;
+    const timeLeft = countdown?.timeLeft ?? 0;
+    const isExpired = countdown?.isExpired ?? false;
+    const formatTime = countdown?.formatTime ?? (() => "");
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+    const [isSharing, setIsSharing] = useState(false);
     const snapshotRef = useRef<any>(null);
     const hasRedirectedRef = useRef(false);
+    // Fix #2: Default cancelable to true (dismissible by default)
+    const alertStateRef = useRef({ visible: false, cancelable: true });
+    const isMountedRef = useRef(true);
 
     useLayoutEffect(() => {
-        const isModalNonDismissible = alertVisible && alertConfig.cancelable === false;
+        const isModalNonDismissible = alertStateRef.current.cancelable === false;
 
         navigation.setOptions({
             title: "Share QR Code",
@@ -60,19 +67,17 @@ export default function GenerateQRScreen() {
                 </TouchableOpacity>
             ),
         });
+    }, [navigation, palette.text, router]);
 
-        // Cleanup: reset alert when screen unmounts or loses focus
+    useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            if (alertVisible && alertConfig.cancelable === false) {
-                // Prevent navigation if a non-dismissible alert is up
+            if (alertStateRef.current.visible && alertStateRef.current.cancelable === false) {
                 e.preventDefault();
-                return;
             }
-            setAlertVisible(false);
         });
 
         return unsubscribe;
-    }, [navigation, palette.text, router, alertVisible, alertConfig.cancelable]);
+    }, [navigation]);
 
     const card = cards.find((c) => c.id === selectedCardId);
 
@@ -95,12 +100,30 @@ export default function GenerateQRScreen() {
         }
     }, [selectedCardId, sessionId, receiverPublicKey, expiresAt, router]);
 
+    // Update alert state ref whenever alert changes
+    useEffect(() => {
+        alertStateRef.current = {
+            visible: alertVisible,
+            cancelable: alertConfig.cancelable ?? true
+        };
+    }, [alertVisible, alertConfig.cancelable]);
+
+    // Track mount/unmount
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     // Generate QR code
     useEffect(() => {
+        let cancelled = false;
+
         const generateEncryptedQR = async () => {
             try {
-                if (!card || !selectedCardId) {
-                    console.log("Generate QR Screen - Missing data");
+                if (!selectedCardId) {
+                    console.log("Generate QR Screen - Missing selectedCardId");
                     return;
                 }
 
@@ -111,14 +134,13 @@ export default function GenerateQRScreen() {
                     throw new Error("Failed to retrieve full card data");
                 }
 
-                console.log("🔍 Full card data retrieved:", {
-                    id: fullCard.id,
-                    cardNumber: fullCard.cardNumber ? `****${fullCard.cardNumber.slice(-4)}` : "MISSING",
-                    cardHolder: fullCard.cardHolder,
-                    expiry: fullCard.expiry,
-                    bank: fullCard.bank,
-                    cardName: fullCard.cardName,
-                });
+                if (__DEV__) {
+                    console.log("🔍 Full card data retrieved:", {
+                        id: fullCard.id,
+                        cardNumber: fullCard.cardNumber ? `****${fullCard.cardNumber.slice(-4)}` : "MISSING",
+                        expiry: fullCard.expiry,
+                    });
+                }
 
                 // Validate required card fields
                 if (!fullCard.cardNumber || !fullCard.cardHolder || !fullCard.expiry) {
@@ -158,15 +180,15 @@ export default function GenerateQRScreen() {
                     dominantColor: fullCard.dominantColor || undefined,
                 };
 
-                console.log("📋 Card data prepared:", {
-                    cardId: cardData.cardId,
-                    cardholderName: cardData.cardholderName,
-                    cardNumber: `****${cardData.cardNumber.slice(-4)}`,
-                    expiryMonth: cardData.expiryMonth,
-                    expiryYear: cardData.expiryYear,
-                    brand: cardData.brand,
-                    sharedAt: cardData.sharedAt,
-                });
+                if (__DEV__) {
+                    console.log("📋 Card data prepared:", {
+                        cardId: cardData.cardId,
+                        cardNumber: `****${cardData.cardNumber.slice(-4)}`,
+                        expiryMonth: cardData.expiryMonth,
+                        expiryYear: cardData.expiryYear,
+                        brand: cardData.brand,
+                    });
+                }
 
                 // Create session payload
                 if (!expiresAt) {
@@ -180,59 +202,76 @@ export default function GenerateQRScreen() {
                     expiresAt,
                 };
 
-                console.log("🔐 Session payload:", {
-                    sessionId: sessionPayload.sessionId,
-                    receiverPublicKey: sessionPayload.receiverPublicKey ? "present" : "MISSING",
-                    expiresAt: sessionPayload.expiresAt,
-                });
+                if (__DEV__) {
+                    console.log("🔐 Session payload:", {
+                        sessionId: sessionPayload.sessionId,
+                        receiverPublicKey: sessionPayload.receiverPublicKey ? "present" : "MISSING",
+                        expiresAt: sessionPayload.expiresAt,
+                    });
+                }
 
                 // Encrypt card
                 const qrPayload = await encryptCardForSharing(cardData, sessionPayload);
 
-                console.log("📦 Generated QR Payload:", {
-                    version: qrPayload.version,
-                    sessionId: qrPayload.sessionId,
-                    senderPublicKey: qrPayload.senderPublicKey ? `${qrPayload.senderPublicKey.substring(0, 30)}...` : "MISSING",
-                    iv: qrPayload.iv ? `${qrPayload.iv.substring(0, 30)}...` : "MISSING",
-                    ciphertext: qrPayload.ciphertext ? `${qrPayload.ciphertext.substring(0, 50)}...` : "MISSING",
-                    expiresAt: qrPayload.expiresAt,
-                });
+                if (__DEV__) {
+                    console.log("📦 Generated QR Payload:", {
+                        version: qrPayload.version,
+                        sessionId: qrPayload.sessionId,
+                        senderPublicKey: qrPayload.senderPublicKey ? `${qrPayload.senderPublicKey.substring(0, 30)}...` : "MISSING",
+                        iv: qrPayload.iv ? `${qrPayload.iv.substring(0, 30)}...` : "MISSING",
+                        ciphertext: qrPayload.ciphertext ? `${qrPayload.ciphertext.substring(0, 50)}...` : "MISSING",
+                        expiresAt: qrPayload.expiresAt,
+                    });
+                }
 
                 // Convert to QR string
                 const qrString = qrPayloadToQRString(qrPayload);
 
-                console.log("✅ QR string generated successfully");
-                setQrData(qrString);
+                if (__DEV__) console.log("✅ QR string generated successfully");
+
+                if (!cancelled) {
+                    setQrData(qrString);
+                }
 
             } catch (err) {
                 console.error("Failed to generate QR:", err);
-                setError("Failed to display QR code. Please try again.");
+                if (!cancelled) {
+                    setError("Failed to display QR code. Please try again.");
+                }
             }
         };
 
         generateEncryptedQR();
-    }, [card, selectedCardId, sessionId, receiverPublicKey, expiresAt, cardValidityMinutes, revealCard]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedCardId, sessionId, receiverPublicKey, expiresAt, cardValidityMinutes]);
 
     // Session timer effect for expiry redirection
     useEffect(() => {
-        if (isExpired && !hasRedirectedRef.current && navigation.isFocused()) {
+        if (isExpired && !hasRedirectedRef.current) {
             hasRedirectedRef.current = true;
             setAlertConfig({
                 title: "Session Expired",
-                message: "Your sharing session has expired. Please scan the QR code again.",
+                message: "Your sharing session has expired. Please generate a new QR code.",
                 cancelable: false,
                 buttons: [
                     {
                         text: "OK",
                         onPress: () => {
-                            setAlertVisible(false);
+                            if (isMountedRef.current) {
+                                setAlertVisible(false);
+                            }
                             router.dismissAll();
                             router.push("/share-card/share");
                         }
                     }
                 ]
             });
-            setAlertVisible(true);
+            if (isMountedRef.current) {
+                setAlertVisible(true);
+            }
         }
     }, [isExpired, router]);
 
@@ -253,6 +292,7 @@ export default function GenerateQRScreen() {
     }, [router]);
 
     const handleShareQR = useCallback(async () => {
+        if (isSharing) return;
         try {
             if (!qrData) {
                 setAlertConfig({
@@ -264,7 +304,11 @@ export default function GenerateQRScreen() {
                 return;
             }
 
+            setIsSharing(true);
             console.log("📸 Capturing QR code snapshot...");
+
+            await new Promise(r => setTimeout(r, 80));
+
             const uri = await snapshotRef.current?.capture?.();
 
             console.log("📁 Captured URI:", uri);
@@ -286,8 +330,10 @@ export default function GenerateQRScreen() {
             console.log("✅ Share successful");
         } catch (error) {
             console.error("❌ Share failed:", error);
+        } finally {
+            setIsSharing(false);
         }
-    }, [qrData]);
+    }, [qrData, isSharing]);
 
     if (!card) {
         return (
@@ -371,6 +417,8 @@ export default function GenerateQRScreen() {
                         onShareQR={handleShareQR}
                         onCardShared={handleShareComplete}
                         expiresInSeconds={timeLeft}
+                        isGenerating={!qrData && !error}
+                        isSharing={isSharing}
                     />
                 </View>
             </SafeAreaView>
@@ -400,7 +448,7 @@ export default function GenerateQRScreen() {
                         ref={snapshotRef}
                         options={{
                             format: "png",
-                            quality: 0.9,
+                            quality: 0.95,
                             result: "tmpfile",
                         }}
                         style={{

@@ -307,7 +307,7 @@ export default function ImportCardScreen() {
 
       console.log('Opening image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: "images",
+        mediaTypes: ['images'],
         allowsEditing: false,
         quality: 1,
       });

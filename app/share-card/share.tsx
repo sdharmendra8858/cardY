@@ -9,7 +9,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation, useRouter } from "expo-router";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Animated, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
@@ -26,19 +26,50 @@ export default function ShareScreen() {
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
 
+    const handleBackAction = useCallback(() => {
+        if (isScanning) {
+            setIsScanning(false);
+            scanLineAnimation.stopAnimation();
+            return true;
+        }
+        router.replace("/profile");
+        return true;
+    }, [isScanning, router, scanLineAnimation]);
+
     useLayoutEffect(() => {
         navigation.setOptions({
             title: "Share Card",
             headerLeft: () => (
                 <TouchableOpacity
-                    onPress={() => router.replace("/profile")}
+                    onPress={handleBackAction}
                     style={{ marginLeft: 8, padding: 4 }}
                 >
                     <MaterialIcons name="close" size={24} color={palette.text} />
                 </TouchableOpacity>
             ),
         });
-    }, [navigation, palette.text, router]);
+    }, [navigation, palette.text, handleBackAction]);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            // If the user is trying to leave and we are scanning, stop scanning instead
+            if (isScanning) {
+                e.preventDefault();
+                setIsScanning(false);
+                scanLineAnimation.stopAnimation();
+                return;
+            }
+
+            // If we are not scanning, we allow the removal but ensure we go to profile
+            // if this was a pop action (gesture). If it's already a replace, we let it be.
+            if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+                e.preventDefault();
+                router.replace("/profile");
+            }
+        });
+
+        return unsubscribe;
+    }, [navigation, isScanning, router, scanLineAnimation]);
 
     const handleScanQR = useCallback(async () => {
         try {
@@ -80,7 +111,7 @@ export default function ShareScreen() {
     const handleUploadImage = useCallback(async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: false,
                 quality: 1,
             });
@@ -212,7 +243,7 @@ export default function ShareScreen() {
                     title="Share Card"
                     subtitle="Scan receiver's QR code to share your card"
                     showBackButton={true}
-                    onBack={() => router.replace("/profile")}
+                    onBack={handleBackAction}
                 />
                 <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
                     <View style={styles.content}>

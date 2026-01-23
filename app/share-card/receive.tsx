@@ -42,6 +42,7 @@ export default function ReceiveCardScreen() {
   const [alertVisible, setAlertVisible] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
   const [showRegenerateInfo, setShowRegenerateInfo] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -117,7 +118,9 @@ export default function ReceiveCardScreen() {
   }, []);
 
   const shareQRCode = useCallback(async () => {
+    if (isSharing) return;
     try {
+      setIsSharing(true);
       console.log("📤 Share button pressed");
 
       if (!snapshotRef.current) {
@@ -166,8 +169,10 @@ export default function ReceiveCardScreen() {
         buttons: [{ text: "OK", onPress: () => setAlertVisible(false) }],
       });
       setAlertVisible(true);
+    } finally {
+      setIsSharing(false);
     }
-  }, [qrString]);
+  }, [qrString, isSharing]);
 
   // Helper function to generate a new session
   const generateNewSession = useCallback(async () => {
@@ -363,12 +368,13 @@ export default function ReceiveCardScreen() {
               )}
               {qrString && !isExpired && (
                 <AppButton
-                  title="Share QR Code"
+                  title={isSharing ? "Sharing..." : "Share QR Code"}
                   onPress={shareQRCode}
                   variant="primary"
-                  icon="share"
+                  icon={isSharing ? "hourglass-top" : "share"}
                   iconLibrary="material"
                   fullWidth
+                  disabled={isSharing}
                   style={{ marginBottom: 12 }}
                 />
               )}
