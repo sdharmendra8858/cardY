@@ -158,7 +158,12 @@ export default function ShareScreen() {
                     console.log("✅ QR decoded from image:", qrResult.data);
 
                     // Parse and validate the QR
-                    const sessionPayload = parseSessionQRString(qrResult.data);
+                    let sessionPayload;
+                    try {
+                        sessionPayload = parseSessionQRString(qrResult.data);
+                    } catch (parseError) {
+                        throw new Error("This QR code is not a valid session QR code. Please use a QR code generated from the Share Card screen.");
+                    }
 
                     if (!sessionPayload) {
                         throw new Error("Invalid QR code format");

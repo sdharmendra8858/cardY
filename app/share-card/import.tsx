@@ -8,6 +8,7 @@ import {
   validateQRPayload,
 } from "@/utils/cardSharing";
 import { getCardType } from "@/utils/CardType";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import { parseCardQRString, parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
 import {
@@ -32,7 +33,7 @@ export default function ImportCardScreen() {
   const palette = Colors[scheme];
   const navigation = useNavigation();
   const router = useRouter();
-  const { addCard } = useCards();
+  const { addCard, cards } = useCards();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -236,6 +237,26 @@ export default function ImportCardScreen() {
             // Detect card type from card number BIN
             const detectedCardType = getCardType(cardData.cardNumber);
             console.log("🏦 Detected card type:", detectedCardType);
+
+            // Check if card already exists in the "other" section
+            const maskedCardNumber = maskAndFormatCardNumber(cardData.cardNumber);
+
+            const cardExists = cards.some(
+              (card) =>
+                card.cardUser === "other" &&
+                card.cardNumber === maskedCardNumber
+            );
+
+            if (cardExists) {
+              setIsProcessing(false);
+              setAlertConfig({
+                title: "Card Already Added",
+                message: "This card is already in your collection.",
+                buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+              });
+              setAlertVisible(true);
+              return;
+            }
 
             // Map decrypted card data to Card format
             const cardToImport = {
