@@ -57,14 +57,18 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
       const now = Math.floor(Date.now() / 1000);
       const activeCards = storedCards.filter((card) => {
         if (card.cardExpiresAt && now > card.cardExpiresAt && card.cardUser === "other") {
-          if (__DEV__) console.log(`🗑️ Card expired and filtered out: ${card.id}`);
+          if (__DEV__) console.log(`🗑️ Card expired and filtered out: ${card.id}, expiresAt=${card.cardExpiresAt}, now=${now}`);
           return false; // Remove this card
+        }
+        if (__DEV__ && card.cardUser === "other" && card.cardExpiresAt) {
+          console.log(`⏰ Other card still valid: ${card.id}, expiresAt=${card.cardExpiresAt}, now=${now}, timeLeft=${card.cardExpiresAt - now}s`);
         }
         return true; // Keep this card
       });
 
       // If any cards were filtered out, update storage
       if (activeCards.length !== storedCards.length) {
+        if (__DEV__) console.log(`📦 Updating storage: removing ${storedCards.length - activeCards.length} expired card(s)`);
         await setCards(activeCards);
       }
 

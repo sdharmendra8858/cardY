@@ -113,9 +113,13 @@ export default function HomeScreen() {
   // Sync context cards to local state whenever context updates
   React.useEffect(() => {
     console.log(`🔄 Syncing ${contextCards.length} cards from context to local state`);
+    if (__DEV__) {
+      contextCards.forEach((card, idx) => {
+        console.log(`   Card ${idx}: id=${card.id}, cardUser=${card.cardUser}, bank=${card.bank}`);
+      });
+    }
     setCards(contextCards);
   }, [contextCards]);
-
 
   // Check for expired cards and animate their removal
   const checkExpiredCards = React.useCallback(async () => {
@@ -144,23 +148,6 @@ export default function HomeScreen() {
           );
 
           // Clean up expired cards from storage
-          const { cleanupExpiredCards } = await import("@/utils/cardExpiry");
-          await cleanupExpiredCards();
-
-          // Show notification
-          if (expiredCards.length === 1) {
-            showAlert({
-              title: "Card Expired",
-              message: `"${expiredCards[0].bank || "Card"}" has expired and been removed.`,
-              buttons: [{ text: "OK", onPress: () => { } }]
-            });
-          } else {
-            showAlert({
-              title: "Cards Expired",
-              message: `${expiredCards.length} cards have expired and been removed.`,
-              buttons: [{ text: "OK", onPress: () => { } }]
-            });
-          }
         }, 500); // 500ms animation delay
       }
     } catch (error) {

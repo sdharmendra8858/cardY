@@ -8,9 +8,11 @@ import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import AdBanner from "@/components/AdBanner";
+import AlertBox from "@/components/AlertBox";
 import CardNotFound from "@/components/CardNotFound";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
+import NonDismissibleModal from "@/components/NonDismissibleModal";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
 import { ThemedText } from "@/components/themed-text";
@@ -20,6 +22,7 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useCards, useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
@@ -94,6 +97,10 @@ export default function CardDetailsScreen() {
   const layoutResolveRef = useRef<null | (() => void)>(null);
   const navigation = useNavigation();
   const router = useRouter();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+  const expiryModalShownRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const flipRotation = useSharedValue(0);
   const isFlipped = useSharedValue(false);
@@ -161,6 +168,8 @@ export default function CardDetailsScreen() {
         defaultCobrandName: card.cobrandName,
         defaultCardUser: card.cardUser,
         defaultDominantColor: card.dominantColor,
+        // Only pass cardExpiresAt for "other" cards
+        cardExpiresAt: card.cardUser === "other" && card.cardExpiresAt ? card.cardExpiresAt.toString() : undefined,
         fromEdit: "true",
       },
     });
@@ -286,6 +295,56 @@ export default function CardDetailsScreen() {
       ],
     });
   };
+
+  // Countdown timer for imported cards (other's cards) that are about to expire
+  const cardExpiresAtNum = card?.cardExpiresAt ? parseInt(card.cardExpiresAt.toString()) : null;
+  // Ensure we're working with seconds (Unix timestamp), not milliseconds
+  // If the value is > 10 billion, it's likely in milliseconds, so convert to seconds
+  const normalizedCardExpiresAt = cardExpiresAtNum && cardExpiresAtNum > 10000000000
+    ? Math.floor(cardExpiresAtNum / 1000)
+    : cardExpiresAtNum;
+
+  const { isExpired: cardIsExpired } = useCountdown(normalizedCardExpiresAt);
+
+  // Trigger alert when card expiry timer reaches zero
+  useEffect(() => {
+    if (cardIsExpired && !expiryModalShownRef.current) {
+      expiryModalShownRef.current = true;
+
+      // Hide card if it's in reveal state
+      if (showNumber) {
+        setShowNumber(false);
+        setCanUsePip(false);
+      }
+
+      setAlertConfig({
+        title: "Card Expired",
+        message: "This card has expired and is no longer available",
+        cancelable: false,
+        buttons: [
+          {
+            text: "Go to Home",
+            onPress: () => {
+              if (isMountedRef.current) {
+                setAlertVisible(false);
+              }
+              router.push("/");
+            },
+          },
+        ],
+      });
+      if (isMountedRef.current) {
+        setAlertVisible(true);
+      }
+    }
+  }, [cardIsExpired, router, showNumber]);
+
+  // Cleanup mounted ref on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleDeviceLock = async () => {
     if (showNumber) {
@@ -662,6 +721,27 @@ export default function CardDetailsScreen() {
         <View collapsable={false} pointerEvents="none" renderToHardwareTextureAndroid needsOffscreenAlphaCompositing style={{ position: "absolute", top: 0, left: 0, opacity: 0.01, width: 320, height: 200, backgroundColor: "#fff" }} onLayout={() => { if (layoutResolveRef.current) { layoutResolveRef.current(); layoutResolveRef.current = null; } }}>
           <PipCard ref={pipCardRef} card={card} showNumber={showNumber} />
         </View>
+      )}
+
+      {alertConfig.cancelable === false ? (
+        <NonDismissibleModal
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttonText={alertConfig.buttons?.[0]?.text || "OK"}
+          onButtonPress={() => {
+            alertConfig.buttons?.[0]?.onPress?.();
+          }}
+        />
+      ) : (
+        <AlertBox
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          cancelable={alertConfig.cancelable}
+          onRequestClose={() => setAlertVisible(false)}
+        />
       )}
 
       <AdBanner />

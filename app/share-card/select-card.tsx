@@ -1,5 +1,6 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
+import SessionTimerBar from "@/components/SessionTimerBar";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -54,7 +55,7 @@ export default function SelectCardScreen() {
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
-    const { timeLeft: sessionTimeLeft, isExpired } = useCountdown(sessionPayload?.expiresAt ?? null);
+    const { isExpired } = useCountdown(sessionPayload?.expiresAt ?? null);
     const scrollX = useRef(new Animated.Value(0)).current;
     const hasRedirectedRef = useRef(false);
 
@@ -233,14 +234,10 @@ export default function SelectCardScreen() {
                 showBackButton={true}
                 onBack={() => router.back()}
             />
-            {sessionTimeLeft > 0 && (
-                <View style={[styles.sessionTimerBar, { backgroundColor: palette.primary + '15', borderBottomColor: palette.primary }]}>
-                    <MaterialIcons name="schedule" size={16} color={palette.primary} />
-                    <ThemedText style={[styles.sessionTimerText, { color: palette.primary }]}>
-                        Session expires in {formatTime(sessionTimeLeft)}
-                    </ThemedText>
-                </View>
-            )}
+            <SessionTimerBar
+                expiresAt={sessionPayload?.expiresAt ?? null}
+                label="Session expires in"
+            />
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={{ flexGrow: 1 }}
@@ -698,18 +695,6 @@ const styles = StyleSheet.create({
     },
     addCardButtonText: {
         fontSize: 16,
-        fontWeight: "600",
-    },
-    sessionTimerBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        gap: 8,
-    },
-    sessionTimerText: {
-        fontSize: 13,
         fontWeight: "600",
     },
 });

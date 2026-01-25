@@ -150,7 +150,7 @@ export default function ShareScreen() {
 
                     // Navigate to select card screen with session data
                     router.push({
-                        pathname: "/share-card/select-card",
+                        pathname: "./select-card",
                         params: {
                             sessionId: sessionPayload.sessionId,
                             receiverPublicKey: sessionPayload.receiverPublicKey,
@@ -214,7 +214,7 @@ export default function ShareScreen() {
 
             // Navigate to select card screen with session data
             router.push({
-                pathname: "/share-card/select-card",
+                pathname: "./select-card",
                 params: {
                     sessionId: sessionPayload.sessionId,
                     receiverPublicKey: sessionPayload.receiverPublicKey,

@@ -7,6 +7,7 @@ import {
   decryptCardFromQR,
   validateQRPayload,
 } from "@/utils/cardSharing";
+import { getCardType } from "@/utils/CardType";
 import { parseCardQRString, parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
 import {
@@ -166,6 +167,10 @@ export default function ImportCardScreen() {
             );
             console.log("✅ Card data decrypted (spec 10):", cardData);
 
+            // Detect card type from card number BIN
+            const detectedCardType = getCardType(cardData.cardNumber);
+            console.log("🏦 Detected card type:", detectedCardType);
+
             // Map decrypted card data to Card format
             const cardToImport = {
               id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
@@ -179,6 +184,7 @@ export default function ImportCardScreen() {
               cardUser: "other" as "self" | "other",
               dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
               bank: cardData.bank || "", // Use shared bank or empty
+              cardType: detectedCardType || undefined, // Detect and save card type from BIN
               cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
               isPinned: false, // Imported cards always start unpinned (device-specific property)
             };

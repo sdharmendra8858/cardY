@@ -2,20 +2,26 @@
  * Secure Card Storage
  * Implements spec 7: Card Storage Flow
  *
- * Encrypts entire card array as single payload using AES-256-GCM
+ * Two-tier encryption architecture:
+ * - Root Key (RK): Stored in SecureStore (Android Keystore)
+ * - Data Encryption Key (DEK): Encrypted with RK, stored in AsyncStorage
+ * - Card Data: Encrypted with DEK, stored in AsyncStorage
+ *
+ * This separation ensures:
+ * - SecureStore only stores small cryptographic keys (~32 bytes)
+ * - Large encrypted payloads stored in AsyncStorage (stable in release builds)
  * - No plaintext persisted at any point
- * - Encrypted blob stored in SecureStore
  */
 
-import * as SecureStore from "expo-secure-store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   decryptCards,
   encryptCards,
   EncryptionResult,
 } from "./encryption/cardEncryption";
 
-const STORAGE_KEY_MASKED = "cards_masked";
-const STORAGE_KEY_UNMASKED = "cards_unmasked";
+const STORAGE_KEY_MASKED = "encrypted_cards_masked";
+const STORAGE_KEY_UNMASKED = "encrypted_cards_unmasked";
 
 // Export storage keys for use in other modules
 export { STORAGE_KEY_MASKED, STORAGE_KEY_UNMASKED };
@@ -44,11 +50,9 @@ type Card = {
 export async function getMaskedCards(): Promise<Card[]> {
   try {
     if (__DEV__)
-      console.log("🔓 Retrieving masked cards from secure storage...");
+      console.log("🔓 Retrieving masked cards from AsyncStorage...");
 
-    const value = await SecureStore.getItemAsync(STORAGE_KEY_MASKED, {
-      keychainService: STORAGE_KEY_MASKED,
-    });
+    const value = await AsyncStorage.getItem(STORAGE_KEY_MASKED);
 
     if (!value) {
       if (__DEV__) console.log("ℹ️ No masked cards found in storage");
@@ -95,9 +99,7 @@ export async function getMaskedCards(): Promise<Card[]> {
  */
 export async function getUnmaskedCards(): Promise<Card[]> {
   try {
-    const value = await SecureStore.getItemAsync(STORAGE_KEY_UNMASKED, {
-      keychainService: STORAGE_KEY_UNMASKED,
-    });
+    const value = await AsyncStorage.getItem(STORAGE_KEY_UNMASKED);
 
     if (!value) {
       return [];
@@ -181,12 +183,12 @@ export async function revealCard(cardId: string): Promise<Card | null> {
 }
 
 /**
- * Save cards to secure storage (both masked and unmasked versions)
+ * Save cards to storage (both masked and unmasked versions)
  *
  * Spec 7: Saving Cards
  * 1. Serialize card array to JSON
- * 2. Encrypt using AES-256-CBC
- * 3. Store encrypted blob in SecureStore
+ * 2. Encrypt using AES-256-CBC with DEK
+ * 3. Store encrypted blob in AsyncStorage (not SecureStore)
  * 4. No plaintext persisted at any point
  *
  * @param cards Array of cards to save
@@ -214,22 +216,18 @@ export async function setCards(cards: Card[]): Promise<void> {
     const unmaskedEncryption = await encryptCards(cards);
     const maskedEncryption = await encryptCards(maskedCards);
 
-    // Store both versions
+    // Store both versions in AsyncStorage (not SecureStore)
     const unmaskedData = JSON.stringify(unmaskedEncryption);
     const maskedData = JSON.stringify(maskedEncryption);
 
     await Promise.all([
-      SecureStore.setItemAsync(STORAGE_KEY_UNMASKED, unmaskedData, {
-        keychainService: STORAGE_KEY_UNMASKED,
-      }),
-      SecureStore.setItemAsync(STORAGE_KEY_MASKED, maskedData, {
-        keychainService: STORAGE_KEY_MASKED,
-      }),
+      AsyncStorage.setItem(STORAGE_KEY_UNMASKED, unmaskedData),
+      AsyncStorage.setItem(STORAGE_KEY_MASKED, maskedData),
     ]);
 
     if (__DEV__)
       console.log(
-        `✅ Cards encrypted and stored securely (masked + unmasked). Stored ${cards.length} cards.`
+        `✅ Cards encrypted and stored in AsyncStorage (masked + unmasked). Stored ${cards.length} cards.`
       );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -350,17 +348,13 @@ export async function clearCards(): Promise<boolean> {
   try {
     if (__DEV__) console.log("🗑️ Clearing all cards from storage...");
 
-    // Delete both masked and unmasked encrypted cards
+    // Delete both masked and unmasked encrypted cards from AsyncStorage
     await Promise.all([
-      SecureStore.deleteItemAsync(STORAGE_KEY_MASKED, {
-        keychainService: STORAGE_KEY_MASKED,
-      }),
-      SecureStore.deleteItemAsync(STORAGE_KEY_UNMASKED, {
-        keychainService: STORAGE_KEY_UNMASKED,
-      }),
+      AsyncStorage.removeItem(STORAGE_KEY_MASKED),
+      AsyncStorage.removeItem(STORAGE_KEY_UNMASKED),
     ]);
 
-    // Also delete the master key since no cards remain
+    // Also delete the master key from SecureStore since no cards remain
     const { deleteMasterKey } = await import("./encryption/masterKeyManager");
     await deleteMasterKey();
 

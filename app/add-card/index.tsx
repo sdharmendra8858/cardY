@@ -3,20 +3,22 @@ import AlertBox from "@/components/AlertBox";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
+import NonDismissibleModal from "@/components/NonDismissibleModal";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useCards } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
 import { getUnmaskedCards, getMaskedCards as secureGetCards } from "@/utils/secureStorage";
+import { MaterialIcons } from "@expo/vector-icons";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import NfcManager from "react-native-nfc-manager";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
 import NfcScanButton from "./components/NfcScanButton";
@@ -31,21 +33,71 @@ export default function AddCardScreen() {
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [isNfcSupported, setIsNfcSupported] = useState(true);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+  const expiryModalShownRef = useRef(false);
+  const isMountedRef = useRef(true);
+
   const {
     from,
     redirectTo,
     sessionId,
     receiverPublicKey,
-    expiresAt
+    expiresAt,
+    defaultCardNumber,
+    defaultCardHolder,
+    defaultExpiry,
+    defaultCvv,
+    fromExtract,
+    editId,
+    fromEdit,
+    defaultBank,
+    defaultCardKind,
+    defaultCobrandName,
+    defaultCardUser,
+    defaultDominantColor,
+    cardExpiresAt
   } = useLocalSearchParams<{
     from?: string;
     redirectTo?: string;
     sessionId?: string;
     receiverPublicKey?: string;
     expiresAt?: string;
+    defaultCardNumber?: string;
+    defaultCardHolder?: string;
+    defaultExpiry?: string;
+    defaultCvv?: string;
+    fromExtract?: string;
+    editId?: string;
+    fromEdit?: string;
+    defaultBank?: string;
+    defaultCardKind?: "credit" | "debit";
+    defaultCobrandName?: string;
+    defaultCardUser?: "self" | "other";
+    defaultDominantColor?: string;
+    cardExpiresAt?: string;
   }>();
+
+  // Countdown timer for imported cards (other's cards) that are about to expire
+  const cardExpiresAtNum = cardExpiresAt ? parseInt(cardExpiresAt) : null;
+  // Ensure we're working with seconds (Unix timestamp), not milliseconds
+  // If the value is > 10 billion, it's likely in milliseconds, so convert to seconds
+  const normalizedCardExpiresAt = cardExpiresAtNum && cardExpiresAtNum > 10000000000
+    ? Math.floor(cardExpiresAtNum / 1000)
+    : cardExpiresAtNum;
+
+  if (__DEV__ && cardExpiresAtNum) {
+    const now = Math.floor(Date.now() / 1000);
+    console.log("🔍 Add-card expiry debug:", {
+      cardExpiresAt,
+      cardExpiresAtNum,
+      normalizedCardExpiresAt,
+      now,
+      timeRemaining: normalizedCardExpiresAt ? normalizedCardExpiresAt - now : 0,
+    });
+  }
+
+  const { timeLeft: cardTimeLeft, isExpired: cardIsExpired, formatTime } = useCountdown(normalizedCardExpiresAt);
+  const showExpiryWarning = normalizedCardExpiresAt && cardTimeLeft > 0 && cardTimeLeft < 300; // Less than 5 minutes
 
   const clearImageDump = async () => {
     try {
@@ -113,50 +165,11 @@ export default function AddCardScreen() {
     }
   };
 
-  const {
-    defaultCardNumber,
-    defaultCardHolder,
-    defaultExpiry,
-    defaultCvv,
-    fromExtract,
-    editId,
-    fromEdit,
-    defaultBank,
-    defaultCardType,
-    defaultCardKind,
-    defaultCobrandName,
-    defaultCardUser,
-    defaultDominantColor,
-  } = useLocalSearchParams<{
-    defaultCardNumber?: string;
-    defaultCardHolder?: string;
-    defaultExpiry?: string;
-    defaultCvv?: string;
-    fromExtract?: string;
-    editId?: string;
-    fromEdit?: string;
-    defaultBank?: string;
-    defaultCardType?: string;
-    defaultCardKind?: "credit" | "debit";
-    defaultCobrandName?: string;
-    defaultCardUser?: "self" | "other";
-    defaultDominantColor?: string;
-  }>();
   const isEditMode = fromEdit === "true" && !!editId;
   const hideScanButton = fromExtract === "true" || isEditMode;
 
   // Load existing card data for edit mode
   useEffect(() => {
-    // Check NFC support
-    const checkNfcSupport = async () => {
-      try {
-        const supported = await NfcManager.isSupported();
-        setIsNfcSupported(supported);
-      } catch (err) {
-        setIsNfcSupported(false);
-      }
-    };
-    checkNfcSupport();
 
     if (isEditMode && editId) {
       const loadCardForEdit = async () => {
@@ -174,6 +187,40 @@ export default function AddCardScreen() {
       loadCardForEdit();
     }
   }, [isEditMode, editId]);
+
+  // Trigger alert when card expiry timer reaches zero (only in edit mode for other's cards)
+  useEffect(() => {
+    if (cardIsExpired && !expiryModalShownRef.current) {
+      expiryModalShownRef.current = true;
+      setAlertConfig({
+        title: "Card Expired",
+        message: "This card has expired and is no longer available",
+        cancelable: false,
+        buttons: [
+          {
+            text: "Go to Home",
+            onPress: () => {
+              if (isMountedRef.current) {
+                setAlertVisible(false);
+              }
+              router.dismissAll();
+              router.push("/");
+            },
+          },
+        ],
+      });
+      if (isMountedRef.current) {
+        setAlertVisible(true);
+      }
+    }
+  }, [cardIsExpired, router]);
+
+  // Cleanup mounted ref on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const saveCardLocally = async (card: {
     id: string;
@@ -200,10 +247,15 @@ export default function AddCardScreen() {
       };
 
       // Check for duplicate card numbers (excluding current card in edit mode)
+      // Allow same card number if it belongs to a different owner (self vs other)
       const existingCards = await getUnmaskedCards();
       const duplicateCard = existingCards.find((existingCard: any) => {
         // In edit mode, exclude the current card being edited
         if (isEditMode && editId && existingCard.id === editId) {
+          return false;
+        }
+        // Allow same card number if it belongs to a different owner
+        if (existingCard.cardUser !== cardWithDefaults.cardUser) {
           return false;
         }
         return existingCard.cardNumber === cardWithDefaults.cardNumber;
@@ -343,6 +395,14 @@ export default function AddCardScreen() {
         subtitle={isEditMode ? "Update card details" : "Scan or enter details manually"}
         showBackButton={true}
       />
+      {showExpiryWarning && (
+        <View style={[styles.expiryWarningBar, { backgroundColor: palette.danger + '15', borderBottomColor: palette.danger }]}>
+          <MaterialIcons name="schedule" size={16} color={palette.danger} />
+          <ThemedText style={[styles.expiryWarningText, { color: palette.danger }]}>
+            Card expires in {formatTime(cardTimeLeft)}
+          </ThemedText>
+        </View>
+      )}
       <KeyboardAwareScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -361,11 +421,9 @@ export default function AddCardScreen() {
               <View style={{ flex: 1 }}>
                 <ScanButton onPress={handleScan} />
               </View>
-              {isNfcSupported && (
-                <View style={{ flex: 1 }}>
-                  <NfcScanButton onPress={handleNfcScan} />
-                </View>
-              )}
+              <View style={{ flex: 1 }}>
+                <NfcScanButton onPress={handleNfcScan} />
+              </View>
             </View>
 
             <View style={styles.orSeparatorContainer}>
@@ -420,13 +478,26 @@ export default function AddCardScreen() {
       {/* Preload interstitial ad for faster loading */}
       <InterstitialAd />
 
-      <AlertBox
-        visible={alertVisible}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        buttons={alertConfig.buttons}
-        onRequestClose={() => setAlertVisible(false)}
-      />
+      {alertConfig.cancelable === false ? (
+        <NonDismissibleModal
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttonText={alertConfig.buttons?.[0]?.text || "OK"}
+          onButtonPress={() => {
+            alertConfig.buttons?.[0]?.onPress?.();
+          }}
+        />
+      ) : (
+        <AlertBox
+          visible={alertVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          cancelable={alertConfig.cancelable}
+          onRequestClose={() => setAlertVisible(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -435,6 +506,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f2f2f2" },
   flex: { flex: 1 },
   content: { padding: 16, paddingBottom: 160, flexGrow: 1 },
+  expiryWarningBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  expiryWarningText: {
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+  },
   title: {
     fontSize: 24,
     fontWeight: "bold",

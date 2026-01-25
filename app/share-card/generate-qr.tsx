@@ -1,6 +1,7 @@
 import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRDisplaySection from "@/components/QRDisplaySection";
+import SessionTimerBar from "@/components/SessionTimerBar";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -36,10 +37,7 @@ export default function GenerateQRScreen() {
 
     const [qrData, setQrData] = useState<string>("");
     const [error, setError] = useState<string>("");
-    const countdown = expiresAt ? useCountdown(expiresAt) : null;
-    const timeLeft = countdown?.timeLeft ?? 0;
-    const isExpired = countdown?.isExpired ?? false;
-    const formatTime = countdown?.formatTime ?? (() => "");
+    const { isExpired, timeLeft } = expiresAt ? useCountdown(expiresAt) : { isExpired: false, timeLeft: 0 };
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
     const [isSharing, setIsSharing] = useState(false);
@@ -402,14 +400,10 @@ export default function GenerateQRScreen() {
                     subtitle="Show this QR code to securely share your card"
                     showBackButton={true}
                 />
-                {timeLeft > 0 && (
-                    <View style={[styles.sessionTimerBar, { backgroundColor: palette.primary + '15', borderBottomColor: palette.primary }]}>
-                        <MaterialIcons name="schedule" size={16} color={palette.primary} />
-                        <ThemedText style={[styles.sessionTimerText, { color: palette.primary }]}>
-                            Session expires in {formatTime(timeLeft)}
-                        </ThemedText>
-                    </View>
-                )}
+                <SessionTimerBar
+                    expiresAt={expiresAt}
+                    label="Session expires in"
+                />
                 <View style={styles.container}>
                     <QRDisplaySection
                         qrData={qrData}
@@ -500,18 +494,6 @@ const styles = StyleSheet.create({
     },
     errorButtonText: {
         fontSize: 16,
-        fontWeight: "600",
-    },
-    sessionTimerBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        gap: 8,
-    },
-    sessionTimerText: {
-        fontSize: 13,
         fontWeight: "600",
     },
 });
