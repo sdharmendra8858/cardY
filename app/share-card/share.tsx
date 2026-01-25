@@ -8,9 +8,10 @@ import { isSessionValid } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Animated, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 
@@ -24,6 +25,7 @@ export default function ShareScreen() {
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const scanLineAnimation = useRef(new Animated.Value(0)).current;
     const [alertVisible, setAlertVisible] = useState(false);
+    const permissionDeniedRef = useRef(false);
     const [alertConfig, setAlertConfig] = useState<{
         title: string;
         message: string;
@@ -65,31 +67,58 @@ export default function ShareScreen() {
                 return;
             }
 
-            // If we are not scanning, we allow the removal but ensure we go to profile
-            // if this was a pop action (gesture). If it's already a replace, we let it be.
-            if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
-                e.preventDefault();
-                router.replace("/profile");
-            }
+            // If we are not scanning, allow the navigation to proceed
+            // The handleBackAction will be called from the header button
         });
 
         return unsubscribe;
-    }, [navigation, isScanning, router, scanLineAnimation]);
+    }, [navigation, isScanning, scanLineAnimation]);
 
     const handleScanQR = useCallback(async () => {
         try {
+            console.log('Requesting camera permissions...');
             const { status } = await Camera.requestCameraPermissionsAsync();
+            console.log('Camera permission status:', status);
 
             if (status !== "granted") {
-                setAlertConfig({
-                    title: "Camera permission denied",
-                    message: "Please enable camera permissions in settings to scan QR codes",
-                    buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-                });
-                setAlertVisible(true);
+                // If permission was already denied once, show modal with "Open Settings"
+                if (permissionDeniedRef.current) {
+                    console.log('Permission denied again - showing modal with Open Settings');
+                    setAlertConfig({
+                        title: "Camera permission denied",
+                        message: "Camera permission is required to scan QR codes. Please enable it in settings.",
+                        buttons: [
+                            {
+                                text: "Open Settings",
+                                style: "default",
+                                onPress: () => {
+                                    setAlertVisible(false);
+                                    if (Platform.OS === 'ios') {
+                                        Linking.openURL('app-settings:');
+                                    } else {
+                                        Linking.openSettings();
+                                    }
+                                }
+                            },
+                            {
+                                text: "Cancel",
+                                style: "cancel",
+                                onPress: () => setAlertVisible(false)
+                            }
+                        ]
+                    });
+                    setAlertVisible(true);
+                } else {
+                    // First time denied - just mark it
+                    console.log('Permission denied first time');
+                    permissionDeniedRef.current = true;
+                }
                 return;
             }
 
+            // Permission granted - reset the ref and start scanning
+            permissionDeniedRef.current = false;
+            console.log('Starting camera scan...');
             setIsScanning(true);
 
             // Start scan line animation
@@ -103,13 +132,7 @@ export default function ShareScreen() {
                 })
             ).start();
         } catch (error) {
-            console.error('Error requesting camera permissions:', error);
-            setAlertConfig({
-                title: "Error",
-                message: "Failed to access camera",
-                buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-            });
-            setAlertVisible(true);
+            console.error('Error in handleScanQR:', error);
         }
     }, [scanLineAnimation]);
 
