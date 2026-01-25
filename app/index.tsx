@@ -112,13 +112,14 @@ export default function HomeScreen() {
 
   // Sync context cards to local state whenever context updates
   React.useEffect(() => {
-    console.log(`🔄 Syncing ${contextCards.length} cards from context to local state`);
-    if (__DEV__) {
-      contextCards.forEach((card, idx) => {
-        console.log(`   Card ${idx}: id=${card.id}, cardUser=${card.cardUser}, bank=${card.bank}`);
-      });
-    }
-    setCards(contextCards);
+    // Only update if cards actually changed
+    setCards(prevCards => {
+      const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(contextCards);
+      if (cardsChanged) {
+        return contextCards;
+      }
+      return prevCards;
+    });
   }, [contextCards]);
 
   // Check for expired cards and animate their removal

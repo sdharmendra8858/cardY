@@ -1,9 +1,8 @@
 import InterstitialAd, { showInterstitialAd } from "@/components/AdInterstitial";
-import AlertBox from "@/components/AlertBox";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
-import NonDismissibleModal from "@/components/NonDismissibleModal";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useCards } from "@/context/CardContext";
@@ -33,7 +32,13 @@ export default function AddCardScreen() {
   const palette = Colors[scheme];
   const [isSaving, setIsSaving] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    dismissible?: boolean;
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "" });
   const expiryModalShownRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -195,7 +200,8 @@ export default function AddCardScreen() {
       setAlertConfig({
         title: "Card Expired",
         message: "This card has expired and is no longer available",
-        cancelable: false,
+        type: "error",
+        dismissible: false,
         buttons: [
           {
             text: "Go to Home",
@@ -377,7 +383,8 @@ export default function AddCardScreen() {
       setAlertConfig({
         title: "Error",
         message: errorMessage,
-        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+        type: "error",
+        buttons: [{ text: "OK", style: "cancel", onPress: () => setAlertVisible(false) }]
       });
       setAlertVisible(true);
     } finally {
@@ -478,26 +485,15 @@ export default function AddCardScreen() {
       {/* Preload interstitial ad for faster loading */}
       <InterstitialAd />
 
-      {alertConfig.cancelable === false ? (
-        <NonDismissibleModal
-          visible={alertVisible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttonText={alertConfig.buttons?.[0]?.text || "OK"}
-          onButtonPress={() => {
-            alertConfig.buttons?.[0]?.onPress?.();
-          }}
-        />
-      ) : (
-        <AlertBox
-          visible={alertVisible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          cancelable={alertConfig.cancelable}
-          onRequestClose={() => setAlertVisible(false)}
-        />
-      )}
+      <UnifiedModal
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        dismissible={alertConfig.dismissible !== false}
+        type={alertConfig.type}
+        onRequestClose={() => setAlertVisible(false)}
+      />
     </SafeAreaView>
   );
 }

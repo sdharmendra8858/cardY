@@ -1,6 +1,6 @@
 import React, { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { deleteMasterKey } from "../utils/encryption/masterKeyManager";
-import { getMaskedCards, addCard as secureAddCard, removeCard as secureRemoveCard, revealCard as secureRevealCard, updateCard as secureUpdateCard } from "../utils/secureStorage";
+import { getMaskedCards, setCards as persistCards, addCard as secureAddCard, removeCard as secureRemoveCard, revealCard as secureRevealCard, updateCard as secureUpdateCard } from "../utils/secureStorage";
 import { useSecurity } from "./SecurityContext";
 
 type Card = {
@@ -55,29 +55,37 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
       const storedCards = await getMaskedCards();
       // Check for expired cards and filter them out
       const now = Math.floor(Date.now() / 1000);
+      const expiredCardIds: string[] = [];
       const activeCards = storedCards.filter((card) => {
         if (card.cardExpiresAt && now > card.cardExpiresAt && card.cardUser === "other") {
-          if (__DEV__) console.log(`🗑️ Card expired and filtered out: ${card.id}, expiresAt=${card.cardExpiresAt}, now=${now}`);
+          expiredCardIds.push(card.id);
           return false; // Remove this card
-        }
-        if (__DEV__ && card.cardUser === "other" && card.cardExpiresAt) {
-          console.log(`⏰ Other card still valid: ${card.id}, expiresAt=${card.cardExpiresAt}, now=${now}, timeLeft=${card.cardExpiresAt - now}s`);
         }
         return true; // Keep this card
       });
 
-      // If any cards were filtered out, update storage
+      // If any cards were filtered out, persist to storage
       if (activeCards.length !== storedCards.length) {
-        if (__DEV__) console.log(`📦 Updating storage: removing ${storedCards.length - activeCards.length} expired card(s)`);
-        await setCards(activeCards);
+        if (__DEV__) {
+          expiredCardIds.forEach(id => {
+            const card = storedCards.find(c => c.id === id);
+            if (card) {
+              console.log(`🗑️ Card expired and filtered out: ${id}, expiresAt=${card.cardExpiresAt}, now=${now}`);
+            }
+          });
+          console.log(`📦 Updating storage: removing ${storedCards.length - activeCards.length} expired card(s)`);
+        }
+        // Persist the filtered cards to storage
+        await persistCards(activeCards);
       }
 
+      // Update context state if cards changed
       const prevCards = cardsRef.current;
-      // Use stringify for a simple deep comparison to detect any property changes
       const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(activeCards);
 
       if (cardsChanged) {
         cardsRef.current = activeCards;
+        // Update React state to trigger re-render
         setCards(activeCards);
       }
     } catch (error) {
@@ -154,7 +162,7 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
     refreshCards,
     revealCard,
     isLoading
-  }), [cards, addCard, removeCard, refreshCards, revealCard, isLoading]);
+  }), [cards, addCard, updateCard, removeCard, refreshCards, revealCard, isLoading]);
 
   return (
     <CardContext.Provider value={value}>

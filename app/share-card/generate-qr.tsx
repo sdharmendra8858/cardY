@@ -1,8 +1,8 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRDisplaySection from "@/components/QRDisplaySection";
 import SessionTimerBar from "@/components/SessionTimerBar";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -39,16 +39,22 @@ export default function GenerateQRScreen() {
     const [error, setError] = useState<string>("");
     const { isExpired, timeLeft } = expiresAt ? useCountdown(expiresAt) : { isExpired: false, timeLeft: 0 };
     const [alertVisible, setAlertVisible] = useState(false);
-    const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string;
+        message: string;
+        buttons?: UnifiedModalButton[];
+        dismissible?: boolean;
+        type?: "default" | "error" | "warning" | "success";
+    }>({ title: "", message: "" });
     const [isSharing, setIsSharing] = useState(false);
     const snapshotRef = useRef<any>(null);
     const hasRedirectedRef = useRef(false);
-    // Fix #2: Default cancelable to true (dismissible by default)
-    const alertStateRef = useRef({ visible: false, cancelable: true });
+    // Default dismissible to true (dismissible by default)
+    const alertStateRef = useRef({ visible: false, dismissible: true });
     const isMountedRef = useRef(true);
 
     useLayoutEffect(() => {
-        const isModalNonDismissible = alertStateRef.current.cancelable === false;
+        const isModalNonDismissible = alertStateRef.current.dismissible === false;
 
         navigation.setOptions({
             title: "Share QR Code",
@@ -69,7 +75,7 @@ export default function GenerateQRScreen() {
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            if (alertStateRef.current.visible && alertStateRef.current.cancelable === false) {
+            if (alertStateRef.current.visible && alertStateRef.current.dismissible === false) {
                 e.preventDefault();
             }
         });
@@ -102,9 +108,9 @@ export default function GenerateQRScreen() {
     useEffect(() => {
         alertStateRef.current = {
             visible: alertVisible,
-            cancelable: alertConfig.cancelable ?? true
+            dismissible: alertConfig.dismissible ?? true
         };
-    }, [alertVisible, alertConfig.cancelable]);
+    }, [alertVisible, alertConfig.dismissible]);
 
     // Track mount/unmount
     useEffect(() => {
@@ -253,7 +259,8 @@ export default function GenerateQRScreen() {
             setAlertConfig({
                 title: "Session Expired",
                 message: "Your sharing session has expired. Please generate a new QR code.",
-                cancelable: false,
+                type: "error",
+                dismissible: false,
                 buttons: [
                     {
                         text: "OK",
@@ -417,12 +424,13 @@ export default function GenerateQRScreen() {
                 </View>
             </SafeAreaView>
 
-            <AlertBox
+            <UnifiedModal
                 visible={alertVisible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 buttons={alertConfig.buttons}
-                cancelable={alertConfig.cancelable}
+                type={alertConfig.type}
+                dismissible={alertConfig.dismissible}
                 onRequestClose={() => setAlertVisible(false)}
             />
 

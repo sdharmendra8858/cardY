@@ -8,13 +8,12 @@ import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import AdBanner from "@/components/AdBanner";
-import AlertBox from "@/components/AlertBox";
 import CardNotFound from "@/components/CardNotFound";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
-import NonDismissibleModal from "@/components/NonDismissibleModal";
 import type { PipCardHandle } from "@/components/PipCard";
 import PipCard from "@/components/PipCard";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { CARD_TYPES } from "@/constants/cardTypes";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
@@ -98,7 +97,13 @@ export default function CardDetailsScreen() {
   const navigation = useNavigation();
   const router = useRouter();
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    dismissible?: boolean;
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "", buttons: [] });
   const expiryModalShownRef = useRef(false);
   const isMountedRef = useRef(true);
 
@@ -110,6 +115,7 @@ export default function CardDetailsScreen() {
     flipRotation.value = 0;
     isFlipped.value = false;
     setFlipped(false);
+    expiryModalShownRef.current = false; // Reset the ref when card changes
   }, [id]);
 
   const toggleFlip = () => {
@@ -179,9 +185,23 @@ export default function CardDetailsScreen() {
     React.useCallback(() => {
       navigation.setOptions({
         title: "Card Details",
+        gestureEnabled: false, // Disable back gesture
       });
     }, [navigation])
   );
+
+  // Intercept back navigation to always go to home
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Always prevent default back behavior and navigate to home instead
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+        router.replace("/");
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, router]);
 
   const loadCard = React.useCallback(async () => {
     try {
@@ -310,21 +330,32 @@ export default function CardDetailsScreen() {
   useEffect(() => {
     if (cardIsExpired && !expiryModalShownRef.current) {
       expiryModalShownRef.current = true;
+      console.log("🔔 Card expired, hiding details and showing alert");
 
-      // Hide card if it's in reveal state
+      // Hide card if it's in reveal state (same as hide/reveal button functionality)
       if (showNumber) {
         setShowNumber(false);
         setCanUsePip(false);
+        setIsRevealed(false);
+
+        // Revert to masked card from context
+        const maskedCard = cards.find((c) => c.id === id);
+        if (maskedCard) {
+          setCard(maskedCard);
+        }
       }
 
-      setAlertConfig({
+      const newAlertConfig = {
         title: "Card Expired",
         message: "This card has expired and is no longer available",
-        cancelable: false,
+        type: "error" as const,
+        dismissible: false,
         buttons: [
           {
             text: "Go to Home",
+            style: "default" as const,
             onPress: () => {
+              console.log("🏠 Going to home");
               if (isMountedRef.current) {
                 setAlertVisible(false);
               }
@@ -332,12 +363,17 @@ export default function CardDetailsScreen() {
             },
           },
         ],
-      });
+      };
+
+      console.log("📋 Setting alert config:", newAlertConfig);
+      setAlertConfig(newAlertConfig);
+
       if (isMountedRef.current) {
+        console.log("✅ Setting alert visible to true");
         setAlertVisible(true);
       }
     }
-  }, [cardIsExpired, router, showNumber]);
+  }, [cardIsExpired, router, showNumber, cards, id]);
 
   // Cleanup mounted ref on unmount
   useEffect(() => {
@@ -347,6 +383,33 @@ export default function CardDetailsScreen() {
   }, []);
 
   const handleDeviceLock = async () => {
+    // Check if card is expired
+    if (cardIsExpired) {
+      console.log("⏰ Card is expired, showing expiry alert");
+      const newAlertConfig = {
+        title: "Card Expired",
+        message: "This card has expired and is no longer available",
+        type: "error" as const,
+        dismissible: false,
+        buttons: [
+          {
+            text: "Go to Home",
+            style: "default" as const,
+            onPress: () => {
+              console.log("🏠 Going to home");
+              if (isMountedRef.current) {
+                setAlertVisible(false);
+              }
+              router.push("/");
+            },
+          },
+        ],
+      };
+      setAlertConfig(newAlertConfig);
+      setAlertVisible(true);
+      return;
+    }
+
     if (showNumber) {
       setShowNumber(false);
       setCanUsePip(false);
@@ -498,7 +561,7 @@ export default function CardDetailsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.surface }]}>
-      <Hero title="Card Details" subtitle="Secure View" showBackButton onBack={() => router.back()} />
+      <Hero title="Card Details" subtitle="Secure View" showBackButton onBack={() => router.replace("/")} />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.cardContainerWrapper}>
@@ -723,26 +786,15 @@ export default function CardDetailsScreen() {
         </View>
       )}
 
-      {alertConfig.cancelable === false ? (
-        <NonDismissibleModal
-          visible={alertVisible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttonText={alertConfig.buttons?.[0]?.text || "OK"}
-          onButtonPress={() => {
-            alertConfig.buttons?.[0]?.onPress?.();
-          }}
-        />
-      ) : (
-        <AlertBox
-          visible={alertVisible}
-          title={alertConfig.title}
-          message={alertConfig.message}
-          buttons={alertConfig.buttons}
-          cancelable={alertConfig.cancelable}
-          onRequestClose={() => setAlertVisible(false)}
-        />
-      )}
+      <UnifiedModal
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        dismissible={alertConfig.dismissible !== false}
+        type={alertConfig.type}
+        onRequestClose={() => setAlertVisible(false)}
+      />
 
       <AdBanner />
     </SafeAreaView>

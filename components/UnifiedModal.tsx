@@ -8,6 +8,7 @@ import {
     Modal,
     Pressable,
     StyleSheet,
+    Text,
     TouchableWithoutFeedback,
     View,
 } from "react-native";
@@ -23,100 +24,62 @@ export interface UnifiedModalProps {
     title: string;
     message: string;
     buttons?: UnifiedModalButton[];
-    dismissible?: boolean; // If false, modal cannot be closed by tapping outside or back button
+    dismissible?: boolean;
     onRequestClose?: () => void;
-    type?: "default" | "error" | "warning" | "success"; // For styling
+    type?: "default" | "error" | "warning" | "success";
 }
 
-/**
- * UnifiedModal Component
- *
- * A single, flexible modal component that handles all alert/modal scenarios:
- * - Dismissible and non-dismissible modes
- * - Multiple action buttons with custom callbacks
- * - Different visual styles (default, error, warning, success)
- * - Prevents back button navigation when non-dismissible
- *
- * Usage:
- * ```tsx
- * <UnifiedModal
- *   visible={isVisible}
- *   title="Card Expired"
- *   message="This card has expired"
- *   dismissible={false}
- *   buttons={[
- *     { text: "Go Home", onPress: () => router.push("/"), style: "default" }
- *   ]}
- * />
- * ```
- */
 export default function UnifiedModal({
     visible,
     title,
     message,
-    buttons,
+    buttons = [],
     dismissible = true,
     onRequestClose,
     type = "default",
 }: UnifiedModalProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
-    const backHandlerRef = useRef<ReturnType<typeof BackHandler.addEventListener> | null>(null);
 
-    // Handle back button for non-dismissible modals
+    // Ensure buttons is always an array
+    const safeButtons = Array.isArray(buttons) ? buttons : [];
+
+    const backHandlerRef = useRef<ReturnType<
+        typeof BackHandler.addEventListener
+    > | null>(null);
+
+    /**
+     * Prevent Android back button when modal is non-dismissible
+     */
     useEffect(() => {
         if (!visible || dismissible) return;
 
-        const handleBackPress = () => {
-            // Prevent back button when modal is non-dismissible
-            return true;
-        };
+        const handler = () => true;
+        backHandlerRef.current = BackHandler.addEventListener(
+            "hardwareBackPress",
+            handler
+        );
 
-        backHandlerRef.current = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
-
-        return () => {
-            if (backHandlerRef.current) {
-                backHandlerRef.current.remove();
-            }
-        };
+        return () => backHandlerRef.current?.remove();
     }, [visible, dismissible]);
 
-    const getTypeStyles = () => {
+    /**
+     * Accent color per type
+     */
+    const accentColor = (() => {
         switch (type) {
             case "error":
-                return {
-                    backgroundColor: "#FFEBEE",
-                    borderColor: "#EF5350",
-                    iconColor: "#C62828",
-                    textColor: "#B71C1C",
-                };
+                return "#EF4444";
             case "warning":
-                return {
-                    backgroundColor: "#FFF3E0",
-                    borderColor: "#FFB74D",
-                    iconColor: "#E65100",
-                    textColor: "#BF360C",
-                };
+                return "#F59E0B";
             case "success":
-                return {
-                    backgroundColor: "#E8F5E9",
-                    borderColor: "#81C784",
-                    iconColor: "#2E7D32",
-                    textColor: "#1B5E20",
-                };
+                return "#22C55E";
             default:
-                return {
-                    backgroundColor: palette.card,
-                    borderColor: palette.border,
-                    iconColor: palette.primary,
-                    textColor: palette.text,
-                };
+                return palette.primary;
         }
-    };
+    })();
 
-    const typeStyles = getTypeStyles();
-
-    const getTypeIcon = () => {
+    const iconName = (() => {
         switch (type) {
             case "error":
                 return "alert-circle";
@@ -127,7 +90,7 @@ export default function UnifiedModal({
             default:
                 return "information-circle";
         }
-    };
+    })();
 
     const handleBackdropPress = () => {
         if (dismissible && onRequestClose) {
@@ -138,8 +101,8 @@ export default function UnifiedModal({
     return (
         <Modal
             visible={visible}
-            animationType="fade"
             transparent
+            animationType="fade"
             onRequestClose={dismissible ? onRequestClose : undefined}
         >
             <TouchableWithoutFeedback onPress={handleBackdropPress}>
@@ -148,22 +111,26 @@ export default function UnifiedModal({
                         <View
                             style={[
                                 styles.container,
-                                {
-                                    backgroundColor: typeStyles.backgroundColor,
-                                    borderColor: typeStyles.borderColor,
-                                },
+                                { backgroundColor: palette.card },
                             ]}
                         >
-                            {/* Header with icon */}
+                            {/* Header */}
                             <View style={styles.header}>
-                                <Ionicons
-                                    name={getTypeIcon()}
-                                    size={24}
-                                    color={typeStyles.iconColor}
-                                    style={styles.icon}
-                                />
+                                <View
+                                    style={[
+                                        styles.iconWrapper,
+                                        { backgroundColor: `${accentColor}20` },
+                                    ]}
+                                >
+                                    <Ionicons
+                                        name={iconName}
+                                        size={20}
+                                        color={accentColor}
+                                    />
+                                </View>
+
                                 <ThemedText
-                                    style={[styles.title, { color: typeStyles.textColor }]}
+                                    style={styles.title}
                                     numberOfLines={2}
                                 >
                                     {title}
@@ -171,54 +138,66 @@ export default function UnifiedModal({
                             </View>
 
                             {/* Message */}
-                            <ThemedText
-                                style={[styles.message, { color: typeStyles.textColor }]}
-                            >
+                            <ThemedText style={styles.message}>
                                 {message}
                             </ThemedText>
 
                             {/* Buttons */}
-                            {buttons && buttons.length > 0 && (
-                                <View style={styles.buttonContainer}>
-                                    {buttons.map((button, index) => (
-                                        <Pressable
-                                            key={index}
-                                            style={[
-                                                styles.button,
-                                                {
-                                                    backgroundColor: getButtonColor(button.style, palette),
-                                                    borderTopWidth: index > 0 ? 1 : 0,
-                                                    borderTopColor: palette.border,
-                                                },
-                                            ]}
-                                            onPress={button.onPress}
-                                        >
-                                            <ThemedText
+                            {safeButtons && safeButtons.length > 0 ? (
+                                <View
+                                    style={styles.buttonContainer}
+                                >
+                                    {safeButtons.map((btn, index) => {
+                                        const isCancel =
+                                            btn.style === "cancel";
+                                        const isDestructive =
+                                            btn.style === "destructive";
+
+                                        return (
+                                            <Pressable
+                                                key={index}
                                                 style={[
-                                                    styles.buttonText,
-                                                    {
-                                                        color: getButtonTextColor(button.style, palette),
+                                                    styles.button,
+                                                    isCancel &&
+                                                    styles.cancelButton,
+                                                    isDestructive && {
+                                                        backgroundColor:
+                                                            palette.danger,
                                                     },
                                                 ]}
+                                                onPress={btn.onPress}
                                             >
-                                                {button.text}
-                                            </ThemedText>
-                                        </Pressable>
-                                    ))}
+                                                <Text
+                                                    style={[
+                                                        styles.buttonText,
+                                                        isCancel && styles.cancelButtonText,
+                                                    ]}
+                                                >
+                                                    {btn.text}
+                                                </Text>
+                                            </Pressable>
+                                        );
+                                    })}
                                 </View>
-                            )}
-
-                            {/* Close button for dismissible modals without buttons */}
-                            {dismissible && (!buttons || buttons.length === 0) && (
+                            ) : dismissible ? (
                                 <Pressable
-                                    style={[styles.closeButton, { borderTopColor: palette.border }]}
+                                    style={[
+                                        styles.button,
+                                        styles.cancelButton,
+                                        { marginHorizontal: 20 },
+                                    ]}
                                     onPress={onRequestClose}
                                 >
-                                    <ThemedText style={{ color: palette.primary, fontWeight: "600" }}>
+                                    <Text
+                                        style={[
+                                            styles.buttonText,
+                                            styles.cancelButtonText,
+                                        ]}
+                                    >
                                         Close
-                                    </ThemedText>
+                                    </Text>
                                 </Pressable>
-                            )}
+                            ) : null}
                         </View>
                     </TouchableWithoutFeedback>
                 </View>
@@ -227,87 +206,90 @@ export default function UnifiedModal({
     );
 }
 
-const getButtonColor = (style: string | undefined, palette: any) => {
-    switch (style) {
-        case "destructive":
-            return palette.danger;
-        case "cancel":
-            return palette.border;
-        default:
-            return palette.primary;
-    }
-};
-
-const getButtonTextColor = (style: string | undefined, palette: any) => {
-    switch (style) {
-        case "destructive":
-            return "white";
-        case "cancel":
-            return palette.text;
-        default:
-            return "white";
-    }
-};
+/* -------------------------------------------------------------------------- */
+/*                                   Styles                                   */
+/* -------------------------------------------------------------------------- */
 
 const styles = StyleSheet.create({
     backdrop: {
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: "rgba(0,0,0,0.45)",
         justifyContent: "center",
         alignItems: "center",
-        padding: 16,
+        padding: 20,
     },
+
     container: {
-        borderRadius: 12,
-        borderWidth: 1,
-        overflow: "hidden",
-        maxWidth: 400,
+        width: "100%",
+        maxWidth: 360,
+        borderRadius: 20,
+        paddingVertical: 22,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 25,
+        elevation: 10,
     },
+
     header: {
         flexDirection: "row",
         alignItems: "center",
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 8,
+        paddingHorizontal: 20,
+        marginBottom: 12,
     },
-    icon: {
+
+    iconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: "center",
+        alignItems: "center",
         marginRight: 12,
     },
+
     title: {
         fontSize: 16,
         fontWeight: "700",
-        flex: 1,
+        flexShrink: 1,
     },
+
     message: {
         fontSize: 14,
         lineHeight: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        textAlign: "center",
+        opacity: 0.8,
+        paddingHorizontal: 24,
+        marginBottom: 20,
     },
+
     buttonContainer: {
-        marginTop: 8,
-        borderTopWidth: 1,
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        paddingTop: 10,
+        gap: 10,
+        flexDirection: "row",
     },
+
     button: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        alignItems: "center",
+        flex: 1,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: "#2563EB",
         justifyContent: "center",
+        alignItems: "center",
     },
+
+    cancelButton: {
+        backgroundColor: "#E5E7EB",
+    },
+
     buttonText: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: "600",
+        color: "white",
     },
-    closeButton: {
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        alignItems: "center",
-        justifyContent: "center",
-        borderTopWidth: 1,
+
+    cancelButtonText: {
+        color: "#374151",
     },
 });

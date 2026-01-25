@@ -1,7 +1,7 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import SessionTimerBar from "@/components/SessionTimerBar";
 import { ThemedText } from "@/components/themed-text";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
 import { formatCardNumber } from "@/utils/formatCardNumber";
@@ -54,13 +54,19 @@ export default function SelectCardScreen() {
     const [cardValidityMinutes, setCardValidityMinutes] = useState<number | null>(15);
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
     const [alertVisible, setAlertVisible] = useState(false);
-    const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[]; cancelable?: boolean }>({ title: "", message: "" });
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string;
+        message: string;
+        buttons?: UnifiedModalButton[];
+        dismissible?: boolean;
+        type?: "default" | "error" | "warning" | "success";
+    }>({ title: "", message: "" });
     const { isExpired } = useCountdown(sessionPayload?.expiresAt ?? null);
     const scrollX = useRef(new Animated.Value(0)).current;
     const hasRedirectedRef = useRef(false);
 
     useLayoutEffect(() => {
-        const isModalNonDismissible = alertVisible && alertConfig.cancelable === false;
+        const isModalNonDismissible = alertVisible && alertConfig.dismissible === false;
 
         navigation.setOptions({
             title: "Select Card",
@@ -80,7 +86,7 @@ export default function SelectCardScreen() {
 
         // Cleanup: reset alert when screen unmounts or loses focus
         const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            if (alertVisible && alertConfig.cancelable === false) {
+            if (alertVisible && alertConfig.dismissible === false) {
                 // Prevent navigation if a non-dismissible alert is up
                 e.preventDefault();
                 return;
@@ -89,7 +95,7 @@ export default function SelectCardScreen() {
         });
 
         return unsubscribe;
-    }, [navigation, palette.text, router, alertVisible, alertConfig.cancelable]);
+    }, [navigation, palette.text, router, alertVisible, alertConfig.dismissible]);
 
     // Initialize session payload from params
     useEffect(() => {
@@ -136,7 +142,8 @@ export default function SelectCardScreen() {
             setAlertConfig({
                 title: "Session Expired",
                 message: "Your sharing session has expired. Please scan the QR code again.",
-                cancelable: false,
+                type: "error",
+                dismissible: false,
                 buttons: [
                     {
                         text: "OK",
@@ -545,12 +552,13 @@ export default function SelectCardScreen() {
                 )}
             </ScrollView>
 
-            <AlertBox
+            <UnifiedModal
                 visible={alertVisible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 buttons={alertConfig.buttons}
-                cancelable={alertConfig.cancelable}
+                dismissible={alertConfig.dismissible !== false}
+                type={alertConfig.type}
                 onRequestClose={() => setAlertVisible(false)}
             />
         </SafeAreaView>

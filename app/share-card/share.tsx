@@ -1,6 +1,6 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRScanSection from "@/components/QRScanSection";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
@@ -24,7 +24,12 @@ export default function ShareScreen() {
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const scanLineAnimation = useRef(new Animated.Value(0)).current;
     const [alertVisible, setAlertVisible] = useState(false);
-    const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string;
+        message: string;
+        buttons?: UnifiedModalButton[];
+        type?: "default" | "error" | "warning" | "success";
+    }>({ title: "", message: "" });
 
     const handleBackAction = useCallback(() => {
         if (isScanning) {
@@ -288,11 +293,12 @@ export default function ShareScreen() {
                 </ScrollView>
             </SafeAreaView>
 
-            <AlertBox
+            <UnifiedModal
                 visible={alertVisible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 buttons={alertConfig.buttons}
+                type={alertConfig.type}
                 onRequestClose={() => setAlertVisible(false)}
             />
         </>

@@ -1,8 +1,8 @@
-import AlertBox from "@/components/AlertBox";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
 import { ThemedText } from "@/components/themed-text";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
 import { sessionPayloadToQRString } from "@/utils/qr";
@@ -40,7 +40,12 @@ export default function ReceiveCardScreen() {
   const { timeLeft, isExpired, formatTime } = useCountdown(session?.expiresAt ?? null);
   const [generationError, setGenerationError] = useState<string>("");
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "" });
   const [showRegenerateInfo, setShowRegenerateInfo] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
@@ -447,11 +452,12 @@ export default function ReceiveCardScreen() {
         </View>
       </ScrollView>
 
-      <AlertBox
+      <UnifiedModal
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
         buttons={alertConfig.buttons}
+        type={alertConfig.type}
         onRequestClose={() => setAlertVisible(false)}
       />
     </SafeAreaView>

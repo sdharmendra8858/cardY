@@ -1,7 +1,7 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRScanSection from "@/components/QRScanSection";
 import { ThemedText } from "@/components/themed-text";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   decryptCardFromQR,
@@ -37,7 +37,12 @@ export default function ImportCardScreen() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "" });
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -211,13 +216,9 @@ export default function ImportCardScreen() {
                   onPress: () => router.replace(`/card-details/${cardToImport.id}`),
                 },
                 {
-                  text: "View All Cards",
-                  onPress: () => router.replace("/"),
-                },
-                {
-                  text: "Done",
+                  text: "OK",
                   style: "cancel",
-                  onPress: () => router.replace("/profile"),
+                  onPress: () => router.replace("/"),
                 },
               ]
             });
@@ -331,9 +332,6 @@ export default function ImportCardScreen() {
         const qrResult = await decodeQRFromImage(result.assets[0].uri);
 
         if (qrResult.success && qrResult.data) {
-          console.log('✅ QR Code decoded successfully!');
-          console.log('📋 QR Code data:', qrResult.data);
-
           // Process the decoded QR code data using existing handler
           handleBarCodeScanned({ type: 'QR', data: qrResult.data });
         } else {
@@ -444,11 +442,12 @@ export default function ImportCardScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <AlertBox
+      <UnifiedModal
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
         buttons={alertConfig.buttons}
+        type={alertConfig.type}
         onRequestClose={() => setAlertVisible(false)}
       />
     </>

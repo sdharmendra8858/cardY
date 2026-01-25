@@ -1,3 +1,4 @@
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import React, {
   createContext,
   useCallback,
@@ -5,12 +6,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { BackHandler, Modal, StyleSheet, TouchableWithoutFeedback, View } from "react-native";
-
-import AppButton from "@/components/AppButton";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { useThemeColor } from "@/hooks/use-theme-color";
 
 export type AlertButtonStyle = "default" | "cancel" | "destructive";
 
@@ -25,6 +20,7 @@ export type ShowAlertOptions = {
   message?: string;
   buttons?: AlertButton[];
   cancelable?: boolean;
+  type?: "default" | "error" | "warning" | "success";
 };
 
 type AlertContextValue = {
@@ -68,6 +64,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
         message={pending?.message}
         buttons={pending?.buttons}
         cancelable={pending?.cancelable}
+        type={pending?.type}
         onSelect={onClose}
         onRequestClose={() => {
           if (pending?.cancelable) onClose(undefined);
@@ -89,6 +86,7 @@ function AlertDialog({
   message,
   buttons,
   cancelable,
+  type,
   onSelect,
   onRequestClose,
 }: {
@@ -97,121 +95,37 @@ function AlertDialog({
   message?: string;
   buttons?: AlertButton[];
   cancelable?: boolean;
+  type?: "default" | "error" | "warning" | "success";
   onSelect: (button?: AlertButton) => void;
   onRequestClose: () => void;
 }) {
-  const overlayBg = "rgba(0,0,0,0.5)";
-  const cardBg = useThemeColor({}, "background");
-
-  const normalizedButtons: AlertButton[] = useMemo(() => {
-    if (buttons && buttons.length > 0) return buttons.slice(0, 3);
-    return [{ text: "OK", style: "default" }];
-  }, [buttons]);
-
-  // ✅ Handle Android back press
-  React.useEffect(() => {
-    const handleBackPress = () => {
-      if (visible && cancelable) {
-        onRequestClose();
-        return true;
-      }
-      return false;
-    };
-    const sub = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
-    return () => sub.remove();
-  }, [visible, cancelable, onRequestClose]);
+  const normalizedButtons: UnifiedModalButton[] = useMemo(() => {
+    if (buttons && buttons.length > 0) {
+      return buttons.slice(0, 2).map((btn) => ({
+        text: btn.text,
+        onPress: () => {
+          try {
+            btn.onPress?.();
+          } finally {
+            onSelect(btn);
+          }
+        },
+        style: btn.style,
+      }));
+    }
+    // Always provide a default OK button if no buttons are provided
+    return [{ text: "OK", onPress: () => onSelect(undefined), style: "default" }];
+  }, [buttons, onSelect]);
 
   return (
-    <Modal
-      animationType="fade"
-      transparent
+    <UnifiedModal
       visible={visible}
-      onRequestClose={onRequestClose} // Android fallback
-    >
-      {/* Outer wrapper detects tap outside */}
-      <TouchableWithoutFeedback
-        onPress={() => {
-          if (cancelable) onRequestClose();
-        }}
-      >
-        <View style={[styles.overlay, { backgroundColor: overlayBg }]}>
-          {/* Inner wrapper stops propagation (prevents closing when tapping inside) */}
-          <TouchableWithoutFeedback onPress={() => {}}>
-            <ThemedView style={[styles.card, { backgroundColor: cardBg }]}>
-              {title ? (
-                <ThemedText type="subtitle" style={styles.title}>
-                  {title}
-                </ThemedText>
-              ) : null}
-
-              {message ? (
-                <ThemedText style={styles.message}>{message}</ThemedText>
-              ) : null}
-
-              <View style={styles.buttonsRow}>
-                {normalizedButtons.map((btn, index) => {
-                  const variant =
-                    btn.style === "destructive"
-                      ? "danger"
-                      : btn.style === "cancel"
-                      ? "secondary"
-                      : index === 0
-                      ? "primary"
-                      : "secondary";
-                  return (
-                    <AppButton
-                      key={`${btn.text}-${index}`}
-                      title={btn.text}
-                      variant={variant as any}
-                      fullWidth
-                      style={styles.button}
-                      onPress={() => {
-                        try {
-                          btn.onPress?.();
-                        } finally {
-                          onSelect(btn);
-                        }
-                      }}
-                    />
-                  );
-                })}
-              </View>
-            </ThemedView>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+      title={title || "Alert"}
+      message={message || ""}
+      buttons={normalizedButtons}
+      dismissible={cancelable !== false}
+      type={type}
+      onRequestClose={onRequestClose}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  card: {
-    width: "100%",
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  title: {
-    marginBottom: 8,
-  },
-  message: {
-    marginBottom: 16,
-  },
-  buttonsRow: {
-    flexDirection: "column",
-    gap: 8,
-  },
-  button: {
-    alignSelf: "stretch",
-  },
-});
