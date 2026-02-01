@@ -1,121 +1,112 @@
-/**
- * Card Data Encryption/Decryption
- * Implements spec 5: Encryption Strategy
- * Uses react-native-aes-crypto for AES-256-CBC encryption
- */
+import { gcm } from "@noble/ciphers/aes.js";
+import { randomBytes } from "@noble/ciphers/utils.js";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  base64ToBytes,
+  bytesToBase64,
+  getMasterKey,
+} from "./masterKeyManager";
 
-import * as Crypto from "expo-crypto";
-import AES from 'react-native-aes-crypto';
-import { getMasterKey } from "./masterKeyManager";
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
 
-export interface EncryptionResult {
-  iv: string;
-  ciphertext: string;
+export type EncryptionResult = {
+  iv: string;          // base64
+  ciphertext: string; // base64 (includes auth tag)
+};
+
+/* -------------------------------------------------------------------------- */
+/*                                  CONSTANTS                                 */
+/* -------------------------------------------------------------------------- */
+
+const ENCRYPTED_DEK_KEY = "encrypted_dek";
+
+let cachedDEK: Uint8Array | null = null;
+
+/* -------------------------------------------------------------------------- */
+/*                              Data Key (DEK)                                 */
+/* -------------------------------------------------------------------------- */
+
+async function getDEK(): Promise<Uint8Array> {
+  if (cachedDEK) return cachedDEK;
+
+  const stored = await AsyncStorage.getItem(ENCRYPTED_DEK_KEY);
+  if (!stored) throw new Error("DEK_MISSING");
+
+  // getMasterKey now returns base64 string from manager
+  const mkBase64 = await getMasterKey();
+  const mk = base64ToBytes(mkBase64);
+  
+  const parsed = JSON.parse(stored);
+
+  const dek = gcm(mk, base64ToBytes(parsed.iv)).decrypt(
+    base64ToBytes(parsed.ciphertext)
+  );
+
+  cachedDEK = dek;
+  return dek;
 }
 
-function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
+async function createAndStoreDEK(): Promise<Uint8Array> {
+  const mkBase64 = await getMasterKey();
+  const mk = base64ToBytes(mkBase64);
+  
+  const dek = randomBytes(32);
+  const iv = randomBytes(12);
+
+  const encrypted = gcm(mk, iv).encrypt(dek);
+
+  await AsyncStorage.setItem(
+    ENCRYPTED_DEK_KEY,
+    JSON.stringify({
+      iv: bytesToBase64(iv),
+      ciphertext: bytesToBase64(encrypted),
+    })
+  );
+
+  cachedDEK = dek;
+  return dek;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
+/* -------------------------------------------------------------------------- */
+/*                               Public API                                   */
+/* -------------------------------------------------------------------------- */
+
+export async function encryptCards(
+  data: unknown
+): Promise<EncryptionResult> {
+  const dek =
+    (await AsyncStorage.getItem(ENCRYPTED_DEK_KEY))
+      ? await getDEK()
+      : await createAndStoreDEK();
+
+  const iv = randomBytes(12);
+  const plaintext = new TextEncoder().encode(JSON.stringify(data));
+  const ciphertext = gcm(dek, iv).encrypt(plaintext);
+
+  return {
+    iv: bytesToBase64(iv),
+    ciphertext: bytesToBase64(ciphertext),
+  };
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+export async function decryptCards(
+  payload: EncryptionResult
+): Promise<unknown> {
+  const dek = await getDEK();
+
+  const plaintext = gcm(dek, base64ToBytes(payload.iv)).decrypt(
+    base64ToBytes(payload.ciphertext)
+  );
+
+  return JSON.parse(new TextDecoder().decode(plaintext));
 }
 
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-  }
-  return bytes;
+export function resetEncryptionCache() {
+  cachedDEK = null;
 }
 
-export async function encryptCardData(cardData: string): Promise<EncryptionResult> {
-  try {
-    const masterKeyBase64 = await getMasterKey();
-    const masterKeyBytes = base64ToBytes(masterKeyBase64);
-    const masterKeyHex = bytesToHex(masterKeyBytes);
-
-    // Generate random IV (16 bytes for AES)
-    const iv = Crypto.getRandomBytes(16);
-    const ivHex = bytesToHex(iv);
-
-    // Encrypt using AES-256-CBC (react-native-aes-crypto)
-    const ciphertext = await AES.encrypt(
-      cardData,
-      masterKeyHex,
-      ivHex,
-      'aes-256-cbc'
-    );
-
-    if (__DEV__) console.log("✅ Card data encrypted with AES-256-CBC");
-
-    return {
-      iv: ivHex,
-      ciphertext: ciphertext,
-    };
-  } catch (error) {
-    console.error("❌ Card encryption failed:", error);
-    throw new Error(`Card encryption failed: ${error}`);
-  }
-}
-
-export async function decryptCardData(encryptionResult: EncryptionResult): Promise<string> {
-  try {
-    if (!encryptionResult || !encryptionResult.ciphertext || !encryptionResult.iv) {
-      if (__DEV__) console.log("ℹ️ Empty or invalid encryption result for decryption, returning empty string.");
-      return "";
-    }
-
-    const masterKeyBase64 = await getMasterKey();
-    const masterKeyBytes = base64ToBytes(masterKeyBase64);
-    const masterKeyHex = bytesToHex(masterKeyBytes);
-
-    // Decrypt using AES-256-CBC
-    const cardData = await AES.decrypt(
-      encryptionResult.ciphertext,
-      masterKeyHex,
-      encryptionResult.iv,
-      'aes-256-cbc'
-    );
-
-    if (__DEV__) console.log("✅ Card data decrypted with AES-256-CBC");
-    return cardData;
-  } catch (error) {
-    console.error("❌ Card decryption failed:", error);
-    throw error; // Re-throw to let caller handle it
-  }
-}
-
-export async function encryptCards(cards: any[]): Promise<EncryptionResult> {
-  const cardJSON = JSON.stringify(cards);
-  return encryptCardData(cardJSON);
-}
-
-export async function decryptCards(encryptionResult: EncryptionResult): Promise<any[]> {
-  try {
-    const cardJSON = await decryptCardData(encryptionResult);
-    if (!cardJSON) {
-      console.error("❌ Decryption returned empty string");
-      return [];
-    }
-    return JSON.parse(cardJSON);
-  } catch (error) {
-    console.error("❌ Failed to decrypt cards:", error);
-    return [];
-  }
-}
+// Aliases for compatibility with the rest of the project
+export const encryptCardData = encryptCards;
+export const decryptCardData = decryptCards;

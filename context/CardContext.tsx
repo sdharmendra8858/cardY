@@ -1,24 +1,14 @@
 import React, { ReactNode, createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { deleteMasterKey } from "../utils/encryption/masterKeyManager";
-import { getMaskedCards, setCards as persistCards, addCard as secureAddCard, removeCard as secureRemoveCard, revealCard as secureRevealCard, updateCard as secureUpdateCard } from "../utils/secureStorage";
+import {
+  Card,
+  getMaskedCards,
+  setCards as persistCards,
+  addCard as secureAddCard,
+  removeCard as secureRemoveCard,
+  revealCard as secureRevealCard,
+  updateCard as secureUpdateCard
+} from "../utils/secureStorage";
 import { useSecurity } from "./SecurityContext";
-
-type Card = {
-  id: string;
-  cardNumber: string;
-  cardHolder: string;
-  expiry: string;
-  cvv?: string;
-  cardName?: string;
-  cardKind?: "credit" | "debit";
-  cardType?: string; // Auto-detected card type (Visa, Mastercard, etc.)
-  cobrandName?: string;
-  cardUser?: "self" | "other";
-  dominantColor?: string;
-  bank?: string;
-  cardExpiresAt?: number; // Unix timestamp - when imported card should be auto-removed
-  isPinned?: boolean; // Whether the card is pinned
-};
 
 // Export Card type for use in other modules
 export type { Card };
@@ -30,6 +20,7 @@ type CardContextType = {
   removeCard: (id: string) => Promise<void>;
   refreshCards: () => Promise<void>;
   revealCard: (cardId: string) => Promise<Card | null>;
+  togglePin: (cardId: string, shouldPin: boolean) => Promise<void>;
   isLoading: boolean;
 };
 
@@ -117,22 +108,8 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
 
   const removeCard = async (id: string) => {
     try {
-      // Check if this removal will result in zero cards
-      const willBeEmpty = cards.length <= 1; // Current count is 1 or less
-
       await secureRemoveCard(id);
       await refreshCards();
-
-      // If we just removed the last card, delete the master key
-      if (willBeEmpty) {
-        try {
-          await deleteMasterKey();
-          if (__DEV__) console.log("🗑️ Master key deleted (no cards remaining after removal)");
-        } catch (deleteError) {
-          // Master key doesn't exist or deletion failed - that's okay
-          if (__DEV__) console.log("ℹ️ No master key to delete (already gone)");
-        }
-      }
     } catch (error) {
       console.error("Failed to remove card:", error);
       throw error;
@@ -149,6 +126,17 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const togglePin = async (cardId: string, shouldPin: boolean) => {
+    try {
+      const { toggleCardPin } = await import("../utils/secureStorage");
+      await toggleCardPin(cardId, shouldPin);
+      await refreshCards();
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     refreshCards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,6 +149,7 @@ export const CardProvider = ({ children }: { children: ReactNode }) => {
     removeCard,
     refreshCards,
     revealCard,
+    togglePin,
     isLoading
   }), [cards, addCard, updateCard, removeCard, refreshCards, revealCard, isLoading]);
 

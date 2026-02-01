@@ -1,33 +1,21 @@
-/**
- * Secure Card Storage
- * Implements spec 7: Card Storage Flow
- *
- * Two-tier encryption architecture:
- * - Root Key (RK): Stored in SecureStore (Android Keystore)
- * - Data Encryption Key (DEK): Encrypted with RK, stored separately
- * - Card Data: Encrypted with DEK, stored in AsyncStorage
- *
- * SecureStore is used ONLY for keys.
- * AsyncStorage stores ONLY encrypted payloads.
- */
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   decryptCards,
   encryptCards,
   EncryptionResult,
-} from "./encryption/cardEncryption";
+} from "@/utils/encryption/cardEncryption";
+import { deleteMasterKey } from "@/utils/encryption/masterKeyManager";
+import { maskAndFormatCardNumber } from "@/utils/mask";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY_MASKED = "encrypted_cards_masked";
-const STORAGE_KEY_UNMASKED = "encrypted_cards_unmasked";
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
 
-export { STORAGE_KEY_MASKED, STORAGE_KEY_UNMASKED };
-
-type Card = {
+export type Card = {
   id: string;
   cardNumber: string;
   cardHolder: string;
-  expiry: string;
+  expiry?: string;
   cvv?: string;
   cardName?: string;
   cardKind?: "credit" | "debit";
@@ -40,112 +28,78 @@ type Card = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*                               READ HELPERS                                  */
+/*                                  STORAGE KEYS                               */
 /* -------------------------------------------------------------------------- */
 
-async function readAndDecrypt(
-  storageKey: string
-): Promise<Card[]> {
-  const raw = await AsyncStorage.getItem(storageKey);
+const STORAGE_KEY_UNMASKED = "encrypted_cards_unmasked";
+const STORAGE_KEY_MASKED = "encrypted_cards_masked";
 
+export { STORAGE_KEY_MASKED, STORAGE_KEY_UNMASKED };
+
+/* -------------------------------------------------------------------------- */
+/*                               INTERNAL HELPERS                              */
+/* -------------------------------------------------------------------------- */
+
+async function readCards(
+  key: string
+): Promise<Card[]> {
+  const raw = await AsyncStorage.getItem(key);
   if (!raw) return [];
 
-  let parsed: EncryptionResult;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("STORAGE_CORRUPTED");
-  }
-
+  const parsed: EncryptionResult = JSON.parse(raw);
+  
   try {
     const decrypted = await decryptCards(parsed);
     if (!Array.isArray(decrypted)) {
-      throw new Error("INVALID_DECRYPTED_PAYLOAD");
+      throw new Error("INVALID_DECRYPTED_DATA");
     }
     return decrypted as Card[];
-  } catch {
-    throw new Error("CARD_DECRYPTION_FAILED");
+  } catch (error) {
+    console.warn(`⚠️ Failed to decrypt cards for key ${key} (likely key rotation). Clearing old data.`);
+    // Data is unreadable due to key mismatch. Clear it to prevent persistent crashes.
+    await AsyncStorage.removeItem(key);
+    return [];
   }
+}
+
+async function writeCards(
+  unmasked: Card[],
+  masked: Card[]
+): Promise<void> {
+  const encryptedUnmasked = await encryptCards(unmasked);
+  const encryptedMasked = await encryptCards(masked);
+
+  await AsyncStorage.setItem(
+    STORAGE_KEY_UNMASKED,
+    JSON.stringify(encryptedUnmasked)
+  );
+  await AsyncStorage.setItem(
+    STORAGE_KEY_MASKED,
+    JSON.stringify(encryptedMasked)
+  );
 }
 
 /* -------------------------------------------------------------------------- */
 /*                               PUBLIC API                                    */
 /* -------------------------------------------------------------------------- */
 
-export async function getMaskedCards(): Promise<Card[]> {
-  try {
-    return await readAndDecrypt(STORAGE_KEY_MASKED);
-  } catch (e) {
-    console.error("❌ Failed to get masked cards:", e);
-    throw e;
-  }
-}
-
 export async function getUnmaskedCards(): Promise<Card[]> {
-  try {
-    return await readAndDecrypt(STORAGE_KEY_UNMASKED);
-  } catch (e) {
-    console.error("❌ Failed to get unmasked cards:", e);
-    throw e;
-  }
+  return readCards(STORAGE_KEY_UNMASKED);
 }
 
-export async function revealCard(cardId: string): Promise<Card | null> {
-  try {
-    const cards = await getUnmaskedCards();
-    return cards.find((c) => c.id === cardId) ?? null;
-  } catch (e) {
-    console.error("❌ Reveal blocked due to crypto failure:", e);
-    throw new Error("REVEAL_BLOCKED");
-  }
+export async function getMaskedCards(): Promise<Card[]> {
+  return readCards(STORAGE_KEY_MASKED);
 }
-
-/* -------------------------------------------------------------------------- */
-/*                               WRITE HELPERS                                 */
-/* -------------------------------------------------------------------------- */
-
-function maskCardNumber(cardNumber: string): string {
-  if (!cardNumber) return cardNumber;
-
-  if (/[xX]/.test(cardNumber)) return cardNumber;
-
-  const clean = cardNumber.replace(/\D/g, "");
-  if (clean.length <= 4) return clean;
-
-  const masked = "X".repeat(clean.length - 4) + clean.slice(-4);
-  return masked.replace(/(.{4})/g, "$1 ").trim();
-}
-
-/* -------------------------------------------------------------------------- */
-/*                               WRITE API                                     */
-/* -------------------------------------------------------------------------- */
 
 export async function setCards(cards: Card[]): Promise<void> {
-  try {
-    const maskedCards = cards.map((card) => ({
-      ...card,
-      cardNumber: maskCardNumber(card.cardNumber),
-      cvv: undefined,
-      expiry: undefined,
-    }));
+  const masked = cards.map((card) => ({
+    ...card,
+    cardNumber: maskAndFormatCardNumber(card.cardNumber),
+    cvv: undefined,
+    expiry: undefined,
+  }));
 
-    const unmaskedEncrypted = await encryptCards(cards);
-    const maskedEncrypted = await encryptCards(maskedCards);
-
-    // Write unmasked first, then masked (ordering matters)
-    await AsyncStorage.setItem(
-      STORAGE_KEY_UNMASKED,
-      JSON.stringify(unmaskedEncrypted)
-    );
-
-    await AsyncStorage.setItem(
-      STORAGE_KEY_MASKED,
-      JSON.stringify(maskedEncrypted)
-    );
-  } catch (e) {
-    console.error("❌ Failed to persist cards:", e);
-    throw new Error("CARD_PERSIST_FAILED");
-  }
+  await writeCards(cards, masked);
 }
 
 export async function addCard(card: Card): Promise<void> {
@@ -155,7 +109,10 @@ export async function addCard(card: Card): Promise<void> {
 
 export async function removeCard(cardId: string): Promise<void> {
   const existing = await getUnmaskedCards();
-  await setCards(existing.filter((c) => c.id !== cardId));
+  const filtered = existing.filter((c) => c.id !== cardId);
+
+  await setCards(filtered);
+  await maybeDeleteMasterKey(); // ✅ safe
 }
 
 export async function updateCard(
@@ -172,23 +129,107 @@ export async function updateCard(
 export async function clearCards(): Promise<boolean> {
   try {
     await AsyncStorage.multiRemove([
-      STORAGE_KEY_MASKED,
       STORAGE_KEY_UNMASKED,
+      STORAGE_KEY_MASKED,
     ]);
-
-    const { deleteMasterKey } = await import(
-      "./encryption/masterKeyManager"
-    );
-    await deleteMasterKey();
-
+    await maybeDeleteMasterKey(); // ✅ same logic
     return true;
-  } catch (e) {
-    console.error("❌ Failed to clear cards:", e);
+  } catch {
     return false;
   }
+}
+
+export async function revealCard(cardId: string): Promise<Card | null> {
+  const existing = await getUnmaskedCards();
+  return existing.find((c) => c.id === cardId) || null;
 }
 
 export async function hasCards(): Promise<boolean> {
   const cards = await getMaskedCards();
   return cards.length > 0;
+}
+
+export async function toggleCardPin(cardId: string, shouldPin: boolean): Promise<void> {
+  const allCards = await getUnmaskedCards();
+  const targetCardIndex = allCards.findIndex((c) => c.id === cardId);
+  
+  if (targetCardIndex === -1) {
+    console.warn(`toggleCardPin: Card ${cardId} not found`);
+    return;
+  }
+
+  const targetCard = allCards[targetCardIndex];
+  
+  // 1. Identify category (self or other)
+  const isSelf = !targetCard.cardUser || targetCard.cardUser === "self";
+  
+  // 2. Separate cards by category to handles limits independently
+  let categoryCards = allCards.filter(c => 
+    isSelf 
+      ? (!c.cardUser || c.cardUser === "self")
+      : (c.cardUser === "other")
+  );
+  
+  const otherCategoryCards = allCards.filter(c => 
+    isSelf 
+      ? (c.cardUser === "other")
+      : (!c.cardUser || c.cardUser === "self")
+  );
+  
+  // 3. Remove target from its category list for manipulation
+  categoryCards = categoryCards.filter(c => c.id !== cardId);
+  
+  // Update target
+  const updatedTarget = { ...targetCard, isPinned: shouldPin };
+  
+  if (shouldPin) {
+    // 4. Handle Max 3 Limit
+    const pinnedCards = categoryCards.filter(c => c.isPinned);
+    if (pinnedCards.length >= 3) {
+      // Find the last pinned card (oldest pinned) to unpin
+      let lastPinnedIndex = -1;
+      for (let i = categoryCards.length - 1; i >= 0; i--) {
+        if (categoryCards[i].isPinned) {
+          lastPinnedIndex = i;
+          break;
+        }
+      }
+      
+      if (lastPinnedIndex !== -1) {
+        // Unpin it
+        categoryCards[lastPinnedIndex] = { ...categoryCards[lastPinnedIndex], isPinned: false };
+      }
+    }
+    
+    // 5. Add to TOP of category
+    categoryCards = [updatedTarget, ...categoryCards];
+  } else {
+    // 6. Add to BOTTOM of category (unpinning)
+    categoryCards = [...categoryCards, updatedTarget];
+  }
+  
+  // 7. Reassemble and persist
+  // Put Self cards first, then Others to be consistent
+  const finalCards = isSelf 
+    ? [...categoryCards, ...otherCategoryCards]
+    : [...otherCategoryCards, ...categoryCards];
+    
+  await setCards(finalCards);
+}
+
+async function maybeDeleteMasterKey(): Promise<void> {
+  const [unmasked, masked] = await AsyncStorage.multiGet([
+    STORAGE_KEY_UNMASKED,
+    STORAGE_KEY_MASKED,
+  ]);
+
+  const hasUnmasked = !!unmasked[1];
+  const hasMasked = !!masked[1];
+
+  if (!hasUnmasked && !hasMasked) {
+    if (__DEV__) {
+      console.log("🔐 No encrypted cards remain. Deleting master key.");
+    }
+    await deleteMasterKey();
+  }
 }

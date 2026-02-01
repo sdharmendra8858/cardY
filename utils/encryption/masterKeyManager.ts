@@ -18,7 +18,7 @@ const KEY_SIZE = 32; // 256-bit key for AES-256
 /**
  * Convert bytes to base64 string (React Native compatible)
  */
-function bytesToBase64(bytes: Uint8Array): string {
+export function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
     binary += String.fromCharCode(bytes[i]);
@@ -29,7 +29,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 /**
  * Convert base64 string to bytes (React Native compatible)
  */
-function base64ToBytes(base64: string): Uint8Array {
+export function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {

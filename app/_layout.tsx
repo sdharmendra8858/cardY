@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-get-random-values";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
