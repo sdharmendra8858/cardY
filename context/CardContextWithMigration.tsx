@@ -15,6 +15,7 @@ import {
     revealCard as secureRevealCard,
     updateCard as secureUpdateCard,
 } from "../utils/secureStorageWithFallback";
+import { useMigration } from "./MigrationContext";
 import { useSecurity } from "./SecurityContext";
 
 // Export Card type for use in other modules
@@ -38,6 +39,7 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
     const cardsRef = React.useRef<Card[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { isDeviceCompromised } = useSecurity();
+    const { isReady: isMigrationReady, migratedCount, status: migrationStatus } = useMigration();
 
     // Clear cards if device is compromised
     useEffect(() => {
@@ -148,6 +150,24 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
         refreshCards();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run once on mount
+
+    // Refresh cards when migration completes
+    useEffect(() => {
+        if (isMigrationReady && migratedCount > 0) {
+            if (__DEV__) {
+                console.log("🔄 Migration completed, refreshing cards...", {
+                    isMigrationReady,
+                    migratedCount,
+                    migrationStatus,
+                });
+            }
+            // Use a small delay to ensure storage writes are complete
+            const timer = setTimeout(() => {
+                refreshCards();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isMigrationReady, migratedCount, refreshCards]);
 
     const value = React.useMemo(() => ({
         cards,
