@@ -13,22 +13,22 @@ import "react-native-get-random-values";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 
+import AuthRequired from "@/components/AuthRequired";
+import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
+import MigrationModal from "@/components/MigrationModal";
 import TermsPopup from "@/components/TermsPopup";
+import { Colors } from "@/constants/theme";
 import { AlertProvider } from "@/context/AlertContext";
 import { CardProvider, TimerProvider } from "@/context/CardContext";
 import { CardPinningProvider } from "@/context/CardPinningContext";
+import { MigrationProvider, useMigration } from "@/context/MigrationContext";
 import { SecurityProvider } from "@/context/SecurityContext";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-
-// 👇 import your Android native lock module wrapper
-import AuthRequired from "@/components/AuthRequired";
-import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
-import { Colors } from "@/constants/theme";
 import { ThemeOverrideProvider } from "@/context/ThemeContext";
-import { authenticateUser } from "@/utils/LockScreen"; // ← Create this file (shown below)
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { authenticateUser } from "@/utils/LockScreen";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SplashScreen from "expo-splash-screen";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -171,26 +171,49 @@ function AppShell() {
       <SafeAreaProvider>
         <AlertProvider>
           <SecurityProvider>
-            <CardProvider>
-              <CardPinningProvider>
-                <TimerProvider>
-                  <CompromisedDeviceModal />
-                  <Stack screenOptions={{ headerShown: false }} />
-                  <TermsPopup />
-                  <StatusBar
-                    style={barStyle}
-                    backgroundColor={barBg}
-                    translucent={false}
-                    animated
-                  />
-                  <Toast position="bottom" visibilityTime={3000} />
-                </TimerProvider>
-              </CardPinningProvider>
-            </CardProvider>
+            <MigrationProvider>
+              <MigrationAwareContent />
+            </MigrationProvider>
           </SecurityProvider>
         </AlertProvider>
       </SafeAreaProvider>
     </NavThemeProvider>
+  );
+}
+
+// Separate component to access migration context
+function MigrationAwareContent() {
+  const { showModal, status, migratedCount, error } = useMigration();
+  const colorScheme = useColorScheme();
+  const barStyle = colorScheme === "dark" ? "light" : "dark";
+  const barBg =
+    colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+
+  return (
+    <CardProvider>
+      <CardPinningProvider>
+        <TimerProvider>
+          <CompromisedDeviceModal />
+          <Stack screenOptions={{ headerShown: false }} />
+          <TermsPopup />
+          <StatusBar
+            style={barStyle}
+            backgroundColor={barBg}
+            translucent={false}
+            animated
+          />
+          <Toast position="bottom" visibilityTime={3000} />
+
+          {/* Migration Modal - only shows when needed */}
+          <MigrationModal
+            visible={showModal}
+            status={status}
+            migratedCount={migratedCount}
+            error={error}
+          />
+        </TimerProvider>
+      </CardPinningProvider>
+    </CardProvider>
   );
 }
 
