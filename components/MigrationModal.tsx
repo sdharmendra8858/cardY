@@ -12,8 +12,9 @@ import React from "react";
 import {
     ActivityIndicator,
     Modal,
+    Pressable,
     StyleSheet,
-    View,
+    View
 } from "react-native";
 import { ThemedText } from "./themed-text";
 
@@ -22,6 +23,7 @@ interface MigrationModalProps {
     status: "idle" | "checking" | "migrating" | "completed" | "error";
     migratedCount: number;
     error?: string | null;
+    onDone?: () => void;
 }
 
 export default function MigrationModal({
@@ -29,9 +31,12 @@ export default function MigrationModal({
     status,
     migratedCount,
     error,
+    onDone,
 }: MigrationModalProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
+
+    const showDoneButton = status === "completed" && migratedCount > 0;
 
     const getStatusMessage = () => {
         switch (status) {
@@ -123,6 +128,15 @@ export default function MigrationModal({
                         </ThemedText>
                     )}
 
+                    {showDoneButton && (
+                        <Pressable
+                            style={[styles.doneButton, { backgroundColor: palette.primary }]}
+                            onPress={onDone}
+                        >
+                            <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                        </Pressable>
+                    )}
+
                     <View style={[styles.securityBadge, { backgroundColor: `${palette.primary}10` }]}>
                         <MaterialIcons name="lock" size={16} color={palette.primary} />
                         <ThemedText style={[styles.securityText, { color: palette.secondary }]}>
@@ -197,6 +211,19 @@ const styles = StyleSheet.create({
         textAlign: "center",
         marginTop: 12,
         fontStyle: "italic",
+    },
+    doneButton: {
+        width: "100%",
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 12,
+        alignItems: "center",
+        marginTop: 24,
+    },
+    doneButtonText: {
+        color: "#FFFFFF",
+        fontSize: 16,
+        fontWeight: "600",
     },
     securityBadge: {
         flexDirection: "row",

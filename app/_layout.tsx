@@ -19,7 +19,8 @@ import MigrationModal from "@/components/MigrationModal";
 import TermsPopup from "@/components/TermsPopup";
 import { Colors } from "@/constants/theme";
 import { AlertProvider } from "@/context/AlertContext";
-import { CardProvider, TimerProvider } from "@/context/CardContext";
+import { TimerProvider } from "@/context/CardContext";
+import { CardProviderWithMigration } from "@/context/CardContextWithMigration";
 import { CardPinningProvider } from "@/context/CardPinningContext";
 import { MigrationProvider, useMigration } from "@/context/MigrationContext";
 import { SecurityProvider } from "@/context/SecurityContext";
@@ -183,14 +184,14 @@ function AppShell() {
 
 // Separate component to access migration context
 function MigrationAwareContent() {
-  const { showModal, status, migratedCount, error } = useMigration();
+  const { showModal, status, migratedCount, error, dismissModal } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
     colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
 
   return (
-    <CardProvider>
+    <CardProviderWithMigration>
       <CardPinningProvider>
         <TimerProvider>
           <CompromisedDeviceModal />
@@ -210,10 +211,11 @@ function MigrationAwareContent() {
             status={status}
             migratedCount={migratedCount}
             error={error}
+            onDone={dismissModal}
           />
         </TimerProvider>
       </CardPinningProvider>
-    </CardProvider>
+    </CardProviderWithMigration>
   );
 }
 

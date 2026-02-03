@@ -17,6 +17,7 @@ type MigrationContextType = {
     showModal: boolean;
     migratedCount: number;
     error: string | null;
+    dismissModal: () => void;
 };
 
 const MigrationContext = createContext<MigrationContextType | undefined>(undefined);
@@ -26,6 +27,12 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
     const [showModal, setShowModal] = useState(false);
     const [migratedCount, setMigratedCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
+
+    const dismissModal = React.useCallback(() => {
+        if (__DEV__) console.log("👋 User dismissed migration modal");
+        setShowModal(false);
+        setStatus("completed");
+    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -63,15 +70,9 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
 
                     if (result.migratedCount > 0) {
                         if (__DEV__) console.log(`✅ Migrated ${result.migratedCount} cards`);
-                        setStatus("migrating");
-
-                        // Show success for 1.5 seconds
-                        setTimeout(() => {
-                            if (isMounted) {
-                                setStatus("completed");
-                                setShowModal(false);
-                            }
-                        }, 1500);
+                        setStatus("completed");
+                        // Keep modal visible - user will dismiss with Done button
+                        // Modal stays open until user clicks Done
                     } else {
                         if (__DEV__) console.log("✅ No cards to migrate");
                         setStatus("completed");
@@ -121,8 +122,9 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
             showModal,
             migratedCount,
             error,
+            dismissModal,
         }),
-        [status, showModal, migratedCount, error]
+        [status, showModal, migratedCount, error, dismissModal]
     );
 
     return (

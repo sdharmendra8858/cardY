@@ -39,3 +39,9 @@ export {
     getFallbackCard, hasFallbackCards, isInFallbackMode, readFallbackCards
 } from "./fallback";
 
+// Debug Helpers (for development)
+export {
+    clearAllStorageForTesting,
+    debugMigrationState,
+    resetMigrationForTesting
+} from "./debugMigration";
