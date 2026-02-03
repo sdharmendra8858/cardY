@@ -212,8 +212,17 @@ export async function migrateCards(): Promise<MigrationResult> {
     }
 
     // Step 8: Delete old storage (only after successful verification)
-    if (__DEV__) console.log("🧹 Deleting old storage...");
+    if (__DEV__) {
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🗑️ STEP 8: Deleting old storage");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
     await deleteOldCards();
+    if (__DEV__) {
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("✅ Old storage deletion completed");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    }
 
     // Step 9: Mark migration as completed
     await markMigrationCompleted();
@@ -237,13 +246,28 @@ export async function migrateCards(): Promise<MigrationResult> {
 /**
  * Check if migration is needed
  * Migration is needed if:
- * 1. No cards in new storage, OR
- * 2. No master key exists
+ * 1. Migration not already completed, AND
+ * 2. Old cards exist, AND
+ * 3. (No cards in new storage OR No master key exists)
  * 
  * @returns true if migration should run, false otherwise
  */
 export async function needsMigration(): Promise<boolean> {
   try {
+    // First check if migration already completed
+    const alreadyCompleted = await isMigrationCompleted();
+    if (alreadyCompleted) {
+      if (__DEV__) console.log("🔍 Migration already completed, not needed");
+      return false;
+    }
+
+    // Check if old cards exist
+    const oldCardsExist = await hasOldCards();
+    if (!oldCardsExist) {
+      if (__DEV__) console.log("🔍 No old cards exist, migration not needed");
+      return false;
+    }
+
     // Check if new storage has cards
     let hasNewCards = false;
     try {
@@ -265,11 +289,13 @@ export async function needsMigration(): Promise<boolean> {
       hasMaster = false;
     }
 
-    // Migration needed if either condition is false
+    // Migration needed if we have old cards but missing new cards or master key
     const needed = !hasNewCards || !hasMaster;
 
     if (__DEV__) {
       console.log("🔍 Migration check:", {
+        alreadyCompleted,
+        oldCardsExist,
         hasNewCards,
         hasMaster,
         needed,
@@ -279,8 +305,8 @@ export async function needsMigration(): Promise<boolean> {
     return needed;
   } catch (error) {
     console.error("❌ Failed to check migration need:", error);
-    // On error, assume migration is needed (safer)
-    return true;
+    // On error, assume migration is NOT needed (safer - avoid showing modal unnecessarily)
+    return false;
   }
 }
 

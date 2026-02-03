@@ -107,7 +107,28 @@ async function tryDecryptCards(encryptedData: any): Promise<OldCard[]> {
  * Should only be called after successful migration verification
  */
 export async function deleteOldCards(): Promise<void> {
-  if (__DEV__) console.log("🧹 Deleting old storage...");
+  if (__DEV__) console.log("🧹 Starting deletion of old storage...");
+
+  // First, check what exists before deletion
+  const existingKeys: string[] = [];
+  for (const [name, key] of Object.entries(OLD_STORAGE_KEYS)) {
+    try {
+      const value = await SecureStore.getItemAsync(key, { keychainService: key });
+      if (value) {
+        existingKeys.push(name);
+        if (__DEV__) console.log(`📦 Found old storage key to delete: ${name} (${key})`);
+      }
+    } catch (error) {
+      // Ignore check errors
+    }
+  }
+
+  if (existingKeys.length === 0) {
+    if (__DEV__) console.log("ℹ️ No old storage keys found to delete");
+    return;
+  }
+
+  if (__DEV__) console.log(`🗑️ Deleting ${existingKeys.length} old storage key(s): ${existingKeys.join(", ")}`);
 
   const deletePromises = Object.values(OLD_STORAGE_KEYS).map(async (key) => {
     try {
@@ -115,12 +136,34 @@ export async function deleteOldCards(): Promise<void> {
       if (__DEV__) console.log(`✅ Deleted old storage key: ${key}`);
     } catch (error) {
       // Ignore errors - key might not exist
-      if (__DEV__) console.log(`ℹ️ Could not delete ${key} (may not exist)`);
+      if (__DEV__) console.log(`⚠️ Could not delete ${key}: ${error}`);
     }
   });
 
   await Promise.allSettled(deletePromises);
-  if (__DEV__) console.log("✅ Old storage cleanup completed");
+  
+  // Verify deletion
+  if (__DEV__) {
+    console.log("🔍 Verifying old storage deletion...");
+    let remainingKeys = 0;
+    for (const [name, key] of Object.entries(OLD_STORAGE_KEYS)) {
+      try {
+        const value = await SecureStore.getItemAsync(key, { keychainService: key });
+        if (value) {
+          remainingKeys++;
+          console.warn(`⚠️ Old storage key still exists after deletion: ${name} (${key})`);
+        }
+      } catch (error) {
+        // Ignore check errors
+      }
+    }
+    
+    if (remainingKeys === 0) {
+      console.log("✅ Old storage cleanup completed - all keys deleted successfully");
+    } else {
+      console.warn(`⚠️ Old storage cleanup completed - ${remainingKeys} key(s) still remain`);
+    }
+  }
 }
 
 /* -------------------------------------------------------------------------- */
