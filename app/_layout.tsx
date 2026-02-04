@@ -184,11 +184,33 @@ function AppShell() {
 
 // Separate component to access migration context
 function MigrationAwareContent() {
-  const { showModal, status, migratedCount, error, dismissModal } = useMigration();
+  const { showModal, status, cardCount, migratedCount, error, dismissModal, isReady } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
     colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+
+  // Block rendering until migration is ready
+  if (!isReady) {
+    return (
+      <>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
+        <MigrationModal
+          visible={showModal}
+          status={status}
+          cardCount={cardCount}
+          migratedCount={migratedCount}
+          error={error}
+          onDone={dismissModal}
+        />
+      </>
+    );
+  }
 
   return (
     <CardProviderWithMigration>
@@ -204,15 +226,6 @@ function MigrationAwareContent() {
             animated
           />
           <Toast position="bottom" visibilityTime={3000} />
-
-          {/* Migration Modal - only shows when needed */}
-          <MigrationModal
-            visible={showModal}
-            status={status}
-            migratedCount={migratedCount}
-            error={error}
-            onDone={dismissModal}
-          />
         </TimerProvider>
       </CardPinningProvider>
     </CardProviderWithMigration>

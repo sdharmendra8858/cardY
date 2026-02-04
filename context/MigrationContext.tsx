@@ -15,6 +15,7 @@ type MigrationContextType = {
     status: MigrationStatus;
     isReady: boolean;
     showModal: boolean;
+    cardCount: number;
     migratedCount: number;
     error: string | null;
     dismissModal: () => void;
@@ -25,13 +26,15 @@ const MigrationContext = createContext<MigrationContextType | undefined>(undefin
 export const MigrationProvider = ({ children }: { children: ReactNode }) => {
     const [status, setStatus] = useState<MigrationStatus>("idle");
     const [showModal, setShowModal] = useState(false);
+    const [cardCount, setCardCount] = useState(0);
     const [migratedCount, setMigratedCount] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [isReady, setIsReady] = useState(false);
 
     const dismissModal = React.useCallback(() => {
         if (__DEV__) console.log("👋 User dismissed migration modal");
         setShowModal(false);
-        setStatus("completed");
+        setIsReady(true);
     }, []);
 
     useEffect(() => {
@@ -49,18 +52,32 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                     if (__DEV__) console.log("✅ Migration not needed");
                     if (isMounted) {
                         setStatus("completed");
+                        setIsReady(true); // Allow app to load
                     }
                     return;
                 }
 
                 if (__DEV__) console.log("🚀 Migration needed, showing modal...");
 
-                // Show modal before starting migration
+                // Get card count BEFORE migration starts
+                const { readOldCards } = await import("@/utils/migration/oldStorage");
+                const oldCards = await readOldCards();
+                const count = oldCards.length;
+
+                // Show modal BEFORE starting migration
                 if (isMounted) {
+                    setCardCount(count);
                     setShowModal(true);
+                    setStatus("checking");
                 }
 
+                // Small delay to ensure modal is visible
+                await new Promise(resolve => setTimeout(resolve, 500));
+
                 // Run migration
+                if (__DEV__) console.log("🔄 Starting migration process...");
+                setStatus("migrating");
+
                 const result = await migrateCards();
 
                 if (!isMounted) return;
@@ -71,12 +88,12 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                     if (result.migratedCount > 0) {
                         if (__DEV__) console.log(`✅ Migrated ${result.migratedCount} cards`);
                         setStatus("completed");
-                        // Keep modal visible - user will dismiss with Done button
-                        // Modal stays open until user clicks Done
+                        // Keep modal open - user must click "Done"
                     } else {
                         if (__DEV__) console.log("✅ No cards to migrate");
                         setStatus("completed");
                         setShowModal(false);
+                        setIsReady(true);
                     }
                 } else {
                     console.error("❌ Migration failed:", result.errors);
@@ -88,6 +105,7 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                         if (isMounted) {
                             setStatus("completed");
                             setShowModal(false);
+                            setIsReady(true);
                         }
                     }, 3000);
                 }
@@ -102,6 +120,7 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                         if (isMounted) {
                             setStatus("completed");
                             setShowModal(false);
+                            setIsReady(true);
                         }
                     }, 3000);
                 }
@@ -118,13 +137,14 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
     const value = React.useMemo(
         () => ({
             status,
-            isReady: status === "completed",
+            isReady,
             showModal,
+            cardCount,
             migratedCount,
             error,
             dismissModal,
         }),
-        [status, showModal, migratedCount, error, dismissModal]
+        [status, isReady, showModal, cardCount, migratedCount, error, dismissModal]
     );
 
     return (

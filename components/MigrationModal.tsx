@@ -1,16 +1,17 @@
 /**
  * Migration Modal Component
  * 
- * Shows a modal during card migration process
+ * Shows a non-dismissible modal during card migration process
  * Only visible when migration is actually needed
  */
 
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
     ActivityIndicator,
+    Animated,
     Modal,
     Pressable,
     StyleSheet,
@@ -21,6 +22,7 @@ import { ThemedText } from "./themed-text";
 interface MigrationModalProps {
     visible: boolean;
     status: "idle" | "checking" | "migrating" | "completed" | "error";
+    cardCount: number;
     migratedCount: number;
     error?: string | null;
     onDone?: () => void;
@@ -29,27 +31,52 @@ interface MigrationModalProps {
 export default function MigrationModal({
     visible,
     status,
+    cardCount,
     migratedCount,
     error,
     onDone,
 }: MigrationModalProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
+    const progressAnim = useRef(new Animated.Value(0)).current;
+
+    // Animate progress bar during migration
+    useEffect(() => {
+        if (status === "migrating") {
+            // Animate from 0% to 90% over 2 seconds
+            Animated.timing(progressAnim, {
+                toValue: 90,
+                duration: 2000,
+                useNativeDriver: false,
+            }).start();
+        } else if (status === "completed") {
+            // Jump to 100% when complete
+            Animated.timing(progressAnim, {
+                toValue: 100,
+                duration: 300,
+                useNativeDriver: false,
+            }).start();
+        }
+    }, [status, progressAnim]);
 
     const showDoneButton = status === "completed" && migratedCount > 0;
 
     const getStatusMessage = () => {
         switch (status) {
             case "checking":
-                return "Checking for updates...";
+                return cardCount > 0
+                    ? `Found ${cardCount} card${cardCount !== 1 ? 's' : ''} to migrate`
+                    : "Checking for cards...";
             case "migrating":
-                return `Migrating ${migratedCount} card${migratedCount !== 1 ? "s" : ""}...`;
+                return `Migrating ${cardCount} card${cardCount !== 1 ? 's' : ''}...`;
             case "error":
                 return "Migration encountered an issue";
             case "completed":
-                return "Migration complete!";
+                return migratedCount > 0
+                    ? `Successfully migrated ${migratedCount} card${migratedCount !== 1 ? 's' : ''}!`
+                    : "Migration complete!";
             default:
-                return "Initializing...";
+                return "Preparing migration...";
         }
     };
 
@@ -80,11 +107,13 @@ export default function MigrationModal({
     const getSubMessage = () => {
         switch (status) {
             case "checking":
-                return "Please wait while we check your data...";
+                return cardCount > 0
+                    ? "Ready to upgrade your card storage to the latest security standards"
+                    : "Checking your card storage...";
             case "migrating":
-                return "Upgrading your card storage to the latest security standards";
+                return "Encrypting and securing your cards with AES-256-GCM encryption";
             case "completed":
-                return "Your cards are ready to use";
+                return "Your cards are ready to use with enhanced security";
             case "error":
                 return error || "Don't worry, your cards are safe. Continuing...";
             default:
@@ -92,15 +121,33 @@ export default function MigrationModal({
         }
     };
 
+    const progressWidth = progressAnim.interpolate({
+        inputRange: [0, 100],
+        outputRange: ['0%', '100%'],
+    });
+
     return (
         <Modal
             visible={visible}
             transparent
             animationType="fade"
-            onRequestClose={() => { }}
+            onRequestClose={() => {
+                // Non-dismissible - only allow closing via Done button
+                if (showDoneButton && onDone) {
+                    onDone();
+                }
+            }}
         >
-            <View style={[styles.backdrop, { backgroundColor: palette.background }]}>
-                <View style={[styles.container, { backgroundColor: palette.card }]}>
+            <Pressable
+                style={[styles.backdrop, { backgroundColor: palette.background }]}
+                onPress={() => {
+                    // Non-dismissible - prevent backdrop dismiss
+                }}
+            >
+                <Pressable
+                    style={[styles.container, { backgroundColor: palette.card }]}
+                    onPress={(e) => e.stopPropagation()}
+                >
                     {getStatusIcon()}
 
                     <ThemedText style={styles.title}>{getStatusMessage()}</ThemedText>
@@ -112,13 +159,16 @@ export default function MigrationModal({
                     {status === "migrating" && (
                         <View style={styles.progressContainer}>
                             <View style={[styles.progressBar, { backgroundColor: palette.border }]}>
-                                <View
+                                <Animated.View
                                     style={[
                                         styles.progressFill,
-                                        { backgroundColor: palette.primary, width: "80%" },
+                                        { backgroundColor: palette.primary, width: progressWidth },
                                     ]}
                                 />
                             </View>
+                            <ThemedText style={[styles.progressText, { color: palette.secondary }]}>
+                                Securing your cards...
+                            </ThemedText>
                         </View>
                     )}
 
@@ -143,8 +193,8 @@ export default function MigrationModal({
                             Your cards are encrypted and secure
                         </ThemedText>
                     </View>
-                </View>
-            </View>
+                </Pressable>
+            </Pressable>
         </Modal>
     );
 }
@@ -198,13 +248,18 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     progressBar: {
-        height: 4,
-        borderRadius: 2,
+        height: 6,
+        borderRadius: 3,
         overflow: "hidden",
     },
     progressFill: {
         height: "100%",
-        borderRadius: 2,
+        borderRadius: 3,
+    },
+    progressText: {
+        fontSize: 12,
+        textAlign: "center",
+        marginTop: 8,
     },
     errorNote: {
         fontSize: 12,

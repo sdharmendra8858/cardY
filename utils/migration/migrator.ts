@@ -256,6 +256,7 @@ export async function migrateCards(): Promise<MigrationResult> {
 /**
  * Check if migration is needed
  * Migration is needed if:
+ * - Migration has NOT been completed (flag not set), AND
  * - Old cards exist (length > 0), AND
  * - New storage is empty (both masked and unmasked length = 0)
  * 
@@ -263,6 +264,13 @@ export async function migrateCards(): Promise<MigrationResult> {
  */
 export async function needsMigration(): Promise<boolean> {
   try {
+    // First check if migration was already completed
+    const completed = await isMigrationCompleted();
+    if (completed) {
+      if (__DEV__) console.log("🔍 Migration already completed (flag set), not needed");
+      return false;
+    }
+
     // Check if old cards exist
     const oldCards = await readOldCards();
     const hasOldCards = oldCards.length > 0;
@@ -293,6 +301,7 @@ export async function needsMigration(): Promise<boolean> {
 
     if (__DEV__) {
       console.log("🔍 Migration check:", {
+        completed,
         oldCardsCount: oldCards.length,
         newMaskedCount,
         newUnmaskedCount,
