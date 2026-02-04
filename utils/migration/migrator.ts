@@ -250,24 +250,19 @@ export async function migrateCards(): Promise<MigrationResult> {
  * 2. Old cards exist, AND
  * 3. (No cards in new storage OR No master key exists)
  * 
+ * Special case: If migration is marked complete but new storage is empty
+ * and old cards exist, migration is needed (handles AsyncStorage persistence)
+ * 
  * @returns true if migration should run, false otherwise
  */
 export async function needsMigration(): Promise<boolean> {
   try {
     // First check if migration already completed
     const alreadyCompleted = await isMigrationCompleted();
-    if (alreadyCompleted) {
-      if (__DEV__) console.log("🔍 Migration already completed, not needed");
-      return false;
-    }
-
+    
     // Check if old cards exist
     const oldCardsExist = await hasOldCards();
-    if (!oldCardsExist) {
-      if (__DEV__) console.log("🔍 No old cards exist, migration not needed");
-      return false;
-    }
-
+    
     // Check if new storage has cards
     let hasNewCards = false;
     try {
@@ -287,6 +282,28 @@ export async function needsMigration(): Promise<boolean> {
     } catch (error) {
       // If we can't check, assume no master key
       hasMaster = false;
+    }
+
+    // Special case: Migration marked complete but new storage empty and old cards exist
+    // This happens when AsyncStorage persists after uninstall but SecureStore doesn't
+    if (alreadyCompleted && !hasNewCards && oldCardsExist) {
+      if (__DEV__) {
+        console.log("⚠️ Migration marked complete but new storage empty with old cards present");
+        console.log("🔄 This indicates AsyncStorage persisted after uninstall - re-running migration");
+      }
+      // Reset migration status and run migration
+      await resetMigrationStatus();
+      return true;
+    }
+
+    if (alreadyCompleted) {
+      if (__DEV__) console.log("🔍 Migration already completed, not needed");
+      return false;
+    }
+
+    if (!oldCardsExist) {
+      if (__DEV__) console.log("🔍 No old cards exist, migration not needed");
+      return false;
     }
 
     // Migration needed if we have old cards but missing new cards or master key
