@@ -79,19 +79,29 @@ async function hasNewStorageCards(): Promise<boolean> {
 
 /**
  * Verify that migration was successful
- * Checks that the expected number of cards are in new storage
+ * Checks that:
+ * - Expected number of cards are in new storage (both masked and unmasked)
+ * - Old cards count matches new cards count
  */
 async function verifyMigration(expectedCount: number): Promise<boolean> {
   try {
-    const { getMaskedCards } = await import("../secureStorage");
-    const cards = await getMaskedCards();
+    const { getMaskedCards, getUnmaskedCards } = await import("../secureStorage");
+    const maskedCards = await getMaskedCards();
+    const unmaskedCards = await getUnmaskedCards();
 
-    const success = cards.length === expectedCount;
+    // Check both masked and unmasked have the expected count
+    const maskedSuccess = maskedCards.length === expectedCount;
+    const unmaskedSuccess = unmaskedCards.length === expectedCount;
+    const success = maskedSuccess && unmaskedSuccess;
 
     if (success) {
-      if (__DEV__) console.log(`✅ Migration verified: ${cards.length} cards in new storage`);
+      if (__DEV__) {
+        console.log(`✅ Migration verified: ${maskedCards.length} masked cards, ${unmaskedCards.length} unmasked cards`);
+      }
     } else {
-      console.error(`❌ Migration verification failed: expected ${expectedCount}, found ${cards.length}`);
+      console.error(`❌ Migration verification failed:`);
+      console.error(`   Expected: ${expectedCount} cards`);
+      console.error(`   Found: ${maskedCards.length} masked, ${unmaskedCards.length} unmasked`);
     }
 
     return success;
@@ -246,75 +256,46 @@ export async function migrateCards(): Promise<MigrationResult> {
 /**
  * Check if migration is needed
  * Migration is needed if:
- * 1. Migration not already completed, AND
- * 2. Old cards exist, AND
- * 3. (No cards in new storage OR No master key exists)
- * 
- * Special case: If migration is marked complete but new storage is empty
- * and old cards exist, migration is needed (handles AsyncStorage persistence)
+ * - Old cards exist (length > 0), AND
+ * - New storage is empty (both masked and unmasked length = 0)
  * 
  * @returns true if migration should run, false otherwise
  */
 export async function needsMigration(): Promise<boolean> {
   try {
-    // First check if migration already completed
-    const alreadyCompleted = await isMigrationCompleted();
-    
     // Check if old cards exist
-    const oldCardsExist = await hasOldCards();
-    
-    // Check if new storage has cards
-    let hasNewCards = false;
-    try {
-      const { getMaskedCards } = await import("../secureStorage");
-      const cards = await getMaskedCards();
-      hasNewCards = cards.length > 0;
-    } catch (error) {
-      // If we can't check, assume no cards
-      hasNewCards = false;
-    }
+    const oldCards = await readOldCards();
+    const hasOldCards = oldCards.length > 0;
 
-    // Check if master key exists
-    let hasMaster = false;
-    try {
-      const { masterKeyExists } = await import("../encryption/masterKeyManager");
-      hasMaster = await masterKeyExists();
-    } catch (error) {
-      // If we can't check, assume no master key
-      hasMaster = false;
-    }
-
-    // Special case: Migration marked complete but new storage empty and old cards exist
-    // This happens when AsyncStorage persists after uninstall but SecureStore doesn't
-    if (alreadyCompleted && !hasNewCards && oldCardsExist) {
-      if (__DEV__) {
-        console.log("⚠️ Migration marked complete but new storage empty with old cards present");
-        console.log("🔄 This indicates AsyncStorage persisted after uninstall - re-running migration");
-      }
-      // Reset migration status and run migration
-      await resetMigrationStatus();
-      return true;
-    }
-
-    if (alreadyCompleted) {
-      if (__DEV__) console.log("🔍 Migration already completed, not needed");
-      return false;
-    }
-
-    if (!oldCardsExist) {
+    if (!hasOldCards) {
       if (__DEV__) console.log("🔍 No old cards exist, migration not needed");
       return false;
     }
 
-    // Migration needed if we have old cards but missing new cards or master key
-    const needed = !hasNewCards || !hasMaster;
+    // Check if new storage has cards (both masked and unmasked)
+    let newMaskedCount = 0;
+    let newUnmaskedCount = 0;
+    
+    try {
+      const { getMaskedCards, getUnmaskedCards } = await import("../secureStorage");
+      const maskedCards = await getMaskedCards();
+      const unmaskedCards = await getUnmaskedCards();
+      newMaskedCount = maskedCards.length;
+      newUnmaskedCount = unmaskedCards.length;
+    } catch (error) {
+      // If we can't check, assume no cards
+      newMaskedCount = 0;
+      newUnmaskedCount = 0;
+    }
+
+    // Migration needed if old cards exist but new storage is empty
+    const needed = newMaskedCount === 0 && newUnmaskedCount === 0;
 
     if (__DEV__) {
       console.log("🔍 Migration check:", {
-        alreadyCompleted,
-        oldCardsExist,
-        hasNewCards,
-        hasMaster,
+        oldCardsCount: oldCards.length,
+        newMaskedCount,
+        newUnmaskedCount,
         needed,
       });
     }
@@ -322,7 +303,7 @@ export async function needsMigration(): Promise<boolean> {
     return needed;
   } catch (error) {
     console.error("❌ Failed to check migration need:", error);
-    // On error, assume migration is NOT needed (safer - avoid showing modal unnecessarily)
+    // On error, assume migration is NOT needed (safer)
     return false;
   }
 }
