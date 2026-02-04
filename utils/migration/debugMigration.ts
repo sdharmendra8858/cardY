@@ -175,3 +175,16 @@ export async function clearAllStorageForTesting() {
 
   console.log("✅ All storage cleared");
 }
+
+/**
+ * Force delete old cards (for testing/debugging)
+ * Use this if old cards remain after migration
+ */
+export async function forceDeleteOldCards() {
+  console.log("🗑️ FORCE DELETING OLD CARDS...");
+  
+  const { deleteOldCards } = await import("./oldStorage");
+  await deleteOldCards();
+  
+  console.log("✅ Force deletion completed");
+}

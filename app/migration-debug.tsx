@@ -12,6 +12,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
     clearAllStorageForTesting,
     debugMigrationState,
+    forceDeleteOldCards,
     resetMigrationForTesting
 } from "@/utils/migration";
 import { useRouter } from "expo-router";
@@ -114,6 +115,26 @@ export default function MigrationDebugScreen() {
         );
     };
 
+    const handleForceDeleteOld = async () => {
+        Alert.alert(
+            "🗑️ Force Delete Old Cards?",
+            "This will delete old storage keys. Use if old cards remain after migration.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        clearLogs();
+                        addLog("Force deleting old cards...");
+                        await forceDeleteOldCards();
+                        addLog("✅ Old cards deleted! Check if fallback still active.");
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <ThemedView style={styles.container}>
             <View style={[styles.header, { borderBottomColor: palette.border }]}>
@@ -136,6 +157,13 @@ export default function MigrationDebugScreen() {
                     onPress={handleReset}
                 >
                     <ThemedText style={styles.buttonText}>Reset Migration</ThemedText>
+                </Pressable>
+
+                <Pressable
+                    style={[styles.button, { backgroundColor: "#FF6B6B" }]}
+                    onPress={handleForceDeleteOld}
+                >
+                    <ThemedText style={styles.buttonText}>Force Delete Old Cards</ThemedText>
                 </Pressable>
 
                 <Pressable
