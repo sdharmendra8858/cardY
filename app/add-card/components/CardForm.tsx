@@ -146,7 +146,7 @@ export default function CardForm({
 
     const found = BANK_OPTIONS.find(
       (option) =>
-        option.value === bankUpper ||
+        option.value.toUpperCase() === bankUpper ||  // ← Case-insensitive
         option.label.toUpperCase() === bankUpper ||
         (option.label.includes("(") && option.label.split("(")[1].split(")")[0].toUpperCase() === bankUpper)
     );
@@ -159,7 +159,7 @@ export default function CardForm({
     if (isGeneric) return "";
 
     const exists = BANK_OPTIONS.some(
-      (option) => option.value === bankUpper
+      (option) => option.value.toUpperCase() === bankUpper  // ← Case-insensitive comparison
     );
     return exists ? "" : defaultBank;
   });

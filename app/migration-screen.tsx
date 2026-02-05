@@ -5,8 +5,9 @@
  * User can choose to migrate old cards or start fresh
  */
 
+import AppButton from "@/components/AppButton";
 import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import UnifiedModal from "@/components/UnifiedModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -15,11 +16,10 @@ import {
     ActivityIndicator,
     Animated,
     BackHandler,
-    Modal,
-    Pressable,
     StyleSheet,
     View
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type MigrationStatus = "ready" | "migrating" | "completed" | "error";
 
@@ -137,7 +137,7 @@ export default function MigrationScreen({
     });
 
     return (
-        <ThemedView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: palette.surface }]}>
             <Animated.View
                 style={[
                     styles.content,
@@ -149,24 +149,24 @@ export default function MigrationScreen({
             >
                 {/* Hero Section */}
                 <View style={styles.hero}>
-                    <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}20` }]}>
-                        <MaterialIcons name="security" size={64} color={palette.primary} />
+                    <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
+                        <MaterialIcons name="security" size={72} color={palette.primary} />
                     </View>
-                    <ThemedText style={styles.heroTitle}>
-                        {status === "ready" && "Upgrade Your Card Storage"}
-                        {status === "migrating" && "Migrating Your Cards"}
-                        {status === "completed" && "Migration Complete!"}
+                    <ThemedText type="title" style={styles.heroTitle}>
+                        {status === "ready" && "Upgrade Your Storage"}
+                        {status === "migrating" && "Migrating Cards..."}
+                        {status === "completed" && "Migration Complete"}
                         {status === "error" && "Migration Issue"}
                     </ThemedText>
-                    <ThemedText style={[styles.heroSubtitle, { color: palette.secondary }]}>
+                    <ThemedText style={[styles.heroSubtitle, { color: palette.icon }]}>
                         {status === "ready" &&
-                            `We found ${cardCount} card${cardCount !== 1 ? "s" : ""} in your old storage. Upgrade to the latest security standards with AES-256-GCM encryption.`}
+                            `We found ${cardCount} card${cardCount !== 1 ? "s" : ""} from your previous version. Enhance security with our new AES-256-GCM encryption.`}
                         {status === "migrating" &&
                             `Securing your cards with military-grade encryption...`}
                         {status === "completed" &&
-                            `All ${cardCount} card${cardCount !== 1 ? "s" : ""} have been successfully migrated to the new secure storage.`}
+                            `All ${cardCount} card${cardCount !== 1 ? "s" : ""} have been successfully migrated and secured.`}
                         {status === "error" &&
-                            "Don't worry, your cards are safe. You can try again or start fresh."}
+                            "We encountered an issue during migration. Your data is safe. Please try again."}
                     </ThemedText>
                 </View>
 
@@ -175,7 +175,7 @@ export default function MigrationScreen({
                     <View style={styles.progressSection}>
                         <View style={styles.progressInfo}>
                             <ThemedText style={styles.progressLabel}>
-                                Card {currentCard} of {cardCount}
+                                Processing Card {currentCard} of {cardCount}
                             </ThemedText>
                             <ThemedText style={[styles.progressPercent, { color: palette.primary }]}>
                                 {progress}%
@@ -190,20 +190,24 @@ export default function MigrationScreen({
                             />
                         </View>
                         <View style={styles.migrationSteps}>
-                            <View style={styles.stepItem}>
-                                <MaterialIcons name="check-circle" size={20} color={palette.primary} />
-                                <ThemedText style={styles.stepText}>Reading cards</ThemedText>
-                            </View>
-                            <View style={styles.stepItem}>
-                                <ActivityIndicator size="small" color={palette.primary} />
-                                <ThemedText style={styles.stepText}>Encrypting data</ThemedText>
-                            </View>
-                            <View style={styles.stepItem}>
-                                <MaterialIcons name="radio-button-unchecked" size={20} color={palette.secondary} />
-                                <ThemedText style={[styles.stepText, { color: palette.secondary }]}>
-                                    Verifying security
-                                </ThemedText>
-                            </View>
+                            <StepItem
+                                icon="check-circle"
+                                text="Reading existing cards"
+                                color={palette.primary}
+                                active
+                            />
+                            <StepItem
+                                icon="lock"
+                                text="Encrypting with new keys"
+                                color={palette.primary}
+                                active
+                                loading
+                            />
+                            <StepItem
+                                icon="verified-user"
+                                text="Verifying data integrity"
+                                color={palette.icon}
+                            />
                         </View>
                     </View>
                 )}
@@ -211,138 +215,126 @@ export default function MigrationScreen({
                 {/* Completion Section */}
                 {status === "completed" && (
                     <View style={styles.completionSection}>
-                        <View style={[styles.checkmarkContainer, { backgroundColor: `${palette.primary}20` }]}>
+                        <View style={[styles.checkmarkContainer, { backgroundColor: `${palette.primary}15` }]}>
                             <MaterialIcons name="check-circle" size={80} color={palette.primary} />
                         </View>
                         <View style={styles.securityFeatures}>
-                            <View style={styles.featureItem}>
-                                <MaterialIcons name="lock" size={24} color={palette.primary} />
-                                <ThemedText style={styles.featureText}>AES-256-GCM Encryption</ThemedText>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <MaterialIcons name="verified-user" size={24} color={palette.primary} />
-                                <ThemedText style={styles.featureText}>Secure Key Storage</ThemedText>
-                            </View>
-                            <View style={styles.featureItem}>
-                                <MaterialIcons name="shield" size={24} color={palette.primary} />
-                                <ThemedText style={styles.featureText}>Data Integrity Verified</ThemedText>
-                            </View>
+                            <FeatureItem icon="lock" text="AES-256-GCM Encryption" color={palette.primary} />
+                            <FeatureItem icon="vpn-key" text="Secure Key Storage" color={palette.primary} />
+                            <FeatureItem icon="shield" text="Data Integrity Verified" color={palette.primary} />
                         </View>
                     </View>
                 )}
 
                 {/* Action Buttons */}
-                <View style={styles.actions}>
+                <View style={[styles.actions, styles.bottomActions]}>
                     {status === "ready" && (
                         <>
-                            <Pressable
-                                style={[styles.primaryButton, { backgroundColor: palette.primary }]}
+                            <AppButton
+                                title={`Migrate ${cardCount} Card${cardCount !== 1 ? "s" : ""}`}
                                 onPress={handleMigrate}
-                            >
-                                <MaterialIcons name="upgrade" size={24} color="#FFFFFF" />
-                                <ThemedText style={styles.primaryButtonText}>
-                                    Migrate {cardCount} Card{cardCount !== 1 ? "s" : ""}
-                                </ThemedText>
-                            </Pressable>
-
-                            <Pressable
-                                style={[styles.secondaryButton, { borderColor: palette.border }]}
+                                icon="upgrade"
+                                iconLibrary="material"
+                                fullWidth
+                            />
+                            <AppButton
+                                title="Start Fresh Setup"
                                 onPress={handleFreshSetup}
-                            >
-                                <MaterialIcons name="refresh" size={24} color={palette.primary} />
-                                <ThemedText style={[styles.secondaryButtonText, { color: palette.primary }]}>
-                                    Start Fresh Setup
-                                </ThemedText>
-                            </Pressable>
+                                variant="secondary"
+                                icon="refresh"
+                                iconLibrary="material"
+                                fullWidth
+                            />
                         </>
                     )}
 
                     {status === "completed" && (
-                        <Pressable
-                            style={[styles.primaryButton, { backgroundColor: palette.primary }]}
+                        <AppButton
+                            title="Continue to App"
                             onPress={onComplete}
-                        >
-                            <ThemedText style={styles.primaryButtonText}>Continue to App</ThemedText>
-                            <MaterialIcons name="arrow-forward" size={24} color="#FFFFFF" />
-                        </Pressable>
+                            icon="arrow-forward"
+                            iconLibrary="material"
+                            fullWidth
+                        />
                     )}
 
                     {status === "error" && (
                         <>
-                            <Pressable
-                                style={[styles.primaryButton, { backgroundColor: palette.primary }]}
+                            <AppButton
+                                title="Try Again"
                                 onPress={handleMigrate}
-                            >
-                                <MaterialIcons name="refresh" size={24} color="#FFFFFF" />
-                                <ThemedText style={styles.primaryButtonText}>Try Again</ThemedText>
-                            </Pressable>
-
-                            <Pressable
-                                style={[styles.secondaryButton, { borderColor: palette.border }]}
+                                icon="refresh"
+                                iconLibrary="material"
+                                fullWidth
+                            />
+                            <AppButton
+                                title="Start Fresh Instead"
                                 onPress={handleFreshSetup}
-                            >
-                                <ThemedText style={[styles.secondaryButtonText, { color: palette.primary }]}>
-                                    Start Fresh Instead
-                                </ThemedText>
-                            </Pressable>
+                                variant="secondary"
+                                fullWidth
+                            />
                         </>
                     )}
-                </View>
-
-                {/* Security Badge */}
-                <View style={[styles.securityBadge, { backgroundColor: `${palette.primary}10` }]}>
-                    <MaterialIcons name="lock" size={16} color={palette.primary} />
-                    <ThemedText style={[styles.securityText, { color: palette.secondary }]}>
-                        Your cards are always encrypted and secure
-                    </ThemedText>
                 </View>
             </Animated.View>
 
             {/* Fresh Setup Confirmation Modal */}
-            <Modal
+            <UnifiedModal
                 visible={showFreshSetupModal}
-                transparent
-                animationType="fade"
+                title="Start Fresh Setup?"
+                message="This will skip migration. You will need to add your cards manually. Old cards will no longer be accessible. This action cannot be undone."
+                type="warning"
+                buttons={[
+                    {
+                        text: "Cancel",
+                        onPress: () => setShowFreshSetupModal(false),
+                        style: "cancel",
+                    },
+                    {
+                        text: "Start Fresh",
+                        onPress: confirmFreshSetup,
+                        style: "destructive",
+                    },
+                ]}
                 onRequestClose={() => setShowFreshSetupModal(false)}
-            >
-                <View style={styles.modalBackdrop}>
-                    <View style={[styles.modalContainer, { backgroundColor: palette.card }]}>
-                        <MaterialIcons name="warning" size={48} color="#FFA500" />
-                        <ThemedText style={styles.modalTitle}>Start Fresh Setup?</ThemedText>
-                        <ThemedText style={[styles.modalMessage, { color: palette.secondary }]}>
-                            If you choose fresh setup:
-                        </ThemedText>
-                        <View style={styles.modalList}>
-                            <ThemedText style={[styles.modalListItem, { color: palette.secondary }]}>
-                                • You'll need to add all cards manually
-                            </ThemedText>
-                            <ThemedText style={[styles.modalListItem, { color: palette.secondary }]}>
-                                • Old cards will no longer be available
-                            </ThemedText>
-                            <ThemedText style={[styles.modalListItem, { color: palette.secondary }]}>
-                                • This action cannot be undone
-                            </ThemedText>
-                        </View>
-                        <View style={styles.modalActions}>
-                            <Pressable
-                                style={[styles.modalButton, { backgroundColor: palette.border }]}
-                                onPress={() => setShowFreshSetupModal(false)}
-                            >
-                                <ThemedText style={styles.modalButtonText}>Cancel</ThemedText>
-                            </Pressable>
-                            <Pressable
-                                style={[styles.modalButton, { backgroundColor: "#FFA500" }]}
-                                onPress={confirmFreshSetup}
-                            >
-                                <ThemedText style={[styles.modalButtonText, { color: "#FFFFFF" }]}>
-                                    Start Fresh
-                                </ThemedText>
-                            </Pressable>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        </ThemedView>
+            />
+        </SafeAreaView>
+    );
+}
+
+function StepItem({
+    icon,
+    text,
+    color,
+    active = false,
+    loading = false
+}: {
+    icon: any;
+    text: string;
+    color: string;
+    active?: boolean;
+    loading?: boolean
+}) {
+    return (
+        <View style={styles.stepItem}>
+            {loading ? (
+                <ActivityIndicator size="small" color={color} />
+            ) : (
+                <MaterialIcons name={icon} size={20} color={color} />
+            )}
+            <ThemedText style={[styles.stepText, { color: active ? undefined : color }]}>
+                {text}
+            </ThemedText>
+        </View>
+    );
+}
+
+function FeatureItem({ icon, text, color }: { icon: any; text: string; color: string }) {
+    return (
+        <View style={styles.featureItem}>
+            <MaterialIcons name={icon} size={24} color={color} />
+            <ThemedText style={styles.featureText}>{text}</ThemedText>
+        </View>
     );
 }
 
@@ -353,12 +345,10 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         padding: 24,
-        justifyContent: "space-between",
-        paddingTop: 80,
-        paddingBottom: 40,
     },
     hero: {
         alignItems: "center",
+        marginTop: 40,
         marginBottom: 40,
     },
     iconContainer: {
@@ -370,19 +360,18 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     heroTitle: {
-        fontSize: 28,
-        fontWeight: "bold",
         textAlign: "center",
-        marginBottom: 16,
+        marginBottom: 12,
+        fontSize: 28,
     },
     heroSubtitle: {
-        fontSize: 16,
         textAlign: "center",
+        fontSize: 16,
         lineHeight: 24,
         paddingHorizontal: 16,
     },
     progressSection: {
-        marginVertical: 32,
+        marginVertical: 24,
     },
     progressInfo: {
         flexDirection: "row",
@@ -395,7 +384,7 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     progressPercent: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "bold",
     },
     progressBarContainer: {
@@ -410,18 +399,21 @@ const styles = StyleSheet.create({
     },
     migrationSteps: {
         gap: 16,
+        paddingHorizontal: 8,
     },
     stepItem: {
         flexDirection: "row",
         alignItems: "center",
         gap: 12,
+        minHeight: 24,
     },
     stepText: {
-        fontSize: 14,
+        fontSize: 15,
     },
     completionSection: {
         alignItems: "center",
-        marginVertical: 32,
+        flex: 1,
+        justifyContent: 'center',
     },
     checkmarkContainer: {
         width: 140,
@@ -432,115 +424,23 @@ const styles = StyleSheet.create({
         marginBottom: 32,
     },
     securityFeatures: {
-        gap: 16,
+        gap: 20,
         width: "100%",
+        paddingHorizontal: 20,
     },
     featureItem: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 16,
     },
     featureText: {
-        fontSize: 16,
+        fontSize: 18,
+        fontWeight: '500',
     },
     actions: {
-        gap: 12,
-        marginTop: 32,
+        gap: 16,
     },
-    primaryButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        paddingVertical: 18,
-        paddingHorizontal: 32,
-        borderRadius: 16,
-    },
-    primaryButtonText: {
-        color: "#FFFFFF",
-        fontSize: 18,
-        fontWeight: "600",
-    },
-    secondaryButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 12,
-        paddingVertical: 18,
-        paddingHorizontal: 32,
-        borderRadius: 16,
-        borderWidth: 2,
-    },
-    secondaryButtonText: {
-        fontSize: 16,
-        fontWeight: "600",
-    },
-    securityBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 24,
-        marginTop: 24,
-    },
-    securityText: {
-        fontSize: 12,
-    },
-    modalBackdrop: {
-        flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 24,
-    },
-    modalContainer: {
-        width: "100%",
-        maxWidth: 400,
-        borderRadius: 20,
-        padding: 32,
-        alignItems: "center",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
-        shadowRadius: 20,
-        elevation: 10,
-    },
-    modalTitle: {
-        fontSize: 22,
-        fontWeight: "bold",
-        marginTop: 16,
-        marginBottom: 12,
-        textAlign: "center",
-    },
-    modalMessage: {
-        fontSize: 16,
-        textAlign: "center",
-        marginBottom: 16,
-    },
-    modalList: {
-        width: "100%",
-        marginBottom: 24,
-    },
-    modalListItem: {
-        fontSize: 14,
-        lineHeight: 24,
-    },
-    modalActions: {
-        flexDirection: "row",
-        gap: 12,
-        width: "100%",
-    },
-    modalButton: {
-        flex: 1,
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        alignItems: "center",
-    },
-    modalButtonText: {
-        fontSize: 16,
-        fontWeight: "600",
+    bottomActions: {
+        marginTop: 'auto',
     },
 });
