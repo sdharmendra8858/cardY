@@ -49,12 +49,19 @@ export async function readOldCards(): Promise<OldCard[]> {
 /**
  * Try to read cards from a specific storage key
  * Handles both encrypted and plain JSON formats
+ * Tries BOTH with and without keychainService parameter
  */
 async function tryReadFromKey(key: string): Promise<OldCard[]> {
   try {
-    const value = await SecureStore.getItemAsync(key, {
+    // Try with keychainService first
+    let value = await SecureStore.getItemAsync(key, {
       keychainService: key,
     });
+
+    // If not found, try without keychainService (default storage)
+    if (!value) {
+      value = await SecureStore.getItemAsync(key);
+    }
 
     if (!value) {
       return [];
@@ -105,15 +112,23 @@ async function tryDecryptCards(encryptedData: any): Promise<OldCard[]> {
 /**
  * Delete all old storage keys
  * Should only be called after successful migration verification
+ * 
+ * CRITICAL: Tries deletion BOTH with and without keychainService parameter
+ * because old app may have stored without keychainService
  */
 export async function deleteOldCards(): Promise<void> {
   if (__DEV__) console.log("🧹 Starting deletion of old storage...");
 
-  // First, check what exists before deletion
+  // First, check what exists before deletion (try both methods)
   const existingKeys: string[] = [];
   for (const [name, key] of Object.entries(OLD_STORAGE_KEYS)) {
     try {
-      const value = await SecureStore.getItemAsync(key, { keychainService: key });
+      // Try with keychainService first
+      let value = await SecureStore.getItemAsync(key, { keychainService: key });
+      if (!value) {
+        // Try without keychainService (default storage)
+        value = await SecureStore.getItemAsync(key);
+      }
       if (value) {
         existingKeys.push(name);
         if (__DEV__) console.log(`📦 Found old storage key to delete: ${name} (${key})`);
@@ -130,25 +145,42 @@ export async function deleteOldCards(): Promise<void> {
 
   if (__DEV__) console.log(`🗑️ Deleting ${existingKeys.length} old storage key(s): ${existingKeys.join(", ")}`);
 
-  const deletePromises = Object.values(OLD_STORAGE_KEYS).map(async (key) => {
-    try {
-      await SecureStore.deleteItemAsync(key, { keychainService: key });
-      if (__DEV__) console.log(`✅ Deleted old storage key: ${key}`);
-    } catch (error) {
-      // Ignore errors - key might not exist
-      if (__DEV__) console.log(`⚠️ Could not delete ${key}: ${error}`);
-    }
-  });
+  // Delete each key - try BOTH with and without keychainService
+  const deletePromises = Object.values(OLD_STORAGE_KEYS).flatMap((key) => [
+    // Try deleting with keychainService
+    (async () => {
+      try {
+        await SecureStore.deleteItemAsync(key, { keychainService: key });
+        if (__DEV__) console.log(`✅ Deleted old storage key (with keychainService): ${key}`);
+      } catch (error) {
+        if (__DEV__) console.log(`⚠️ Could not delete ${key} (with keychainService): ${error}`);
+      }
+    })(),
+    // Try deleting without keychainService (default storage)
+    (async () => {
+      try {
+        await SecureStore.deleteItemAsync(key);
+        if (__DEV__) console.log(`✅ Deleted old storage key (default): ${key}`);
+      } catch (error) {
+        if (__DEV__) console.log(`⚠️ Could not delete ${key} (default): ${error}`);
+      }
+    })(),
+  ]);
 
   await Promise.allSettled(deletePromises);
   
-  // Verify deletion
+  // Verify deletion (check both methods)
   if (__DEV__) {
     console.log("🔍 Verifying old storage deletion...");
     let remainingKeys = 0;
     for (const [name, key] of Object.entries(OLD_STORAGE_KEYS)) {
       try {
-        const value = await SecureStore.getItemAsync(key, { keychainService: key });
+        // Check with keychainService
+        let value = await SecureStore.getItemAsync(key, { keychainService: key });
+        if (!value) {
+          // Check without keychainService
+          value = await SecureStore.getItemAsync(key);
+        }
         if (value) {
           remainingKeys++;
           console.warn(`⚠️ Old storage key still exists after deletion: ${name} (${key})`);
