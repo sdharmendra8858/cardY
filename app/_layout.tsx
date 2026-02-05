@@ -15,7 +15,6 @@ import Toast from "react-native-toast-message";
 
 import AuthRequired from "@/components/AuthRequired";
 import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
-import MigrationModal from "@/components/MigrationModal";
 import TermsPopup from "@/components/TermsPopup";
 import { Colors } from "@/constants/theme";
 import { AlertProvider } from "@/context/AlertContext";
@@ -30,6 +29,7 @@ import { authenticateUser } from "@/utils/LockScreen";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import MigrationScreen from "./migration-screen";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -184,14 +184,14 @@ function AppShell() {
 
 // Separate component to access migration context
 function MigrationAwareContent() {
-  const { showModal, status, cardCount, migratedCount, error, startMigration, dismissModal, isReady } = useMigration();
+  const { needsMigration, cardCount, isReady, handleMigrate, handleFreshSetup, handleComplete } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
     colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
 
-  // Block rendering until migration is ready
-  if (!isReady) {
+  // Show migration screen if needed
+  if (needsMigration) {
     return (
       <>
         <StatusBar
@@ -200,16 +200,29 @@ function MigrationAwareContent() {
           translucent={false}
           animated
         />
-        <MigrationModal
-          visible={showModal}
-          status={status}
+        <MigrationScreen
           cardCount={cardCount}
-          migratedCount={migratedCount}
-          error={error}
-          onStartMigration={startMigration}
-          onDone={dismissModal}
+          onMigrate={handleMigrate}
+          onFreshSetup={handleFreshSetup}
+          onComplete={handleComplete}
         />
       </>
+    );
+  }
+
+  // Block rendering until migration check is complete
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <StatusBar
+          style={barStyle}
+          backgroundColor={barBg}
+          translucent={false}
+          animated
+        />
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 12 }}>Checking card storage...</Text>
+      </View>
     );
   }
 

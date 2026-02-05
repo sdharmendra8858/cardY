@@ -2,78 +2,27 @@
  * Migration Context
  * 
  * Handles card migration from old storage to new storage on app startup
- * Only runs migration if needed (checked via needsMigration function)
- * Shows modal during migration process
+ * Shows full-screen migration experience instead of modal
  */
 
 import { migrateCards, needsMigration } from "@/utils/migration";
 import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
-type MigrationStatus = "idle" | "checking" | "ready" | "migrating" | "completed" | "error";
-
 type MigrationContextType = {
-    status: MigrationStatus;
-    isReady: boolean;
-    showModal: boolean;
+    needsMigration: boolean;
     cardCount: number;
-    migratedCount: number;
-    error: string | null;
-    startMigration: () => void;
-    dismissModal: () => void;
+    isReady: boolean;
+    handleMigrate: () => Promise<{ success: boolean; migratedCount: number; errors: string[] }>;
+    handleFreshSetup: () => void;
+    handleComplete: () => void;
 };
 
 const MigrationContext = createContext<MigrationContextType | undefined>(undefined);
 
 export const MigrationProvider = ({ children }: { children: ReactNode }) => {
-    const [status, setStatus] = useState<MigrationStatus>("idle");
-    const [showModal, setShowModal] = useState(false);
+    const [needsMigrationState, setNeedsMigrationState] = useState(false);
     const [cardCount, setCardCount] = useState(0);
-    const [migratedCount, setMigratedCount] = useState(0);
-    const [error, setError] = useState<string | null>(null);
     const [isReady, setIsReady] = useState(false);
-
-    const dismissModal = React.useCallback(() => {
-        if (__DEV__) console.log("👋 User dismissed migration modal");
-        setShowModal(false);
-        setIsReady(true);
-    }, []);
-
-    const startMigration = React.useCallback(async () => {
-        if (__DEV__) console.log("🚀 User clicked Start Migration");
-        setStatus("migrating");
-
-        try {
-            const result = await migrateCards();
-
-            if (result.success) {
-                setMigratedCount(result.migratedCount);
-                if (__DEV__) console.log(`✅ Migrated ${result.migratedCount} cards`);
-                setStatus("completed");
-            } else {
-                console.error("❌ Migration failed:", result.errors);
-                setError(result.errors.join(", "));
-                setStatus("error");
-
-                // Auto-recover after 3 seconds
-                setTimeout(() => {
-                    setStatus("completed");
-                    setShowModal(false);
-                    setIsReady(true);
-                }, 3000);
-            }
-        } catch (err) {
-            console.error("❌ Unexpected migration error:", err);
-            setError(err instanceof Error ? err.message : String(err));
-            setStatus("error");
-
-            // Auto-recover after 3 seconds
-            setTimeout(() => {
-                setStatus("completed");
-                setShowModal(false);
-                setIsReady(true);
-            }, 3000);
-        }
-    }, []);
 
     useEffect(() => {
         let isMounted = true;
@@ -81,7 +30,6 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
         const checkMigration = async () => {
             try {
                 if (__DEV__) console.log("🔄 MigrationContext: Starting migration check...");
-                setStatus("checking");
 
                 // Check if migration is needed
                 const needed = await needsMigration();
@@ -89,39 +37,27 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                 if (!needed) {
                     if (__DEV__) console.log("✅ Migration not needed");
                     if (isMounted) {
-                        setStatus("completed");
-                        setIsReady(true); // Allow app to load
+                        setIsReady(true);
                     }
                     return;
                 }
 
-                if (__DEV__) console.log("🚀 Migration needed, showing modal...");
+                if (__DEV__) console.log("🚀 Migration needed, preparing screen...");
 
-                // Get card count BEFORE migration starts
+                // Get card count
                 const { readOldCards } = await import("@/utils/migration/oldStorage");
                 const oldCards = await readOldCards();
                 const count = oldCards.length;
 
-                // Show modal and wait for user to click "Start Migration"
                 if (isMounted) {
                     setCardCount(count);
-                    setShowModal(true);
-                    setStatus("ready"); // Ready to migrate, waiting for user
+                    setNeedsMigrationState(true);
                 }
             } catch (err) {
                 console.error("❌ Unexpected migration check error:", err);
                 if (isMounted) {
-                    setError(err instanceof Error ? err.message : String(err));
-                    setStatus("error");
-
-                    // Auto-recover after 3 seconds
-                    setTimeout(() => {
-                        if (isMounted) {
-                            setStatus("completed");
-                            setShowModal(false);
-                            setIsReady(true);
-                        }
-                    }, 3000);
+                    // On error, allow app to load
+                    setIsReady(true);
                 }
             }
         };
@@ -133,18 +69,47 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
         };
     }, []);
 
+    const handleMigrate = React.useCallback(async () => {
+        if (__DEV__) console.log("🚀 User started migration");
+        const result = await migrateCards();
+        return result;
+    }, []);
+
+    const handleFreshSetup = React.useCallback(async () => {
+        if (__DEV__) console.log("🔄 User chose fresh setup");
+
+        // Delete old cards and mark migration as complete
+        const { deleteOldCards } = await import("@/utils/migration/oldStorage");
+        const AsyncStorage = await import("@react-native-async-storage/async-storage");
+
+        try {
+            await deleteOldCards();
+            await AsyncStorage.default.setItem("@migration_status", "v1");
+            if (__DEV__) console.log("✅ Old cards deleted, fresh setup ready");
+        } catch (error) {
+            console.error("❌ Error during fresh setup:", error);
+        }
+
+        setNeedsMigrationState(false); // Hide migration screen
+        setIsReady(true); // Allow app to load
+    }, []);
+
+    const handleComplete = React.useCallback(() => {
+        if (__DEV__) console.log("✅ Migration complete, loading app");
+        setNeedsMigrationState(false); // Hide migration screen
+        setIsReady(true); // Allow app to load
+    }, []);
+
     const value = React.useMemo(
         () => ({
-            status,
-            isReady,
-            showModal,
+            needsMigration: needsMigrationState,
             cardCount,
-            migratedCount,
-            error,
-            startMigration,
-            dismissModal,
+            isReady,
+            handleMigrate,
+            handleFreshSetup,
+            handleComplete,
         }),
-        [status, isReady, showModal, cardCount, migratedCount, error, startMigration, dismissModal]
+        [needsMigrationState, cardCount, isReady, handleMigrate, handleFreshSetup, handleComplete]
     );
 
     return (

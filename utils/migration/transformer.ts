@@ -5,7 +5,39 @@
  * Handles field mapping, defaults, and card type detection
  */
 
+import { BANK_OPTIONS } from "@/constants/banks";
 import { NewCard, OldCard } from "./types";
+
+/* -------------------------------------------------------------------------- */
+/*                          BANK NAME MATCHING                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Match old bank name to new bank list
+ * If match found, use the standardized name
+ * If no match, return the original name as-is (will be treated as custom bank)
+ */
+function matchBankName(oldBankName?: string): string | undefined {
+  if (!oldBankName) {
+    return undefined;
+  }
+
+  // Normalize for comparison (uppercase, trim)
+  const normalized = oldBankName.toUpperCase().trim();
+
+  // Check if bank exists in our list (case-insensitive)
+  const matchedBank = BANK_OPTIONS.find(
+    (option) => option.value.toUpperCase() === normalized
+  );
+
+  if (matchedBank) {
+    // Found a match - use the standardized name
+    return matchedBank.value;
+  }
+
+  // No match - return original name (will be treated as custom bank in UI)
+  return oldBankName;
+}
 
 /* -------------------------------------------------------------------------- */
 /*                          CARD TYPE DETECTION                                */
@@ -47,6 +79,9 @@ export function transformCard(oldCard: OldCard): NewCard {
   // Auto-detect card type if not present
   const cardType = detectCardType(oldCard.cardNumber);
 
+  // Match bank name to new bank list (or keep original if no match)
+  const bank = matchBankName(oldCard.bank);
+
   // Transform to new format
   const newCard: NewCard = {
     // Copy all existing fields
@@ -60,7 +95,9 @@ export function transformCard(oldCard: OldCard): NewCard {
     cobrandName: oldCard.cobrandName,
     cardUser: oldCard.cardUser,
     dominantColor: oldCard.dominantColor,
-    bank: oldCard.bank,
+    
+    // Use matched bank name (or original if no match)
+    bank,
 
     // Preserve imported card expiry info
     cardExpiresAt: oldCard.cardExpiresAt,
@@ -73,8 +110,13 @@ export function transformCard(oldCard: OldCard): NewCard {
   };
 
   if (__DEV__) {
+    const isMatched = BANK_OPTIONS.some(
+      (option) => option.value.toUpperCase() === bank?.toUpperCase()
+    );
     console.log(`🔄 Transformed card ${oldCard.id}:`, {
       cardType,
+      bank: newCard.bank,
+      bankMatched: isMatched ? "yes" : "custom",
       hasExpiry: !!oldCard.expiry,
       hasCardExpiresAt: !!oldCard.cardExpiresAt,
       isPinned: newCard.isPinned,
