@@ -9,7 +9,7 @@
 import { migrateCards, needsMigration } from "@/utils/migration";
 import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
 
-type MigrationStatus = "idle" | "checking" | "migrating" | "completed" | "error";
+type MigrationStatus = "idle" | "checking" | "ready" | "migrating" | "completed" | "error";
 
 type MigrationContextType = {
     status: MigrationStatus;
@@ -18,6 +18,7 @@ type MigrationContextType = {
     cardCount: number;
     migratedCount: number;
     error: string | null;
+    startMigration: () => void;
     dismissModal: () => void;
 };
 
@@ -37,10 +38,47 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
         setIsReady(true);
     }, []);
 
+    const startMigration = React.useCallback(async () => {
+        if (__DEV__) console.log("🚀 User clicked Start Migration");
+        setStatus("migrating");
+
+        try {
+            const result = await migrateCards();
+
+            if (result.success) {
+                setMigratedCount(result.migratedCount);
+                if (__DEV__) console.log(`✅ Migrated ${result.migratedCount} cards`);
+                setStatus("completed");
+            } else {
+                console.error("❌ Migration failed:", result.errors);
+                setError(result.errors.join(", "));
+                setStatus("error");
+
+                // Auto-recover after 3 seconds
+                setTimeout(() => {
+                    setStatus("completed");
+                    setShowModal(false);
+                    setIsReady(true);
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("❌ Unexpected migration error:", err);
+            setError(err instanceof Error ? err.message : String(err));
+            setStatus("error");
+
+            // Auto-recover after 3 seconds
+            setTimeout(() => {
+                setStatus("completed");
+                setShowModal(false);
+                setIsReady(true);
+            }, 3000);
+        }
+    }, []);
+
     useEffect(() => {
         let isMounted = true;
 
-        const runMigration = async () => {
+        const checkMigration = async () => {
             try {
                 if (__DEV__) console.log("🔄 MigrationContext: Starting migration check...");
                 setStatus("checking");
@@ -64,53 +102,14 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
                 const oldCards = await readOldCards();
                 const count = oldCards.length;
 
-                // Show modal BEFORE starting migration
+                // Show modal and wait for user to click "Start Migration"
                 if (isMounted) {
                     setCardCount(count);
                     setShowModal(true);
-                    setStatus("checking");
-                }
-
-                // Small delay to ensure modal is visible
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Run migration
-                if (__DEV__) console.log("🔄 Starting migration process...");
-                setStatus("migrating");
-
-                const result = await migrateCards();
-
-                if (!isMounted) return;
-
-                if (result.success) {
-                    setMigratedCount(result.migratedCount);
-
-                    if (result.migratedCount > 0) {
-                        if (__DEV__) console.log(`✅ Migrated ${result.migratedCount} cards`);
-                        setStatus("completed");
-                        // Keep modal open - user must click "Done"
-                    } else {
-                        if (__DEV__) console.log("✅ No cards to migrate");
-                        setStatus("completed");
-                        setShowModal(false);
-                        setIsReady(true);
-                    }
-                } else {
-                    console.error("❌ Migration failed:", result.errors);
-                    setError(result.errors.join(", "));
-                    setStatus("error");
-
-                    // Auto-recover after 3 seconds
-                    setTimeout(() => {
-                        if (isMounted) {
-                            setStatus("completed");
-                            setShowModal(false);
-                            setIsReady(true);
-                        }
-                    }, 3000);
+                    setStatus("ready"); // Ready to migrate, waiting for user
                 }
             } catch (err) {
-                console.error("❌ Unexpected migration error:", err);
+                console.error("❌ Unexpected migration check error:", err);
                 if (isMounted) {
                     setError(err instanceof Error ? err.message : String(err));
                     setStatus("error");
@@ -127,7 +126,7 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
-        runMigration();
+        checkMigration();
 
         return () => {
             isMounted = false;
@@ -142,9 +141,10 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
             cardCount,
             migratedCount,
             error,
+            startMigration,
             dismissModal,
         }),
-        [status, isReady, showModal, cardCount, migratedCount, error, dismissModal]
+        [status, isReady, showModal, cardCount, migratedCount, error, startMigration, dismissModal]
     );
 
     return (

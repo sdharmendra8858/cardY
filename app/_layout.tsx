@@ -184,7 +184,7 @@ function AppShell() {
 
 // Separate component to access migration context
 function MigrationAwareContent() {
-  const { showModal, status, cardCount, migratedCount, error, dismissModal, isReady } = useMigration();
+  const { showModal, status, cardCount, migratedCount, error, startMigration, dismissModal, isReady } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
@@ -206,6 +206,7 @@ function MigrationAwareContent() {
           cardCount={cardCount}
           migratedCount={migratedCount}
           error={error}
+          onStartMigration={startMigration}
           onDone={dismissModal}
         />
       </>

@@ -21,10 +21,11 @@ import { ThemedText } from "./themed-text";
 
 interface MigrationModalProps {
     visible: boolean;
-    status: "idle" | "checking" | "migrating" | "completed" | "error";
+    status: "idle" | "checking" | "ready" | "migrating" | "completed" | "error";
     cardCount: number;
     migratedCount: number;
     error?: string | null;
+    onStartMigration?: () => void;
     onDone?: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function MigrationModal({
     cardCount,
     migratedCount,
     error,
+    onStartMigration,
     onDone,
 }: MigrationModalProps) {
     const scheme = useColorScheme() ?? "light";
@@ -59,14 +61,15 @@ export default function MigrationModal({
         }
     }, [status, progressAnim]);
 
+    const showStartButton = status === "ready" && cardCount > 0;
     const showDoneButton = status === "completed" && migratedCount > 0;
 
     const getStatusMessage = () => {
         switch (status) {
             case "checking":
-                return cardCount > 0
-                    ? `Found ${cardCount} card${cardCount !== 1 ? 's' : ''} to migrate`
-                    : "Checking for cards...";
+                return "Checking for cards...";
+            case "ready":
+                return `Found ${cardCount} card${cardCount !== 1 ? 's' : ''} to migrate`;
             case "migrating":
                 return `Migrating ${cardCount} card${cardCount !== 1 ? 's' : ''}...`;
             case "error":
@@ -107,9 +110,9 @@ export default function MigrationModal({
     const getSubMessage = () => {
         switch (status) {
             case "checking":
-                return cardCount > 0
-                    ? "Ready to upgrade your card storage to the latest security standards"
-                    : "Checking your card storage...";
+                return "Checking your card storage...";
+            case "ready":
+                return "Ready to upgrade your card storage to the latest security standards. Click 'Start Migration' to begin.";
             case "migrating":
                 return "Encrypting and securing your cards with AES-256-GCM encryption";
             case "completed":
@@ -178,12 +181,21 @@ export default function MigrationModal({
                         </ThemedText>
                     )}
 
+                    {showStartButton && (
+                        <Pressable
+                            style={[styles.startButton, { backgroundColor: palette.primary }]}
+                            onPress={onStartMigration}
+                        >
+                            <ThemedText style={styles.buttonText}>Start Migration</ThemedText>
+                        </Pressable>
+                    )}
+
                     {showDoneButton && (
                         <Pressable
                             style={[styles.doneButton, { backgroundColor: palette.primary }]}
                             onPress={onDone}
                         >
-                            <ThemedText style={styles.doneButtonText}>Done</ThemedText>
+                            <ThemedText style={styles.buttonText}>Done</ThemedText>
                         </Pressable>
                     )}
 
@@ -267,6 +279,14 @@ const styles = StyleSheet.create({
         marginTop: 12,
         fontStyle: "italic",
     },
+    startButton: {
+        width: "100%",
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 12,
+        alignItems: "center",
+        marginTop: 24,
+    },
     doneButton: {
         width: "100%",
         paddingVertical: 16,
@@ -275,7 +295,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginTop: 24,
     },
-    doneButtonText: {
+    buttonText: {
         color: "#FFFFFF",
         fontSize: 16,
         fontWeight: "600",

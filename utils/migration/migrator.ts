@@ -260,17 +260,16 @@ export async function migrateCards(): Promise<MigrationResult> {
  * - Old cards exist (length > 0), AND
  * - New storage is empty (both masked and unmasked length = 0)
  * 
+ * SPECIAL CASE: If migration flag IS set but old cards still exist AND new storage is empty,
+ * this means migration ran but failed to delete old cards. Reset flag and re-run migration.
+ * 
  * @returns true if migration should run, false otherwise
  */
 export async function needsMigration(): Promise<boolean> {
   try {
     // First check if migration was already completed
     const completed = await isMigrationCompleted();
-    if (completed) {
-      if (__DEV__) console.log("🔍 Migration already completed (flag set), not needed");
-      return false;
-    }
-
+    
     // Check if old cards exist
     const oldCards = await readOldCards();
     const hasOldCards = oldCards.length > 0;
@@ -296,8 +295,38 @@ export async function needsMigration(): Promise<boolean> {
       newUnmaskedCount = 0;
     }
 
+    const newStorageEmpty = newMaskedCount === 0 && newUnmaskedCount === 0;
+
+    // SPECIAL CASE: Migration flag set but old cards exist and new storage empty
+    // This means migration ran but failed to delete old cards (likely due to old deletion bug)
+    if (completed && hasOldCards && newStorageEmpty) {
+      console.warn("⚠️ DETECTED: Migration flag set but old cards still exist!");
+      console.warn("⚠️ This means migration ran but failed to delete old cards.");
+      console.warn("🔄 Auto-fixing: Resetting migration flag to re-run with new deletion code...");
+      
+      // Reset the flag so migration runs again
+      await AsyncStorage.removeItem(MIGRATION_CONFIG.STATUS_KEY);
+      
+      if (__DEV__) {
+        console.log("🔍 Migration check (after auto-fix):", {
+          completed: false, // Now false after reset
+          oldCardsCount: oldCards.length,
+          newMaskedCount,
+          newUnmaskedCount,
+          needed: true, // Will re-run migration
+        });
+      }
+      
+      return true; // Re-run migration
+    }
+
+    if (completed) {
+      if (__DEV__) console.log("🔍 Migration already completed (flag set), not needed");
+      return false;
+    }
+
     // Migration needed if old cards exist but new storage is empty
-    const needed = newMaskedCount === 0 && newUnmaskedCount === 0;
+    const needed = newStorageEmpty;
 
     if (__DEV__) {
       console.log("🔍 Migration check:", {
