@@ -44,5 +44,6 @@ export {
     clearAllStorageForTesting,
     debugMigrationState,
     forceDeleteOldCards,
+    forceReMigration,
     resetMigrationForTesting
 } from "./debugMigration";

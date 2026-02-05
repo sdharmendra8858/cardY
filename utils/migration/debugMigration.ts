@@ -181,10 +181,39 @@ export async function clearAllStorageForTesting() {
  * Use this if old cards remain after migration
  */
 export async function forceDeleteOldCards() {
-  console.log("🗑️ FORCE DELETING OLD CARDS...");
+  console.log("\n🗑️ FORCE DELETING OLD CARDS");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   
   const { deleteOldCards } = await import("./oldStorage");
   await deleteOldCards();
   
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("✅ Force deletion completed");
+}
+
+/**
+ * Force re-run migration even if flag is set
+ * Use this when old cards still exist after migration
+ */
+export async function forceReMigration() {
+  console.log("\n🔄 FORCE RE-RUNNING MIGRATION");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+  // Reset migration flag
+  await AsyncStorage.removeItem(MIGRATION_CONFIG.STATUS_KEY);
+  console.log("✅ Migration flag reset");
+
+  // Run migration
+  const { migrateCards } = await import("./migrator");
+  const result = await migrateCards();
+
+  console.log("\n📊 Migration Result:");
+  console.log("  Success:", result.success);
+  console.log("  Migrated Count:", result.migratedCount);
+  console.log("  Errors:", result.errors);
+
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("✅ Force re-migration completed");
+  
+  return result;
 }

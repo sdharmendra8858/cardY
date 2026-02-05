@@ -13,6 +13,7 @@ import {
     clearAllStorageForTesting,
     debugMigrationState,
     forceDeleteOldCards,
+    forceReMigration,
     resetMigrationForTesting
 } from "@/utils/migration";
 import { useRouter } from "expo-router";
@@ -126,9 +127,67 @@ export default function MigrationDebugScreen() {
                     style: "destructive",
                     onPress: async () => {
                         clearLogs();
+
+                        const originalLog = console.log;
+                        const originalWarn = console.warn;
+                        console.log = (...args) => {
+                            addLog(args.join(" "));
+                            originalLog(...args);
+                        };
+                        console.warn = (...args) => {
+                            addLog("WARN: " + args.join(" "));
+                            originalWarn(...args);
+                        };
+
                         addLog("Force deleting old cards...");
                         await forceDeleteOldCards();
-                        addLog("✅ Old cards deleted! Check if fallback still active.");
+
+                        console.log = originalLog;
+                        console.warn = originalWarn;
+
+                        addLog("✅ Old cards deleted! Restart app to see changes.");
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleForceReMigration = async () => {
+        Alert.alert(
+            "🔄 Force Re-Run Migration?",
+            "This will reset the migration flag and run migration again with the new deletion code.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Re-Migrate",
+                    style: "destructive",
+                    onPress: async () => {
+                        clearLogs();
+
+                        const originalLog = console.log;
+                        const originalError = console.error;
+                        const originalWarn = console.warn;
+                        console.log = (...args) => {
+                            addLog(args.join(" "));
+                            originalLog(...args);
+                        };
+                        console.error = (...args) => {
+                            addLog("ERROR: " + args.join(" "));
+                            originalError(...args);
+                        };
+                        console.warn = (...args) => {
+                            addLog("WARN: " + args.join(" "));
+                            originalWarn(...args);
+                        };
+
+                        addLog("Force re-running migration...");
+                        await forceReMigration();
+
+                        console.log = originalLog;
+                        console.error = originalError;
+                        console.warn = originalWarn;
+
+                        addLog("✅ Re-migration complete! Restart app to see changes.");
                     },
                 },
             ]
@@ -150,6 +209,13 @@ export default function MigrationDebugScreen() {
                     onPress={handleDebug}
                 >
                     <ThemedText style={styles.buttonText}>Run Debug</ThemedText>
+                </Pressable>
+
+                <Pressable
+                    style={[styles.button, { backgroundColor: "#4CAF50" }]}
+                    onPress={handleForceReMigration}
+                >
+                    <ThemedText style={styles.buttonText}>🔄 Force Re-Run Migration</ThemedText>
                 </Pressable>
 
                 <Pressable
