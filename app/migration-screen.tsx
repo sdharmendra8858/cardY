@@ -17,16 +17,12 @@ import {
     ActivityIndicator,
     BackHandler,
     Dimensions,
-    Platform,
     StyleSheet,
     View
 } from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
-    withRepeat,
-    withSequence,
-    withSpring,
     withTiming
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -56,11 +52,6 @@ export default function MigrationScreen({
     const [showFreshSetupModal, setShowFreshSetupModal] = useState(false);
 
     // Reanimated Shared Values
-    const cardY = useSharedValue(100);
-    const cardOpacity = useSharedValue(0);
-    const iconScale = useSharedValue(0);
-    const pulseAnim = useSharedValue(1);
-
     const progressWidth = useSharedValue(0);
 
     // Prevent back button
@@ -72,27 +63,10 @@ export default function MigrationScreen({
         return () => backHandler.remove();
     }, []);
 
-    // Entrance Animation
+    // Initialization
     useEffect(() => {
-        cardY.value = withSpring(0, { damping: 15 });
-        cardOpacity.value = withTiming(1, { duration: 800 });
-        iconScale.value = withSpring(1, { damping: 12 });
+        progressWidth.value = 0;
     }, []);
-
-    // Pulse effect during migration
-    useEffect(() => {
-        if (status === "migrating") {
-            pulseAnim.value = withRepeat(
-                withSequence(
-                    withTiming(1.1, { duration: 1000 }),
-                    withTiming(1, { duration: 1000 })
-                ),
-                -1
-            );
-        } else {
-            pulseAnim.value = withTiming(1);
-        }
-    }, [status]);
 
     const handleMigrate = async () => {
         setStatus("migrating");
@@ -145,37 +119,33 @@ export default function MigrationScreen({
         onFreshSetup();
     };
 
-    // Animated Styles
-    const cardStyle = useAnimatedStyle(() => ({
-        transform: [{ translateY: cardY.value }],
-        opacity: cardOpacity.value,
-    }));
+    // Static Styles (Removed Animations)
+    const cardStyle = {
+        transform: [{ translateY: 0 }],
+        opacity: 1,
+    };
 
-    const iconStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: iconScale.value * pulseAnim.value }],
-    }));
+    const iconStyle = {
+        transform: [{ scale: 1 }],
+    };
 
     const barFillStyle = useAnimatedStyle(() => ({
         width: `${progressWidth.value}%`,
     }));
 
-    const gradientColors = scheme === 'dark'
-        ? [palette.primary, '#1a1a1a'] as const
-        : [palette.primary, '#ffffff'] as const;
-
-    const glassColor = scheme === 'dark'
-        ? 'rgba(255, 255, 255, 0.05)'
-        : 'rgba(255, 255, 255, 0.8)';
+    // const glassColor = scheme === 'dark'
+    //     ? 'rgba(255, 255, 255, 0.05)'
+    //     : 'rgba(255, 255, 255, 0.25)'; // Much more transparent for real glass effect
 
     return (
         <LinearGradient
-            colors={[palette.primary, scheme === 'dark' ? '#000' : '#fff']}
+            colors={[palette.primary, scheme === 'dark' ? '#000' : palette.surface]}
             style={styles.container}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            end={{ x: 0.5, y: 1 }}
         >
             <SafeAreaView style={styles.safeArea}>
-                <Animated.View style={[styles.mainCard, cardStyle, { backgroundColor: glassColor }]}>
+                <Animated.View style={[styles.mainCard, cardStyle]}>
                     {/* Hero Section */}
                     <Animated.View style={[styles.hero, iconStyle]}>
                         <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}30` }]}>
@@ -364,73 +334,71 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         paddingHorizontal: 20,
+        backgroundColor: 'transparent', // Ensure no unintended background
     },
     mainCard: {
         borderRadius: 32,
         padding: 30,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.2,
-                shadowRadius: 20,
-            },
-            android: {
-                elevation: 10,
-            },
-        }),
+        overflow: 'hidden', // Added to ensure corners are respected
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderColor: 'rgba(255, 255, 255, 0.25)',
     },
     hero: {
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: 20,
     },
     iconContainer: {
-        width: 140,
-        height: 140,
-        borderRadius: 70,
+        width: 130,
+        height: 130,
+        borderRadius: 65,
         justifyContent: "center",
         alignItems: "center",
+        overflow: 'hidden', // Crucial for Android rounded backgrounds
     },
     title: {
         textAlign: "center",
         fontSize: 32,
         fontWeight: "800",
-        marginBottom: 12,
+        marginBottom: 8,
+        lineHeight: 44, // Increased further to be safe
     },
     subtitle: {
         textAlign: "center",
         fontSize: 16,
         lineHeight: 24,
-        marginBottom: 32,
+        marginBottom: 24,
     },
     progressContainer: {
         marginBottom: 32,
+        padding: 4, // Added slight padding
     },
     progressHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "flex-end",
-        marginBottom: 10,
+        alignItems: "center", // Changed from flex-end
+        marginBottom: 12,
     },
     progressText: {
-        fontSize: 14,
-        fontWeight: "600",
+        fontSize: 13,
+        fontWeight: "700",
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     progressPercent: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: "900",
     },
     barBg: {
-        height: 12,
-        borderRadius: 6,
+        height: 8, // Thinner for a more polished look
+        borderRadius: 4,
         overflow: "hidden",
-        marginBottom: 20,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     barFill: {
         height: "100%",
-        borderRadius: 6,
+        borderRadius: 4,
     },
     steps: {
         gap: 12,
