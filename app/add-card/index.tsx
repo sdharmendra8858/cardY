@@ -5,7 +5,7 @@ import InfoBox from "@/components/InfoBox";
 import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
-import { useCards } from "@/context/CardContext";
+import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";

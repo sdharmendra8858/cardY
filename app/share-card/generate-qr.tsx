@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
-import { useCards } from "../../context/CardContext";
+import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
 
 export default function GenerateQRScreen() {
     const scheme = useColorScheme() ?? "light";

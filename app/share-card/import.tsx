@@ -26,7 +26,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { Animated, AppState, Easing, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
-import { useCards } from "../../context/CardContext";
+import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
 
 export default function ImportCardScreen() {
   const scheme = useColorScheme() ?? "light";

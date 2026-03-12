@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
-import { useCards } from "../../context/CardContext";
+import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
 
 export default function SelectCardScreen() {
     const scheme = useColorScheme() ?? "light";

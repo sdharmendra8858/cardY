@@ -2,9 +2,9 @@ import { gcm } from "@noble/ciphers/aes.js";
 import { randomBytes } from "@noble/ciphers/utils.js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  base64ToBytes,
-  bytesToBase64,
-  getMasterKey,
+    base64ToBytes,
+    bytesToBase64,
+    getMasterKey,
 } from "./masterKeyManager";
 
 /* -------------------------------------------------------------------------- */
@@ -34,18 +34,30 @@ async function getDEK(): Promise<Uint8Array> {
   const stored = await AsyncStorage.getItem(ENCRYPTED_DEK_KEY);
   if (!stored) throw new Error("DEK_MISSING");
 
-  // getMasterKey now returns base64 string from manager
-  const mkBase64 = await getMasterKey();
-  const mk = base64ToBytes(mkBase64);
-  
-  const parsed = JSON.parse(stored);
+  try {
+    // getMasterKey now returns base64 string from manager
+    const mkBase64 = await getMasterKey();
+    const mk = base64ToBytes(mkBase64);
+    
+    const parsed = JSON.parse(stored);
 
-  const dek = gcm(mk, base64ToBytes(parsed.iv)).decrypt(
-    base64ToBytes(parsed.ciphertext)
-  );
+    const dek = gcm(mk, base64ToBytes(parsed.iv)).decrypt(
+      base64ToBytes(parsed.ciphertext)
+    );
 
-  cachedDEK = dek;
-  return dek;
+    cachedDEK = dek;
+    return dek;
+  } catch (error) {
+    // If decryption fails (e.g., master key changed), regenerate DEK
+    if (__DEV__) console.warn("⚠️ DEK decryption failed, regenerating...", error);
+    
+    // Clear the invalid DEK
+    await AsyncStorage.removeItem(ENCRYPTED_DEK_KEY);
+    cachedDEK = null;
+    
+    // Create a new DEK with the current master key
+    return await createAndStoreDEK();
+  }
 }
 
 async function createAndStoreDEK(): Promise<Uint8Array> {

@@ -228,8 +228,15 @@ async function maybeDeleteMasterKey(): Promise<void> {
 
   if (!hasUnmasked && !hasMasked) {
     if (__DEV__) {
-      console.log("🔐 No encrypted cards remain. Deleting master key.");
+      console.log("🔐 No encrypted cards remain. Deleting master key and DEK.");
     }
     await deleteMasterKey();
+    
+    // Also delete DEK since it's encrypted with the master key
+    const { resetEncryptionCache } = await import("./encryption/cardEncryption");
+    await AsyncStorage.removeItem("encrypted_dek");
+    resetEncryptionCache();
+    
+    if (__DEV__) console.log("✅ Master key and DEK deleted");
   }
 }
