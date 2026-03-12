@@ -6,26 +6,28 @@
  */
 
 import AppButton from "@/components/AppButton";
+import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import UnifiedModal from "@/components/UnifiedModal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
     BackHandler,
     Dimensions,
+    ScrollView,
     StyleSheet,
     View
 } from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
+    withSpring,
     withTiming
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 type MigrationStatus = "ready" | "migrating" | "completed" | "error";
 
@@ -46,6 +48,7 @@ export default function MigrationScreen({
 }: MigrationScreenProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
+    const insets = useSafeAreaInsets();
     const [status, setStatus] = useState<MigrationStatus>("ready");
     const [progress, setProgress] = useState(0);
     const [currentCard, setCurrentCard] = useState(0);
@@ -53,6 +56,8 @@ export default function MigrationScreen({
 
     // Reanimated Shared Values
     const progressWidth = useSharedValue(0);
+    const iconScale = useSharedValue(0.8);
+    const iconRotate = useSharedValue(0);
 
     // Prevent back button
     useEffect(() => {
@@ -63,10 +68,19 @@ export default function MigrationScreen({
         return () => backHandler.remove();
     }, []);
 
-    // Initialization
+    // Entrance animation
     useEffect(() => {
-        progressWidth.value = 0;
+        iconScale.value = withSpring(1, { damping: 12, stiffness: 100 });
     }, []);
+
+    // Rotate icon during migration
+    useEffect(() => {
+        if (status === "migrating") {
+            iconRotate.value = withTiming(360, { duration: 2000 });
+        } else {
+            iconRotate.value = 0;
+        }
+    }, [status]);
 
     const handleMigrate = async () => {
         setStatus("migrating");
@@ -125,168 +139,207 @@ export default function MigrationScreen({
         opacity: 1,
     };
 
-    const iconStyle = {
-        transform: [{ scale: 1 }],
-    };
+    const iconAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: iconScale.value },
+            { rotate: `${iconRotate.value}deg` }
+        ],
+    }));
 
     const barFillStyle = useAnimatedStyle(() => ({
         width: `${progressWidth.value}%`,
     }));
 
-    // const glassColor = scheme === 'dark'
-    //     ? 'rgba(255, 255, 255, 0.05)'
-    //     : 'rgba(255, 255, 255, 0.25)'; // Much more transparent for real glass effect
-
     return (
-        <LinearGradient
-            colors={[palette.primary, scheme === 'dark' ? '#000' : palette.surface]}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0.5, y: 1 }}
+        <SafeAreaView
+            style={[styles.safeArea, { backgroundColor: palette.surface }]}
+            edges={['top', 'left', 'right']}
         >
-            <SafeAreaView style={styles.safeArea}>
-                <Animated.View style={[styles.mainCard, cardStyle]}>
-                    {/* Hero Section */}
-                    <Animated.View style={[styles.hero, iconStyle]}>
-                        <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}30` }]}>
-                            <MaterialIcons
-                                name={
-                                    status === "completed" ? "verified" :
-                                        status === "error" ? "report-problem" :
-                                            status === "migrating" ? "sync" : "security"
-                                }
-                                size={80}
-                                color={status === "error" ? palette.danger : palette.primary}
-                            />
-                        </View>
-                    </Animated.View>
+            <Hero
+                title={
+                    status === "ready" ? "Storage Upgrade" :
+                        status === "migrating" ? "Upgrading..." :
+                            status === "completed" ? "All Done!" :
+                                "Upgrade Issue"
+                }
+                subtitle={
+                    status === "ready" ? "Enhance your card security" :
+                        status === "migrating" ? "Please wait" :
+                            status === "completed" ? "Your cards are ready" :
+                                "Let's try again"
+                }
+            />
 
-                    <ThemedText type="title" style={styles.title}>
-                        {status === "ready" && "Everything is Ready"}
-                        {status === "migrating" && "Adding Protection"}
-                        {status === "completed" && "You're All Set!"}
-                        {status === "error" && "Something Went Wrong"}
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: 140 + Math.max(insets.bottom, 16) }
+                ]}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Icon Section */}
+                <Animated.View style={[styles.iconSection, iconAnimatedStyle]}>
+                    <View style={[styles.iconCircle, { backgroundColor: status === "error" ? `${palette.danger}15` : `${palette.primary}15` }]}>
+                        <MaterialIcons
+                            name={
+                                status === "completed" ? "check-circle" :
+                                    status === "error" ? "error-outline" :
+                                        status === "migrating" ? "sync" : "security"
+                            }
+                            size={64}
+                            color={status === "error" ? palette.danger : palette.primary}
+                        />
+                    </View>
+                </Animated.View>
+
+                {/* Info Card */}
+                <View style={[styles.infoCard, { backgroundColor: palette.card }]}>
+                    <ThemedText type="defaultSemiBold" style={styles.infoTitle}>
+                        {status === "ready" && `${cardCount} Card${cardCount !== 1 ? 's' : ''} Found`}
+                        {status === "migrating" && "Upgrading Security"}
+                        {status === "completed" && "Upgrade Complete"}
+                        {status === "error" && "Upgrade Failed"}
                     </ThemedText>
 
-                    <ThemedText style={[styles.subtitle, { color: palette.icon }]}>
+                    <ThemedText style={[styles.infoText, { color: palette.icon }]}>
                         {status === "ready" &&
-                            `We found your cards from the previous version. We just need a moment to update them to our new, extra-secure system.`}
+                            "We'll upgrade your cards to our new encryption system. This only takes a moment."}
                         {status === "migrating" &&
-                            `This will only take a few seconds. We're making sure each card is safely stored.`}
+                            "Applying military-grade encryption to each card..."}
                         {status === "completed" &&
-                            `Your ${cardCount} cards are now updated and ready to use with even better security.`}
+                            `All ${cardCount} card${cardCount !== 1 ? 's' : ''} have been upgraded with enhanced security.`}
                         {status === "error" &&
-                            "We couldn't finish the update. Don't worry, your cards are safe. Let's try one more time."}
+                            "Something went wrong during the upgrade. Your cards are safe. Please try again."}
                     </ThemedText>
 
                     {/* Progress Section */}
                     {status === "migrating" && (
-                        <View style={styles.progressContainer}>
-                            <View style={styles.progressHeader}>
-                                <ThemedText style={styles.progressText}>
+                        <View style={styles.progressSection}>
+                            <View style={styles.progressRow}>
+                                <ThemedText style={styles.progressLabel}>
                                     Card {currentCard} of {cardCount}
                                 </ThemedText>
                                 <ThemedText style={[styles.progressPercent, { color: palette.primary }]}>
                                     {progress}%
                                 </ThemedText>
                             </View>
-                            <View style={[styles.barBg, { backgroundColor: `${palette.primary}20` }]}>
+                            <View style={[styles.progressBar, { backgroundColor: palette.border }]}>
                                 <Animated.View
                                     style={[
-                                        styles.barFill,
+                                        styles.progressFill,
                                         { backgroundColor: palette.primary },
                                         barFillStyle
                                     ]}
                                 />
                             </View>
-                            <View style={styles.steps}>
-                                <StepItem icon="check" text="Found your cards" color={palette.primary} active />
-                                <StepItem icon="lock" text="Updating security" color={palette.primary} active loading />
-                                <StepItem icon="done-all" text="Finished" color={palette.icon} />
+                            <View style={styles.stepsList}>
+                                <StepItem icon="check-circle" text="Reading cards" color={palette.primary} active />
+                                <StepItem icon="lock" text="Encrypting data" color={palette.primary} active loading />
+                                <StepItem icon="verified-user" text="Verifying" color={palette.icon} />
                             </View>
                         </View>
                     )}
 
-                    {/* Feature Highlights on Completion */}
+                    {/* Completion Features */}
                     {status === "completed" && (
-                        <View style={styles.featureGrid}>
-                            <FeatureItem icon="shield" text="Extra Protection" color={palette.primary} />
-                            <FeatureItem icon="flash-on" text="Faster Access" color={palette.primary} />
+                        <View style={styles.featuresSection}>
+                            <FeatureRow icon="lock" text="Bank-Level Security" color={palette.primary} />
+                            <FeatureRow icon="vpn-key" text="Protected Storage" color={palette.primary} />
+                            <FeatureRow icon="verified" text="Data Verified" color={palette.primary} />
                         </View>
                     )}
+                </View>
 
-                    {/* Actions */}
-                    <View style={styles.actions}>
-                        {status === "ready" && (
-                            <>
-                                <AppButton
-                                    title="Update Everything"
-                                    onPress={handleMigrate}
-                                    icon="rocket-launch"
-                                    iconLibrary="material"
-                                    fullWidth
-                                />
-                                <AppButton
-                                    title="Start Fresh Instead"
-                                    onPress={handleFreshSetup}
-                                    variant="secondary"
-                                    fullWidth
-                                />
-                            </>
-                        )}
-
-                        {status === "completed" && (
-                            <AppButton
-                                title="Go to My Cards"
-                                onPress={onComplete}
-                                icon="arrow-forward"
-                                iconLibrary="material"
-                                fullWidth
-                            />
-                        )}
-
-                        {status === "error" && (
-                            <>
-                                <AppButton
-                                    title="Try Again"
-                                    onPress={handleMigrate}
-                                    icon="refresh"
-                                    iconLibrary="material"
-                                    fullWidth
-                                />
-                                <AppButton
-                                    title="Skip and Start Fresh"
-                                    onPress={handleFreshSetup}
-                                    variant="secondary"
-                                    fullWidth
-                                />
-                            </>
-                        )}
+                {/* Security Note */}
+                {status === "ready" && (
+                    <View style={styles.securityNote}>
+                        <MaterialIcons name="info-outline" size={16} color={palette.icon} />
+                        <ThemedText style={[styles.securityText, { color: palette.icon }]}>
+                            Your cards stay on this device. We never send them anywhere.
+                        </ThemedText>
                     </View>
-                </Animated.View>
+                )}
+            </ScrollView>
 
-                {/* Fresh Setup Confirmation Modal */}
-                <UnifiedModal
-                    visible={showFreshSetupModal}
-                    title="Start Fresh Setup?"
-                    message="This will skip migration. You will need to add your cards manually. Old cards will no longer be accessible. This action cannot be undone."
-                    type="warning"
-                    buttons={[
-                        {
-                            text: "Cancel",
-                            onPress: () => setShowFreshSetupModal(false),
-                            style: "cancel",
-                        },
-                        {
-                            text: "Start Fresh",
-                            onPress: confirmFreshSetup,
-                            style: "destructive",
-                        },
-                    ]}
-                    onRequestClose={() => setShowFreshSetupModal(false)}
-                />
-            </SafeAreaView>
-        </LinearGradient>
+            {/* Action Buttons */}
+            <View style={[
+                styles.buttonContainer,
+                {
+                    backgroundColor: palette.surface,
+                    paddingBottom: Math.max(insets.bottom, 16)
+                }
+            ]}>
+                {status === "ready" && (
+                    <>
+                        <AppButton
+                            title={`Upgrade ${cardCount} Card${cardCount !== 1 ? 's' : ''}`}
+                            onPress={handleMigrate}
+                            icon="upgrade"
+                            iconLibrary="material"
+                            fullWidth
+                        />
+                        <AppButton
+                            title="Start Fresh Instead"
+                            onPress={handleFreshSetup}
+                            variant="secondary"
+                            icon="refresh"
+                            iconLibrary="material"
+                            fullWidth
+                        />
+                    </>
+                )}
+
+                {status === "completed" && (
+                    <AppButton
+                        title="Continue to App"
+                        onPress={onComplete}
+                        icon="arrow-forward"
+                        iconLibrary="material"
+                        fullWidth
+                    />
+                )}
+
+                {status === "error" && (
+                    <>
+                        <AppButton
+                            title="Try Again"
+                            onPress={handleMigrate}
+                            icon="refresh"
+                            iconLibrary="material"
+                            fullWidth
+                        />
+                        <AppButton
+                            title="Start Fresh"
+                            onPress={handleFreshSetup}
+                            variant="secondary"
+                            fullWidth
+                        />
+                    </>
+                )}
+            </View>
+
+            {/* Fresh Setup Confirmation Modal */}
+            <UnifiedModal
+                visible={showFreshSetupModal}
+                title="Start Fresh Setup?"
+                message="This will skip migration. You will need to add your cards manually. Old cards will no longer be accessible. This action cannot be undone."
+                type="warning"
+                buttons={[
+                    {
+                        text: "Cancel",
+                        onPress: () => setShowFreshSetupModal(false),
+                        style: "cancel",
+                    },
+                    {
+                        text: "Start Fresh",
+                        onPress: confirmFreshSetup,
+                        style: "destructive",
+                    },
+                ]}
+                onRequestClose={() => setShowFreshSetupModal(false)}
+            />
+        </SafeAreaView>
     );
 }
 
@@ -304,130 +357,142 @@ function StepItem({
     loading?: boolean
 }) {
     return (
-        <View style={styles.stepItem}>
+        <View style={styles.stepRow}>
             {loading ? (
                 <ActivityIndicator size="small" color={color} />
             ) : (
-                <MaterialIcons name={icon} size={20} color={color} />
+                <MaterialIcons name={icon} size={18} color={color} />
             )}
-            <ThemedText style={[styles.stepText, { color: active ? undefined : color }]}>
+            <ThemedText style={[styles.stepLabel, { color: active ? undefined : color }]}>
                 {text}
             </ThemedText>
         </View>
     );
 }
 
-function FeatureItem({ icon, text, color }: { icon: any; text: string; color: string }) {
+function FeatureRow({ icon, text, color }: { icon: any; text: string; color: string }) {
     return (
-        <View style={styles.featureItem}>
-            <MaterialIcons name={icon} size={24} color={color} />
-            <ThemedText style={styles.featureText}>{text}</ThemedText>
+        <View style={styles.featureRow}>
+            <MaterialIcons name={icon} size={20} color={color} />
+            <ThemedText style={styles.featureLabel}>{text}</ThemedText>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     safeArea: {
         flex: 1,
-        justifyContent: 'center',
-        paddingHorizontal: 20,
-        backgroundColor: 'transparent', // Ensure no unintended background
     },
-    mainCard: {
-        borderRadius: 32,
-        padding: 30,
-        overflow: 'hidden', // Added to ensure corners are respected
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.25)',
+    scrollView: {
+        flex: 1,
     },
-    hero: {
+    scrollContent: {
+        paddingHorizontal: 16,
+        // paddingBottom is set dynamically with insets
+    },
+    iconSection: {
         alignItems: "center",
-        marginBottom: 20,
+        marginTop: 20,
+        marginBottom: 24,
     },
-    iconContainer: {
-        width: 130,
-        height: 130,
-        borderRadius: 65,
+    iconCircle: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
         justifyContent: "center",
         alignItems: "center",
-        overflow: 'hidden', // Crucial for Android rounded backgrounds
     },
-    title: {
-        textAlign: "center",
-        fontSize: 32,
-        fontWeight: "800",
+    infoCard: {
+        borderRadius: 12,
+        padding: 20,
+        marginBottom: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    infoTitle: {
+        fontSize: 20,
         marginBottom: 8,
-        lineHeight: 44, // Increased further to be safe
     },
-    subtitle: {
-        textAlign: "center",
-        fontSize: 16,
-        lineHeight: 24,
-        marginBottom: 24,
+    infoText: {
+        fontSize: 14,
+        lineHeight: 20,
+        marginBottom: 16,
     },
-    progressContainer: {
-        marginBottom: 32,
-        padding: 4, // Added slight padding
+    progressSection: {
+        marginTop: 8,
     },
-    progressHeader: {
+    progressRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        alignItems: "center", // Changed from flex-end
-        marginBottom: 12,
+        alignItems: "center",
+        marginBottom: 10,
     },
-    progressText: {
+    progressLabel: {
         fontSize: 13,
-        fontWeight: "700",
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        fontWeight: "600",
     },
     progressPercent: {
-        fontSize: 22,
-        fontWeight: "900",
+        fontSize: 18,
+        fontWeight: "bold",
     },
-    barBg: {
-        height: 8, // Thinner for a more polished look
-        borderRadius: 4,
+    progressBar: {
+        height: 6,
+        borderRadius: 3,
         overflow: "hidden",
-        marginBottom: 24,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 16,
     },
-    barFill: {
+    progressFill: {
         height: "100%",
-        borderRadius: 4,
+        borderRadius: 3,
     },
-    steps: {
-        gap: 12,
+    stepsList: {
+        gap: 10,
     },
-    stepItem: {
+    stepRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
     },
-    stepText: {
-        fontSize: 14,
+    stepLabel: {
+        fontSize: 13,
     },
-    featureGrid: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        marginBottom: 40,
-        gap: 20,
+    featuresSection: {
+        marginTop: 8,
+        gap: 12,
     },
-    featureItem: {
+    featureRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+    },
+    featureLabel: {
+        fontSize: 15,
+        fontWeight: "500",
+    },
+    securityNote: {
+        flexDirection: "row",
         alignItems: "center",
         gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: "rgba(0,0,0,0.03)",
+    },
+    securityText: {
+        fontSize: 12,
         flex: 1,
     },
-    featureText: {
-        fontSize: 14,
-        fontWeight: '600',
-        textAlign: 'center',
-    },
-    actions: {
-        gap: 16,
+    buttonContainer: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 16,
+        gap: 12,
     },
 });
