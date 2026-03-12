@@ -11,8 +11,7 @@ import AdBanner from "@/components/AdBanner";
 import CardNotFound from "@/components/CardNotFound";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
-import type { PipCardHandle } from "@/components/PipCard";
-import PipCard from "@/components/PipCard";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { CARD_TYPES } from "@/constants/cardTypes";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
@@ -20,6 +19,7 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useCards, useTimer } from "@/context/CardContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
@@ -89,20 +89,31 @@ export default function CardDetailsScreen() {
   const [cooldownActive, setCooldownActive] = useState(false);
   const cooldownActiveRef = useRef(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pipCardRef = useRef<PipCardHandle | null>(null);
-  const [renderPipCard, setRenderPipCard] = useState(false);
-  const layoutResolveRef = useRef<null | (() => void)>(null);
+  const visibleCardRef = useRef<any>(null);
+  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigation = useNavigation();
   const router = useRouter();
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    dismissible?: boolean;
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "", buttons: [] });
+  const expiryModalShownRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   const flipRotation = useSharedValue(0);
   const isFlipped = useSharedValue(false);
+  const revealButtonShake = useSharedValue(0);
 
   useEffect(() => {
     setCanUsePip(false);
     flipRotation.value = 0;
     isFlipped.value = false;
     setFlipped(false);
+    expiryModalShownRef.current = false; // Reset the ref when card changes
   }, [id]);
 
   const toggleFlip = () => {
@@ -116,37 +127,110 @@ export default function CardDetailsScreen() {
   };
 
   const openPip = useCallback(async () => {
-    if (!card) return;
+    console.log('🎬 [PiP] Button clicked - showNumber:', showNumber, 'flipped:', flipped, 'cardId:', id);
+
+    if (!showNumber) {
+      console.log('⚠️ [PiP] Card not revealed, triggering shake animation');
+      // Trigger shake animation on reveal button
+      revealButtonShake.value = withSpring(1, { damping: 8, stiffness: 100 });
+      setTimeout(() => {
+        revealButtonShake.value = withSpring(0, { damping: 8, stiffness: 100 });
+      }, 300);
+      return;
+    }
+
+    if (!card) {
+      console.error('❌ [PiP] Card data not available');
+      return;
+    }
+
+    if (flipped) {
+      console.log('⚠️ [PiP] Card is flipped, cannot capture');
+      return;
+    }
+
     try {
-      setRenderPipCard(true);
-      await new Promise<void>((resolve) => {
-        layoutResolveRef.current = resolve;
-      });
-      if (!pipCardRef.current) throw new Error("Pip card ref not mounted");
-      const frameUri = await pipCardRef.current.captureSnapshot({
+      console.log('📸 [PiP] Starting capture process...');
+
+      // Validate ref
+      if (!visibleCardRef.current) {
+        console.error('❌ [PiP] Visible card ref not available');
+        Toast.show({
+          type: "error",
+          text1: "PiP Error",
+          text2: "Card component not ready.",
+        });
+        return;
+      }
+      console.log('✅ [PiP] Visible card ref is available');
+
+      // Import and capture
+      console.log('📦 [PiP] Importing react-native-view-shot...');
+      const { captureRef } = await import("react-native-view-shot");
+      console.log('✅ [PiP] react-native-view-shot imported successfully');
+
+      console.log('📸 [PiP] Capturing card image from visible component...');
+      const frameUri = await captureRef(visibleCardRef.current as any, {
         format: "png",
         quality: 1,
+        result: "tmpfile",
       });
-      setRenderPipCard(false);
+      console.log('✅ [PiP] Image captured successfully - URI:', frameUri);
+
+      // Pass to native module
       if (PipModule && PipModule.enterPipMode) {
+        console.log('📱 [PiP] Calling native module - enterPipMode with URI:', frameUri, 'cardId:', id);
         PipModule.enterPipMode(frameUri, id);
+        console.log('✅ [PiP] Native module called successfully');
       } else {
+        console.error('❌ [PiP] Native PipModule not available');
         Toast.show({
           type: "error",
           text1: "PiP Unavailable",
           text2: "Native module not loaded.",
         });
+        return;
       }
-      setTimeout(() => {
-        FileSystem.deleteAsync(frameUri, { idempotent: true }).catch(() => { })
-      }, 1500)
+
+      // Schedule file cleanup
+      if (cleanupTimeoutRef.current) {
+        console.log('🧹 [PiP] Clearing previous cleanup timeout');
+        clearTimeout(cleanupTimeoutRef.current);
+      }
+
+      console.log('⏱️ [PiP] Scheduling file cleanup in 1.5 seconds - URI:', frameUri);
+      cleanupTimeoutRef.current = setTimeout(() => {
+        console.log('🧹 [PiP] Executing file cleanup - URI:', frameUri);
+        FileSystem.deleteAsync(frameUri, { idempotent: true })
+          .then(() => {
+            console.log('✅ [PiP] File deleted successfully - URI:', frameUri);
+          })
+          .catch((err) => {
+            console.log('ℹ️ [PiP] File deletion error (ignored) - URI:', frameUri, 'Error:', err);
+          });
+      }, 1500);
+
+      console.log('✅ [PiP] PiP capture flow completed successfully');
     } catch (err) {
-      setRenderPipCard(false);
-      console.error("PiP Error:", err);
+      console.error('❌ [PiP] Error during capture:', err);
+      console.error('❌ [PiP] Error details:', {
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      });
     }
-  }, [card, id]);
+  }, [card, id, showNumber, flipped, revealButtonShake]);
 
   const handleEdit = useCallback(() => {
+    console.log('Edit button clicked, showNumber:', showNumber);
+    if (!showNumber) {
+      console.log('Card not revealed, triggering shake animation');
+      // Trigger shake animation on reveal button
+      revealButtonShake.value = withSpring(1, { damping: 8, stiffness: 100 });
+      setTimeout(() => {
+        revealButtonShake.value = withSpring(0, { damping: 8, stiffness: 100 });
+      }, 300);
+      return;
+    }
     router.push({
       pathname: "/add-card",
       params: {
@@ -161,18 +245,34 @@ export default function CardDetailsScreen() {
         defaultCobrandName: card.cobrandName,
         defaultCardUser: card.cardUser,
         defaultDominantColor: card.dominantColor,
+        // Only pass cardExpiresAt for "other" cards
+        cardExpiresAt: card.cardUser === "other" && card.cardExpiresAt ? card.cardExpiresAt.toString() : undefined,
         fromEdit: "true",
       },
     });
-  }, [router, id, card]);
+  }, [router, id, card, showNumber, revealButtonShake]);
 
   useFocusEffect(
     React.useCallback(() => {
       navigation.setOptions({
         title: "Card Details",
+        gestureEnabled: false, // Disable back gesture
       });
     }, [navigation])
   );
+
+  // Intercept back navigation to always go to home
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Always prevent default back behavior and navigate to home instead
+      if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+        e.preventDefault();
+        router.replace("/");
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, router]);
 
   const loadCard = React.useCallback(async () => {
     try {
@@ -287,14 +387,109 @@ export default function CardDetailsScreen() {
     });
   };
 
+  // Countdown timer for imported cards (other's cards) that are about to expire
+  const cardExpiresAtNum = card?.cardExpiresAt ? parseInt(card.cardExpiresAt.toString()) : null;
+  // Ensure we're working with seconds (Unix timestamp), not milliseconds
+  // If the value is > 10 billion, it's likely in milliseconds, so convert to seconds
+  const normalizedCardExpiresAt = cardExpiresAtNum && cardExpiresAtNum > 10000000000
+    ? Math.floor(cardExpiresAtNum / 1000)
+    : cardExpiresAtNum;
+
+  const { isExpired: cardIsExpired } = useCountdown(normalizedCardExpiresAt);
+
+  // Trigger alert when card expiry timer reaches zero
+  useEffect(() => {
+    if (cardIsExpired && !expiryModalShownRef.current) {
+      expiryModalShownRef.current = true;
+      console.log("🔔 Card expired, hiding details and showing alert");
+
+      // Hide card if it's in reveal state (same as hide/reveal button functionality)
+      if (showNumber) {
+        setShowNumber(false);
+        setCanUsePip(false);
+        setIsRevealed(false);
+
+        // Revert to masked card from context
+        const maskedCard = cards.find((c) => c.id === id);
+        if (maskedCard) {
+          setCard(maskedCard);
+        }
+      }
+
+      const newAlertConfig = {
+        title: "Card Expired",
+        message: "This card has expired and is no longer available",
+        type: "error" as const,
+        dismissible: false,
+        buttons: [
+          {
+            text: "Go to Home",
+            style: "default" as const,
+            onPress: () => {
+              console.log("🏠 Going to home");
+              if (isMountedRef.current) {
+                setAlertVisible(false);
+              }
+              router.push("/");
+            },
+          },
+        ],
+      };
+
+      console.log("📋 Setting alert config:", newAlertConfig);
+      setAlertConfig(newAlertConfig);
+
+      if (isMountedRef.current) {
+        console.log("✅ Setting alert visible to true");
+        setAlertVisible(true);
+      }
+    }
+  }, [cardIsExpired, router, showNumber, cards, id]);
+
+  // Cleanup mounted ref on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const handleDeviceLock = async () => {
+    // Check if card is expired
+    if (cardIsExpired) {
+      console.log("⏰ [PiP] Card is expired, showing expiry alert");
+      const newAlertConfig = {
+        title: "Card Expired",
+        message: "This card has expired and is no longer available",
+        type: "error" as const,
+        dismissible: false,
+        buttons: [
+          {
+            text: "Go to Home",
+            style: "default" as const,
+            onPress: () => {
+              console.log("🏠 [PiP] Going to home");
+              if (isMountedRef.current) {
+                setAlertVisible(false);
+              }
+              router.push("/");
+            },
+          },
+        ],
+      };
+      setAlertConfig(newAlertConfig);
+      setAlertVisible(true);
+      return;
+    }
+
     if (showNumber) {
+      console.log('🔒 [PiP] Hiding card numbers - cardId:', id);
       setShowNumber(false);
       setCanUsePip(false);
 
       // Revert to masked card from context
       const maskedCard = cards.find((c) => c.id === id);
       if (maskedCard) {
+        console.log('✅ [PiP] Card hidden and reverted to masked version');
         setCard(maskedCard);
         setIsRevealed(false);
       }
@@ -331,14 +526,19 @@ export default function CardDetailsScreen() {
   };
 
   const performRevealAndShow = async () => {
+    console.log('🔓 [PiP] Performing reveal and show - cardId:', id);
+
     // If card is not revealed yet, reveal it first
     if (!isRevealed) {
+      console.log('🔓 [PiP] Card not yet revealed, fetching unmasked data...');
       try {
         const revealedCard = await revealCard(id);
         if (revealedCard) {
+          console.log('✅ [PiP] Card revealed successfully');
           setCard(revealedCard);
           setIsRevealed(true);
         } else {
+          console.error('❌ [PiP] Failed to reveal card - no data returned');
           showAlert({
             title: "Error",
             message: "Failed to reveal card details. Please try again.",
@@ -347,7 +547,7 @@ export default function CardDetailsScreen() {
           return;
         }
       } catch (error) {
-        console.error("Failed to reveal card:", error);
+        console.error("❌ [PiP] Failed to reveal card:", error);
         showAlert({
           title: "Error",
           message: "Failed to reveal card details. Please try again.",
@@ -355,14 +555,28 @@ export default function CardDetailsScreen() {
         });
         return;
       }
+    } else {
+      console.log('✅ [PiP] Card already revealed');
     }
 
     // Show the card numbers
+    console.log('👁️ [PiP] Showing card numbers - canUsePip will be set to true');
     setShowNumber(true);
     setCanUsePip(true);
+    console.log('✅ [PiP] Card revealed and ready for PiP');
   };
 
   const handleCopy = async () => {
+    console.log('Copy button clicked, showNumber:', showNumber);
+    if (!showNumber) {
+      console.log('Card not revealed, triggering shake animation');
+      // Trigger shake animation on reveal button
+      revealButtonShake.value = withSpring(1, { damping: 8, stiffness: 100 });
+      setTimeout(() => {
+        revealButtonShake.value = withSpring(0, { damping: 8, stiffness: 100 });
+      }, 300);
+      return;
+    }
     if (!card?.cardNumber) return;
     try {
       // Copy the masked card number with X's instead of asterisks
@@ -372,18 +586,20 @@ export default function CardDetailsScreen() {
     } catch (err) { console.error(err); }
   };
 
-  const handleShare = useCallback(() => {
-    router.push({
-      pathname: "/share-card/share",
-      params: { cardId: id },
-    });
-  }, [router, id]);
-
   useEffect(() => {
+    console.log('📱 [PiP] Card Details Screen mounted - cardId:', id);
     return () => {
-      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+      console.log('📱 [PiP] Card Details Screen unmounting - cardId:', id);
+      if (cooldownTimerRef.current) {
+        console.log('🧹 [PiP] Clearing cooldown timer on unmount');
+        clearTimeout(cooldownTimerRef.current);
+      }
+      if (cleanupTimeoutRef.current) {
+        console.log('🧹 [PiP] Clearing cleanup timeout on unmount');
+        clearTimeout(cleanupTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [id]);
 
   const frontAnimatedStyle = useAnimatedStyle(() => {
     const rotateValue = interpolate(flipRotation.value, [0, 180], [0, 180]);
@@ -410,6 +626,38 @@ export default function CardDetailsScreen() {
       top: 0, left: 0, right: 0,
     };
   });
+
+  const revealButtonAnimatedStyle = useAnimatedStyle(() => {
+    // If card is not revealed, add a continuous pulsing animation
+    const pulseValue = !showNumber ? interpolate(revealButtonShake.value, [0, 1], [1, 1.15]) : 1;
+    return {
+      transform: [
+        { scale: pulseValue }
+      ],
+    };
+  });
+
+  // Continuous pulsing animation when card is not revealed
+  useEffect(() => {
+    if (!showNumber) {
+      // Start continuous pulsing with interval
+      let isAnimatingUp = true;
+      const interval = setInterval(() => {
+        if (isAnimatingUp) {
+          revealButtonShake.value = withSpring(1, { damping: 4, stiffness: 100 });
+          isAnimatingUp = false;
+        } else {
+          revealButtonShake.value = withSpring(0, { damping: 4, stiffness: 100 });
+          isAnimatingUp = true;
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    } else {
+      // Stop animation and reset
+      revealButtonShake.value = 0;
+    }
+  }, [showNumber, revealButtonShake]);
 
   if (!card && hasAttemptedLoad) return <CardNotFound />;
 
@@ -439,12 +687,21 @@ export default function CardDetailsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.surface }]}>
-      <Hero title="Card Details" subtitle="Secure View" showBackButton onBack={() => router.back()} />
+      <Hero title="Card Details" subtitle="Secure View" showBackButton onBack={() => router.replace("/")} />
       <View style={styles.contentContainer}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.cardContainerWrapper}>
             <Pressable onPress={toggleFlip}>
-              <Animated.View style={[styles.cardFront, frontAnimatedStyle, { backgroundColor: cardColor }]}>
+              <Animated.View
+                ref={(ref) => {
+                  visibleCardRef.current = ref;
+                  if (ref) {
+                    console.log('✅ [PiP] Visible card ref attached - ready for capture');
+                  }
+                }}
+                collapsable={false}
+                style={[styles.cardFront, frontAnimatedStyle, { backgroundColor: cardColor }]}
+              >
                 <View style={styles.cardHeader}>
                   <ThemedText style={[styles.bankName, { color: contentColor, textShadowColor: isDarkCard ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>
                     {card.bank}
@@ -535,14 +792,16 @@ export default function CardDetailsScreen() {
           </View>
 
           <View style={styles.actionRow}>
-            <Pressable style={styles.actionButton} onPress={handleDeviceLock}>
-              <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
-                <Ionicons name={!showNumber ? "eye-off-outline" : "eye-outline"} size={24} color="white" />
-              </View>
-              <ThemedText style={styles.actionLabel}>
-                {showNumber ? "Hide" : "Reveal"}
-              </ThemedText>
-            </Pressable>
+            <Animated.View style={revealButtonAnimatedStyle}>
+              <Pressable style={styles.actionButton} onPress={handleDeviceLock}>
+                <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
+                  <Ionicons name={!showNumber ? "eye-off-outline" : "eye-outline"} size={24} color="white" />
+                </View>
+                <ThemedText style={styles.actionLabel}>
+                  {showNumber ? "Hide" : "Reveal"}
+                </ThemedText>
+              </Pressable>
+            </Animated.View>
             <Pressable style={[styles.actionButton, (!showNumber || flipped) && { opacity: 0.5 }]} onPress={handleCopy} disabled={!showNumber || flipped}>
               <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
                 <Ionicons name="copy-outline" size={24} color="white" />
@@ -658,11 +917,16 @@ export default function CardDetailsScreen() {
           <ThemedText style={styles.note}>Unique ID: {id}</ThemedText>
         </ScrollView>
       </View>
-      {renderPipCard && (
-        <View collapsable={false} pointerEvents="none" renderToHardwareTextureAndroid needsOffscreenAlphaCompositing style={{ position: "absolute", top: 0, left: 0, opacity: 0.01, width: 320, height: 200, backgroundColor: "#fff" }} onLayout={() => { if (layoutResolveRef.current) { layoutResolveRef.current(); layoutResolveRef.current = null; } }}>
-          <PipCard ref={pipCardRef} card={card} showNumber={showNumber} />
-        </View>
-      )}
+
+      <UnifiedModal
+        visible={alertVisible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        buttons={alertConfig.buttons}
+        dismissible={alertConfig.dismissible !== false}
+        type={alertConfig.type}
+        onRequestClose={() => setAlertVisible(false)}
+      />
 
       <AdBanner />
     </SafeAreaView>

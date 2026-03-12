@@ -1,6 +1,6 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRScanSection from "@/components/QRScanSection";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
@@ -8,9 +8,10 @@ import { isSessionValid } from "@/utils/session";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Animated, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 
@@ -24,7 +25,13 @@ export default function ShareScreen() {
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
     const scanLineAnimation = useRef(new Animated.Value(0)).current;
     const [alertVisible, setAlertVisible] = useState(false);
-    const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+    const permissionDeniedRef = useRef(false);
+    const [alertConfig, setAlertConfig] = useState<{
+        title: string;
+        message: string;
+        buttons?: UnifiedModalButton[];
+        type?: "default" | "error" | "warning" | "success";
+    }>({ title: "", message: "" });
 
     const handleBackAction = useCallback(() => {
         if (isScanning) {
@@ -60,31 +67,58 @@ export default function ShareScreen() {
                 return;
             }
 
-            // If we are not scanning, we allow the removal but ensure we go to profile
-            // if this was a pop action (gesture). If it's already a replace, we let it be.
-            if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
-                e.preventDefault();
-                router.replace("/profile");
-            }
+            // If we are not scanning, allow the navigation to proceed
+            // The handleBackAction will be called from the header button
         });
 
         return unsubscribe;
-    }, [navigation, isScanning, router, scanLineAnimation]);
+    }, [navigation, isScanning, scanLineAnimation]);
 
     const handleScanQR = useCallback(async () => {
         try {
+            console.log('Requesting camera permissions...');
             const { status } = await Camera.requestCameraPermissionsAsync();
+            console.log('Camera permission status:', status);
 
             if (status !== "granted") {
-                setAlertConfig({
-                    title: "Camera permission denied",
-                    message: "Please enable camera permissions in settings to scan QR codes",
-                    buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-                });
-                setAlertVisible(true);
+                // If permission was already denied once, show modal with "Open Settings"
+                if (permissionDeniedRef.current) {
+                    console.log('Permission denied again - showing modal with Open Settings');
+                    setAlertConfig({
+                        title: "Camera permission denied",
+                        message: "Camera permission is required to scan QR codes. Please enable it in settings.",
+                        buttons: [
+                            {
+                                text: "Open Settings",
+                                style: "default",
+                                onPress: () => {
+                                    setAlertVisible(false);
+                                    if (Platform.OS === 'ios') {
+                                        Linking.openURL('app-settings:');
+                                    } else {
+                                        Linking.openSettings();
+                                    }
+                                }
+                            },
+                            {
+                                text: "Cancel",
+                                style: "cancel",
+                                onPress: () => setAlertVisible(false)
+                            }
+                        ]
+                    });
+                    setAlertVisible(true);
+                } else {
+                    // First time denied - just mark it
+                    console.log('Permission denied first time');
+                    permissionDeniedRef.current = true;
+                }
                 return;
             }
 
+            // Permission granted - reset the ref and start scanning
+            permissionDeniedRef.current = false;
+            console.log('Starting camera scan...');
             setIsScanning(true);
 
             // Start scan line animation
@@ -98,13 +132,7 @@ export default function ShareScreen() {
                 })
             ).start();
         } catch (error) {
-            console.error('Error requesting camera permissions:', error);
-            setAlertConfig({
-                title: "Error",
-                message: "Failed to access camera",
-                buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-            });
-            setAlertVisible(true);
+            console.error('Error in handleScanQR:', error);
         }
     }, [scanLineAnimation]);
 
@@ -130,7 +158,12 @@ export default function ShareScreen() {
                     console.log("✅ QR decoded from image:", qrResult.data);
 
                     // Parse and validate the QR
-                    const sessionPayload = parseSessionQRString(qrResult.data);
+                    let sessionPayload;
+                    try {
+                        sessionPayload = parseSessionQRString(qrResult.data);
+                    } catch (parseError) {
+                        throw new Error("This QR code is not a valid session QR code. Please use a QR code generated from the Share Card screen.");
+                    }
 
                     if (!sessionPayload) {
                         throw new Error("Invalid QR code format");
@@ -150,7 +183,7 @@ export default function ShareScreen() {
 
                     // Navigate to select card screen with session data
                     router.push({
-                        pathname: "/share-card/select-card",
+                        pathname: "./select-card",
                         params: {
                             sessionId: sessionPayload.sessionId,
                             receiverPublicKey: sessionPayload.receiverPublicKey,
@@ -214,7 +247,7 @@ export default function ShareScreen() {
 
             // Navigate to select card screen with session data
             router.push({
-                pathname: "/share-card/select-card",
+                pathname: "./select-card",
                 params: {
                     sessionId: sessionPayload.sessionId,
                     receiverPublicKey: sessionPayload.receiverPublicKey,
@@ -288,11 +321,12 @@ export default function ShareScreen() {
                 </ScrollView>
             </SafeAreaView>
 
-            <AlertBox
+            <UnifiedModal
                 visible={alertVisible}
                 title={alertConfig.title}
                 message={alertConfig.message}
                 buttons={alertConfig.buttons}
+                type={alertConfig.type}
                 onRequestClose={() => setAlertVisible(false)}
             />
         </>

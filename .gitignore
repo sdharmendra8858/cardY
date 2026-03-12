@@ -56,3 +56,6 @@ android/local.properties
 !android/gradle.properties
 !android/gradle/wrapper/
 !android/settings.gradle
+
+
+.kiro

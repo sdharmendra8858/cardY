@@ -1,12 +1,14 @@
-import AlertBox from "@/components/AlertBox";
 import Hero from "@/components/Hero";
 import QRScanSection from "@/components/QRScanSection";
 import { ThemedText } from "@/components/themed-text";
+import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   decryptCardFromQR,
   validateQRPayload,
 } from "@/utils/cardSharing";
+import { getCardType } from "@/utils/CardType";
+import { maskAndFormatCardNumber } from "@/utils/mask";
 import { parseCardQRString, parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
 import {
@@ -18,9 +20,10 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as Linking from "expo-linking";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Animated, AppState, Easing, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Animated, AppState, Easing, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useCards } from "../../context/CardContext";
@@ -30,27 +33,59 @@ export default function ImportCardScreen() {
   const palette = Colors[scheme];
   const navigation = useNavigation();
   const router = useRouter();
-  const { addCard } = useCards();
+  const { addCard, cards } = useCards();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const scanLineAnimation = useRef(new Animated.Value(0)).current;
   const [alertVisible, setAlertVisible] = useState(false);
-  const [alertConfig, setAlertConfig] = useState<{ title: string; message: string; buttons?: any[] }>({ title: "", message: "" });
+  const permissionDeniedRef = useRef(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    buttons?: UnifiedModalButton[];
+    type?: "default" | "error" | "warning" | "success";
+  }>({ title: "", message: "" });
+
+  const handleBackAction = useCallback(() => {
+    if (isScanning) {
+      setIsScanning(false);
+      scanLineAnimation.stopAnimation();
+      return true;
+    }
+    router.replace("/profile");
+    return true;
+  }, [isScanning, router, scanLineAnimation]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "Import Card",
       headerLeft: () => (
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBackAction}
           style={{ marginLeft: 8, padding: 4 }}
         >
           <MaterialIcons name="close" size={24} color={palette.text} />
         </TouchableOpacity>
       ),
     });
-  }, [navigation, palette.text, router]);
+  }, [navigation, palette.text, handleBackAction]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // If the user is trying to leave and we are scanning, stop scanning instead
+      if (isScanning) {
+        e.preventDefault();
+        setIsScanning(false);
+        scanLineAnimation.stopAnimation();
+        return;
+      }
+
+      // If we are not scanning, allow the navigation to proceed
+    });
+
+    return unsubscribe;
+  }, [navigation, isScanning, router, scanLineAnimation]);
 
   // Clean up any active sessions when app goes to background
   useEffect(() => {
@@ -65,24 +100,63 @@ export default function ImportCardScreen() {
     return () => subscription.remove();
   }, []);
 
+  const requestCameraPermission = useCallback(async () => {
+    console.log('Requesting camera permissions...');
+    try {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      console.log('Camera permission status:', status);
+      return status === "granted";
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
+      return false;
+    }
+  }, []);
+
   const handleScanQR = useCallback(async () => {
     console.log('handleScanQR called');
 
     try {
-      console.log('Requesting camera permissions...');
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      console.log('Camera permission status:', status);
+      const permissionGranted = await requestCameraPermission();
+      console.log('Permission granted:', permissionGranted);
 
-      if (status !== "granted") {
-        setAlertConfig({
-          title: "Camera permission denied",
-          message: "Please enable camera permissions in settings to scan QR codes",
-          buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-        });
-        setAlertVisible(true);
+      if (!permissionGranted) {
+        // If permission was already denied once, show modal with "Open Settings"
+        if (permissionDeniedRef.current) {
+          console.log('Permission denied again - showing modal with Open Settings');
+          setAlertConfig({
+            title: "Camera permission denied",
+            message: "Camera permission is required to scan QR codes. Please enable it in settings.",
+            buttons: [
+              {
+                text: "Open Settings",
+                style: "default",
+                onPress: () => {
+                  setAlertVisible(false);
+                  if (Platform.OS === 'ios') {
+                    Linking.openURL('app-settings:');
+                  } else {
+                    Linking.openSettings();
+                  }
+                }
+              },
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => setAlertVisible(false)
+              }
+            ]
+          });
+          setAlertVisible(true);
+        } else {
+          // First time denied - just mark it
+          console.log('Permission denied first time');
+          permissionDeniedRef.current = true;
+        }
         return;
       }
 
+      // Permission granted - reset the ref and start scanning
+      permissionDeniedRef.current = false;
       console.log('Starting camera scan...');
       setIsScanning(true);
 
@@ -97,15 +171,9 @@ export default function ImportCardScreen() {
         })
       ).start();
     } catch (error) {
-      console.error('Error requesting camera permissions:', error);
-      setAlertConfig({
-        title: "Error",
-        message: "Failed to access camera",
-        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-      });
-      setAlertVisible(true);
+      console.error('Error in handleScanQR:', error);
     }
-  }, [scanLineAnimation]);
+  }, [scanLineAnimation, requestCameraPermission]);
 
 
 
@@ -166,6 +234,30 @@ export default function ImportCardScreen() {
             );
             console.log("✅ Card data decrypted (spec 10):", cardData);
 
+            // Detect card type from card number BIN
+            const detectedCardType = getCardType(cardData.cardNumber);
+            console.log("🏦 Detected card type:", detectedCardType);
+
+            // Check if card already exists in the "other" section
+            const maskedCardNumber = maskAndFormatCardNumber(cardData.cardNumber);
+
+            const cardExists = cards.some(
+              (card) =>
+                card.cardUser === "other" &&
+                card.cardNumber === maskedCardNumber
+            );
+
+            if (cardExists) {
+              setIsProcessing(false);
+              setAlertConfig({
+                title: "Card Already Added",
+                message: "This card is already in your collection.",
+                buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+              });
+              setAlertVisible(true);
+              return;
+            }
+
             // Map decrypted card data to Card format
             const cardToImport = {
               id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
@@ -179,6 +271,7 @@ export default function ImportCardScreen() {
               cardUser: "other" as "self" | "other",
               dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
               bank: cardData.bank || "", // Use shared bank or empty
+              cardType: detectedCardType || undefined, // Detect and save card type from BIN
               cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
               isPinned: false, // Imported cards always start unpinned (device-specific property)
             };
@@ -205,13 +298,9 @@ export default function ImportCardScreen() {
                   onPress: () => router.replace(`/card-details/${cardToImport.id}`),
                 },
                 {
-                  text: "View All Cards",
-                  onPress: () => router.replace("/"),
-                },
-                {
-                  text: "Done",
+                  text: "OK",
                   style: "cancel",
-                  onPress: () => router.replace("/profile"),
+                  onPress: () => router.replace("/"),
                 },
               ]
             });
@@ -325,9 +414,6 @@ export default function ImportCardScreen() {
         const qrResult = await decodeQRFromImage(result.assets[0].uri);
 
         if (qrResult.success && qrResult.data) {
-          console.log('✅ QR Code decoded successfully!');
-          console.log('📋 QR Code data:', qrResult.data);
-
           // Process the decoded QR code data using existing handler
           handleBarCodeScanned({ type: 'QR', data: qrResult.data });
         } else {
@@ -438,11 +524,12 @@ export default function ImportCardScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <AlertBox
+      <UnifiedModal
         visible={alertVisible}
         title={alertConfig.title}
         message={alertConfig.message}
         buttons={alertConfig.buttons}
+        type={alertConfig.type}
         onRequestClose={() => setAlertVisible(false)}
       />
     </>
