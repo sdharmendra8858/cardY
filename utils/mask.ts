@@ -14,8 +14,16 @@ export function maskAndFormatCardNumber(cardNumber: string): string {
   const visibleCount = 4;
   const maskedArray = clean
     .split("")
-    .map((d, i) => (i < clean.length - visibleCount ? "X" : d));
+    .map((d, i) => (i < clean.length - visibleCount ? "x" : d));
 
   const maskedString = maskedArray.join("");
   return formatCardNumber(maskedString);
+}
+
+/**
+ * Masks expiry date to "xx/xx"
+ */
+export function maskExpiry(expiry?: string): string {
+  if (!expiry) return "xx/xx";
+  return "xx/xx";
 }

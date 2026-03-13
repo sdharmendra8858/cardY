@@ -5,28 +5,29 @@
  * Does NOT modify original secureStorage.ts
  */
 
-import { maskAndFormatCardNumber } from "./mask";
+import { maskAndFormatCardNumber, maskExpiry } from "./mask";
 import { getFallbackCard, readFallbackCards } from "./migration";
+import { normalizeBankName } from "./normalizeBankName";
 import {
-    addCard,
-    Card,
-    clearCards,
-    getMaskedCards as getOriginalMaskedCards,
-    getUnmaskedCards as getOriginalUnmaskedCards,
-    hasCards,
-    revealCard as originalRevealCard,
-    removeCard,
-    setCards,
-    STORAGE_KEY_MASKED,
-    STORAGE_KEY_UNMASKED,
-    toggleCardPin,
-    updateCard,
+  addCard,
+  Card,
+  clearCards,
+  getMaskedCards as getOriginalMaskedCards,
+  getUnmaskedCards as getOriginalUnmaskedCards,
+  hasCards,
+  revealCard as originalRevealCard,
+  removeCard,
+  setCards,
+  STORAGE_KEY_MASKED,
+  STORAGE_KEY_UNMASKED,
+  toggleCardPin,
+  updateCard,
 } from "./secureStorage";
 
 // Re-export everything from original
 export {
-    addCard, clearCards, hasCards, removeCard, setCards, STORAGE_KEY_MASKED,
-    STORAGE_KEY_UNMASKED, toggleCardPin, updateCard
+  addCard, clearCards, hasCards, removeCard, setCards, STORAGE_KEY_MASKED,
+  STORAGE_KEY_UNMASKED, toggleCardPin, updateCard
 };
 
 // Use Card type from original
@@ -46,12 +47,13 @@ export async function getMaskedCards(): Promise<Card[]> {
       
       if (fallbackCards.length > 0) {
         if (__DEV__) console.log(`✅ Fallback: Returning ${fallbackCards.length} cards from old storage`);
-        // Return masked version of fallback cards
+        // Return masked version of fallback cards with normalized bank names
         return fallbackCards.map((card) => ({
           ...card,
           cardNumber: maskAndFormatCardNumber(card.cardNumber),
           cvv: undefined,
-          expiry: undefined,
+          expiry: maskExpiry(card.expiry),
+          bank: normalizeBankName(card.bank),
         }));
       }
     }
@@ -70,7 +72,8 @@ export async function getMaskedCards(): Promise<Card[]> {
           ...card,
           cardNumber: maskAndFormatCardNumber(card.cardNumber),
           cvv: undefined,
-          expiry: undefined,
+          expiry: maskExpiry(card.expiry),
+          bank: normalizeBankName(card.bank),
         }));
       }
     } catch (fallbackError) {

@@ -6,6 +6,7 @@
  */
 
 import { BANK_OPTIONS } from "@/constants/banks";
+import { normalizeBankName } from "../normalizeBankName";
 import { NewCard, OldCard } from "./types";
 
 /* -------------------------------------------------------------------------- */
@@ -80,7 +81,10 @@ export function transformCard(oldCard: OldCard): NewCard {
   const cardType = detectCardType(oldCard.cardNumber);
 
   // Match bank name to new bank list (or keep original if no match)
-  const bank = matchBankName(oldCard.bank);
+  const matchedBank = matchBankName(oldCard.bank);
+  
+  // Normalize bank name to Title Case
+  const bank = normalizeBankName(matchedBank);
 
   // Transform to new format
   const newCard: NewCard = {
@@ -96,7 +100,7 @@ export function transformCard(oldCard: OldCard): NewCard {
     cardUser: oldCard.cardUser,
     dominantColor: oldCard.dominantColor,
     
-    // Use matched bank name (or original if no match)
+    // Use normalized bank name
     bank,
 
     // Preserve imported card expiry info
@@ -111,7 +115,7 @@ export function transformCard(oldCard: OldCard): NewCard {
 
   if (__DEV__) {
     const isMatched = BANK_OPTIONS.some(
-      (option) => option.value.toUpperCase() === bank?.toUpperCase()
+      (option) => option.value.toUpperCase() === matchedBank?.toUpperCase()
     );
     console.log(`🔄 Transformed card ${oldCard.id}:`, {
       cardType,
