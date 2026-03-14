@@ -1,16 +1,16 @@
-// components/CardItem.tsx
+import { useCardPinning } from "@/context/CardPinningContext";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { formatCardNumber } from "../utils/formatCardNumber";
 import ExpiryBadge from "./ExpiryBadge";
+import PinIcon from "./PinIcon";
 
 type CardItemProps = {
   id: string;
   cardName: string;
   cardNumber: string;
   cardHolder: string;
-  onDelete?: (id: string) => void;
   onReveal?: (id: string) => void;
   cardKind?: "credit" | "debit";
   cobrandName?: string;
@@ -19,6 +19,8 @@ type CardItemProps = {
   cardExpiresAt?: number;
   expiry?: string;
   isExpiring?: boolean;
+  isPinned?: boolean;
+  onPinChange?: (cardId: string, isPinned: boolean) => void;
 };
 
 export default function CardItem({
@@ -26,18 +28,26 @@ export default function CardItem({
   cardNumber,
   cardName,
   cardHolder,
-  onDelete,
   onReveal,
   cardKind,
   cobrandName,
-  cardUser,
+  cardUser = "self",
   dominantColor = "#4b7bec",
   cardExpiresAt,
   expiry,
   isExpiring = false,
+  isPinned: initialIsPinned = false,
+  onPinChange,
 }: CardItemProps) {
   const router = useRouter();
+  const { togglePin, canPin } = useCardPinning();
+  const [isPinned, setIsPinned] = useState(initialIsPinned);
   const fadeAnim = React.useRef(new Animated.Value(1)).current;
+
+  // Sync isPinned prop to local state whenever it changes
+  useEffect(() => {
+    setIsPinned(initialIsPinned);
+  }, [initialIsPinned]);
 
   // Calculate expiry status
   const isExpired = cardExpiresAt ? Math.floor(Date.now() / 1000) > cardExpiresAt : false;
@@ -57,9 +67,25 @@ export default function CardItem({
   // Format card number properly with spaces and X's
   const displayCardNumber = formatCardNumber(cardNumber.replace(/\*/g, 'X'));
 
+  const handlePin = () => {
+    const newPinnedState = !isPinned;
+    setIsPinned(newPinnedState);
+    togglePin(id);
+    if (onPinChange) {
+      onPinChange(id, newPinnedState);
+    }
+  };
 
   return (
     <Animated.View style={[styles.cardContainer, { opacity: fadeAnim }]}>
+      {canPin(cardUser as "self" | "shared" | "other") && (
+        <Pressable style={styles.pinButton} onPress={handlePin}>
+          <View style={isPinned ? { transform: [{ rotate: "45deg" }] } : undefined}>
+            <PinIcon filled={isPinned} size={20} color="#fff" />
+          </View>
+        </Pressable>
+      )}
+
       {/* Main card pressable */}
       <Pressable
         onPress={() => router.push(`/card-details/${encodeURIComponent(id)}`)}
@@ -119,14 +145,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#4b7bec",
     padding: 12,
     borderRadius: 12,
-    minHeight: 140,
     justifyContent: "space-between",
+  },
+  pinButton: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    zIndex: 2,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    borderRadius: 20,
+    padding: 6,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
   },
   cardName: { color: "white", fontSize: 18, fontWeight: "bold" },
   badges: {
