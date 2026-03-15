@@ -16,9 +16,10 @@ import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Keyboard, StyleSheet, View } from "react-native";
+import { Keyboard, Platform, StyleSheet, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
+import NfcManager from "react-native-nfc-manager";
 import CardForm from "./components/CardForm";
 import NfcScanButton from "./components/NfcScanButton";
 import ScanButton from "./components/ScanButton";
@@ -41,6 +42,8 @@ export default function AddCardScreen() {
   }>({ title: "", message: "" });
   const expiryModalShownRef = useRef(false);
   const isMountedRef = useRef(true);
+  const [isNfcSupported, setIsNfcSupported] = useState(false);
+  const [isScanSupported, setIsScanSupported] = useState(true);
 
   const {
     from,
@@ -172,6 +175,7 @@ export default function AddCardScreen() {
 
   const isEditMode = fromEdit === "true" && !!editId;
   const hideScanButton = fromExtract === "true" || isEditMode;
+  const hideActionButtons = hideScanButton || (!isScanSupported && !isNfcSupported);
 
   // Load existing card data for edit mode
   useEffect(() => {
@@ -192,6 +196,40 @@ export default function AddCardScreen() {
       loadCardForEdit();
     }
   }, [isEditMode, editId]);
+
+  // Check NFC support
+  useEffect(() => {
+    const checkNfcSupport = async () => {
+      if (Platform.OS === 'ios') {
+        // Direct EMV scanning is generally not supported on iOS for 3rd party apps
+        setIsNfcSupported(false);
+        return;
+      }
+      try {
+        const supported = await NfcManager.isSupported();
+        setIsNfcSupported(!!supported);
+      } catch (e) {
+        setIsNfcSupported(false);
+      }
+    };
+    checkNfcSupport();
+  }, []);
+
+  // Check Scan (ML Kit) support
+  useEffect(() => {
+    const checkScanSupport = () => {
+      const version = Platform.Version;
+      if (Platform.OS === 'ios') {
+        const majorVersion = parseFloat(String(version));
+        // Requirement is 15.5+
+        setIsScanSupported(majorVersion >= 15.5);
+      } else if (Platform.OS === 'android') {
+        // Platform.Version on Android is the API level (number)
+        setIsScanSupported(Number(version) >= 21);
+      }
+    };
+    checkScanSupport();
+  }, []);
 
   // Trigger alert when card expiry timer reaches zero (only in edit mode for other's cards)
   useEffect(() => {
@@ -422,15 +460,19 @@ export default function AddCardScreen() {
         nestedScrollEnabled={true}
         onScrollBeginDrag={() => Keyboard.dismiss()}
       >
-        {!hideScanButton && (
+        {!hideActionButtons && (
           <>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                <ScanButton onPress={handleScan} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <NfcScanButton onPress={handleNfcScan} />
-              </View>
+              {isScanSupported && (
+                <View style={{ flex: 1 }}>
+                  <ScanButton onPress={handleScan} />
+                </View>
+              )}
+              {isNfcSupported && (
+                <View style={{ flex: 1 }}>
+                  <NfcScanButton onPress={handleNfcScan} />
+                </View>
+              )}
             </View>
 
             <View style={styles.orSeparatorContainer}>
