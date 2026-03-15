@@ -1,12 +1,12 @@
 import {
-  decryptCards,
-  encryptCards,
-  EncryptionResult,
+    decryptCards,
+    encryptCards,
+    EncryptionResult,
 } from "@/utils/encryption/cardEncryption";
 import { deleteMasterKey } from "@/utils/encryption/masterKeyManager";
 import { maskAndFormatCardNumber, maskExpiry } from "@/utils/mask";
+import { normalizeBankName } from "@/utils/normalizeBankName";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { normalizeBankName } from "./normalizeBankName";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */

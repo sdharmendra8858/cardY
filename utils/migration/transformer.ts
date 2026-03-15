@@ -6,7 +6,7 @@
  */
 
 import { BANK_OPTIONS } from "@/constants/banks";
-import { normalizeBankName } from "../normalizeBankName";
+import { normalizeBankName } from "@/utils/normalizeBankName";
 import { NewCard, OldCard } from "./types";
 
 /* -------------------------------------------------------------------------- */

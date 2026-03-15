@@ -15,9 +15,9 @@
  * - "STATE BANK OF INDIA" → "State Bank Of India"
  * 
  * @param bankName - Bank name in any case
- * @returns Bank name in Title Case, or undefined if input is empty
+ * @returns Bank name in Title Case, or undefined if input is empty/undefined
  */
-export function normalizeBankName(bankName?: string): string | undefined {
+export function normalizeBankName(bankName?: string | null): string | undefined {
   if (!bankName || typeof bankName !== "string") {
     return undefined;
   }
@@ -43,14 +43,3 @@ export function normalizeBankName(bankName?: string): string | undefined {
   return titleCase;
 }
 
-/**
- * Normalize multiple bank names
- * 
- * @param bankNames - Array of bank names
- * @returns Array of normalized bank names (undefined values filtered out)
- */
-export function normalizeBankNames(bankNames: (string | undefined)[]): string[] {
-  return bankNames
-    .map(normalizeBankName)
-    .filter((name): name is string => name !== undefined);
-}
