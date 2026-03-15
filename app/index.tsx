@@ -1,5 +1,6 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
+import CardItem from "@/components/CardItem";
 import NoCards from "@/components/NoCards";
 import IDGridItem from "@/components/IDGridItem";
 import SwipeableCard from "@/components/SwipeableCard";
@@ -29,7 +30,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   useScreenProtection();
   const { showAlert } = useAlert();
-  const { cards: contextCards, removeCard, togglePin, refreshCards } = useCards();
+  const { cards: contextCards, togglePin, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
@@ -183,22 +184,6 @@ export default function HomeScreen() {
     }, [fetchIDs])
   );
 
-  const handleRemoveCard = React.useCallback((id: string) => {
-    showAlert({
-      title: "Remove Card",
-      message: "Are you sure you want to delete this card?",
-      buttons: [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            await removeCard(id);
-          },
-        },
-      ],
-    });
-  }, [showAlert, removeCard]);
 
   const handlePinChange = React.useCallback(async (id: string, isPinned: boolean) => {
     try {
@@ -496,12 +481,11 @@ export default function HomeScreen() {
 
   const renderCardItem = React.useCallback(({ item }: { item: any }) => (
     <View style={{ paddingHorizontal: 16 }}>
-      <SwipeableCard
+      <CardItem
         id={item.id}
         cardName={item.bank || item.cardName || `Unknown Bank`}
         cardNumber={item.cardNumber}
         cardHolder={item.cardHolder}
-        onDelete={handleRemoveCard}
         cardKind={item.cardKind}
         cobrandName={item.cobrandName}
         cardUser={item.cardUser}
@@ -513,7 +497,7 @@ export default function HomeScreen() {
         onPinChange={handlePinChange}
       />
     </View>
-  ), [handleRemoveCard, handlePinChange]);
+  ), [handlePinChange]);
 
   const renderIDItem = React.useCallback(({ item }: { item: any }) => (
     <View style={{ flex: 1, maxWidth: "50%" }}>

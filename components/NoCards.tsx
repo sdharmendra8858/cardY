@@ -12,11 +12,13 @@ const NoCards: FC<{
   showButton?: boolean;
   buttonText?: string;
   onPress?: () => void;
+  defaultCardUser?: "self" | "other";
 }> = ({
   message = "No cards listed yet.",
   showButton = true,
   buttonText = "Add Your First Card",
   onPress,
+  defaultCardUser,
 }) => {
   const router = useRouter();
   
@@ -61,7 +63,16 @@ const NoCards: FC<{
       {showButton && (
         <Pressable
           style={[styles.button, { backgroundColor: palette.primary }]}
-          onPress={handlePress}
+          onPress={() => {
+            if (onPress) {
+              onPress();
+            } else {
+              router.push({
+                pathname: "/add-card",
+                params: { defaultCardUser },
+              });
+            }
+          }}
         >
           <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
             {buttonText}

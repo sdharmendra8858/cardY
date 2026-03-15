@@ -300,9 +300,11 @@ export async function needsMigration(): Promise<boolean> {
     // SPECIAL CASE: Migration flag set but old cards exist and new storage empty
     // This means migration ran but failed to delete old cards (likely due to old deletion bug)
     if (completed && hasOldCards && newStorageEmpty) {
-      console.warn("⚠️ DETECTED: Migration flag set but old cards still exist!");
-      console.warn("⚠️ This means migration ran but failed to delete old cards.");
-      console.warn("🔄 Auto-fixing: Resetting migration flag to re-run with new deletion code...");
+      if (__DEV__) {
+        console.warn("⚠️ DETECTED: Migration flag set but old cards still exist!");
+        console.warn("⚠️ This means migration ran but failed to delete old cards.");
+        console.warn("🔄 Auto-fixing: Resetting migration flag to re-run with new deletion code...");
+      }
       
       // Reset the flag so migration runs again
       await AsyncStorage.removeItem(MIGRATION_CONFIG.STATUS_KEY);
