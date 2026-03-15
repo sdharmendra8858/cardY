@@ -7,18 +7,34 @@ import { FC } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
-const NoCards: FC<{
-  message?: string;
+const NoCards: FC<{ 
+  message?: string; 
   showButton?: boolean;
+  buttonText?: string;
+  onPress?: () => void;
   defaultCardUser?: "self" | "other";
-}> = ({ message = "No cards listed yet.", showButton = true, defaultCardUser }) => {
+}> = ({
+  message = "No cards listed yet.",
+  showButton = true,
+  buttonText = "Add Your First Card",
+  onPress,
+  defaultCardUser,
+}) => {
   const router = useRouter();
+  
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      router.push("/add-card");
+    }
+  };
 
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.surface }]}>
+    <View style={styles.container}>
       {/* SVG Illustration */}
       <Svg
         width={200}
@@ -47,15 +63,19 @@ const NoCards: FC<{
       {showButton && (
         <Pressable
           style={[styles.button, { backgroundColor: palette.primary }]}
-          onPress={() =>
-            router.push({
-              pathname: "/add-card",
-              params: { defaultCardUser },
-            })
-          }
+          onPress={() => {
+            if (onPress) {
+              onPress();
+            } else {
+              router.push({
+                pathname: "/add-card",
+                params: { defaultCardUser },
+              });
+            }
+          }}
         >
           <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
-            Add Your First Card
+            {buttonText}
           </ThemedText>
         </Pressable>
       )}
@@ -71,7 +91,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "transparent",
   },
   message: {
     fontSize: 20,

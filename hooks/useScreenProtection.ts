@@ -4,12 +4,15 @@ import { useCallback } from 'react';
 
 /**
  * Hook to prevent screen capture on a specific screen.
- * It automatically enables protection when the screen is focused
- * and disables it when the screen is blurred or unmounted.
+ * @param isEnabled Optional flag to enable or disable protection (defaults to true)
  */
-export function useScreenProtection() {
+export function useScreenProtection(isEnabled: boolean = true) {
   useFocusEffect(
     useCallback(() => {
+      if (!isEnabled) {
+        return;
+      }
+
       const enableProtection = async () => {
         try {
           await ScreenCapture.preventScreenCaptureAsync();
@@ -31,6 +34,6 @@ export function useScreenProtection() {
       return () => {
         disableProtection();
       };
-    }, [])
+    }, [isEnabled])
   );
 }

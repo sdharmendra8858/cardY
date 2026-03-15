@@ -20,7 +20,7 @@ type CardItemProps = {
   expiry?: string;
   isExpiring?: boolean;
   isPinned?: boolean;
-  onPinChange?: (cardId: string, isPinned: boolean) => void;
+  onPinChange?: (cardId: string, isPinned: boolean) => void | Promise<void>;
 };
 
 export default function CardItem({

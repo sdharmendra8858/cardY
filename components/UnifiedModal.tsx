@@ -22,11 +22,12 @@ export interface UnifiedModalButton {
 export interface UnifiedModalProps {
     visible: boolean;
     title: string;
-    message: string;
+    message?: string;
     buttons?: UnifiedModalButton[];
     dismissible?: boolean;
     onRequestClose?: () => void;
     type?: "default" | "error" | "warning" | "success";
+    children?: React.ReactNode;
 }
 
 export default function UnifiedModal({
@@ -37,6 +38,7 @@ export default function UnifiedModal({
     dismissible = true,
     onRequestClose,
     type = "default",
+    children,
 }: UnifiedModalProps) {
     const scheme = useColorScheme() ?? "light";
     const palette = Colors[scheme];
@@ -138,9 +140,18 @@ export default function UnifiedModal({
                             </View>
 
                             {/* Message */}
-                            <ThemedText style={styles.message}>
-                                {message}
-                            </ThemedText>
+                            {message && (
+                                <ThemedText style={styles.message}>
+                                    {message}
+                                </ThemedText>
+                            )}
+
+                            {/* Custom Content */}
+                            {children && (
+                                <View style={styles.customContent}>
+                                    {children}
+                                </View>
+                            )}
 
                             {/* Buttons */}
                             {safeButtons && safeButtons.length > 0 ? (
@@ -291,5 +302,9 @@ const styles = StyleSheet.create({
 
     cancelButtonText: {
         color: "#374151",
+    },
+    customContent: {
+        paddingHorizontal: 20,
+        marginBottom: 10,
     },
 });

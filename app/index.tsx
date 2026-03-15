@@ -1,6 +1,7 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
+import IDGridItem from "@/components/IDGridItem";
 import NoCards from "@/components/NoCards";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
@@ -12,12 +13,14 @@ import { Card, useCardsWithMigration as useCards } from "@/context/CardContextWi
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
+import { type Card as StorageCard } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, View } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -25,7 +28,16 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  useScreenProtection();
+  const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{ 
+    redirectToTab: "self" | "other",
+    viewMode: "cards" | "ids" 
+  }>();
+
+  const [viewMode, setViewMode] = useState<"cards" | "ids">(paramViewMode || "cards");
+  
+  // Enable screen protection only when viewing Personal IDs
+  useScreenProtection(viewMode === 'ids');
+
   const { showAlert } = useAlert();
   const { cards: contextCards, togglePin, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
@@ -38,7 +50,6 @@ export default function HomeScreen() {
     );
   }, [contextCards]);
 
-  // Always call the hook (required by React rules), but only use it when needed
   const { timerTick } = useTimer();
   const [cards, setCards] = useState<(Card & { isExpiring?: boolean })[]>([]);
 
@@ -55,7 +66,8 @@ export default function HomeScreen() {
 
   const [isAppLockEnabled, setIsAppLockEnabled] = useState(true);
   const [isCardLockEnabled, setIsCardLockEnabled] = useState(true);
-  const [activeTab, setActiveTab] = useState<"self" | "other">("self");
+  const [isIDLockEnabled, setIsIDLockEnabled] = useState(true);
+  const [activeTab, setActiveTab] = useState<"self" | "other">(redirectToTab || "self");
   const isNavigatingRef = useRef(false);
 
   const handleProfilePress = useCallback(() => {
@@ -68,16 +80,20 @@ export default function HomeScreen() {
       isNavigatingRef.current = false;
     }, 1000);
   }, [router]);
-  const { redirectToTab } = useLocalSearchParams<{ redirectToTab: "self" | "other" }>();
 
   // Handle redirection from other screens
   useEffect(() => {
     if (redirectToTab) {
       setActiveTab(redirectToTab);
     }
-  }, [redirectToTab]);
+    if (paramViewMode) {
+      setViewMode(paramViewMode);
+    }
+  }, [redirectToTab, paramViewMode]);
 
-  const [containerWidth, setContainerWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState(windowWidth - 32); // Initial guess
+  const [subContainerWidth, setSubContainerWidth] = useState(windowWidth - 32);
 
   const checkSecuritySettings = async () => {
     try {
@@ -86,18 +102,31 @@ export default function HomeScreen() {
         const parsed = JSON.parse(saved);
         setIsAppLockEnabled(parsed.appLock ?? false);
         setIsCardLockEnabled(parsed.cardLock ?? false);
+        setIsIDLockEnabled(parsed.idLock ?? false);
       } else {
         setIsAppLockEnabled(false);
         setIsCardLockEnabled(false);
+        setIsIDLockEnabled(false);
       }
     } catch {
       // ignore
     }
   };
 
+  const [ids, setIds] = useState<any[]>([]);
+
+  const fetchIDs = useCallback(async () => {
+    try {
+      const { getIDs } = await import("@/utils/idStorage");
+      const fetchedIDs = await getIDs();
+      setIds(fetchedIDs);
+    } catch (error) {
+      console.error("Failed to fetch IDs:", error);
+    }
+  }, []);
+
   // Sync context cards to local state whenever context updates
   React.useEffect(() => {
-    // Only update if cards actually changed
     setCards(prevCards => {
       const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(contextCards);
       if (cardsChanged) {
@@ -116,7 +145,6 @@ export default function HomeScreen() {
       );
 
       if (expiredCards.length > 0) {
-        // Mark cards as expiring for animation
         setCards(currentCards =>
           currentCards.map(card =>
             expiredCards.some(expired => expired.id === card.id)
@@ -125,27 +153,22 @@ export default function HomeScreen() {
           )
         );
 
-        // Remove cards after animation delay
         setTimeout(async () => {
           setCards(currentCards =>
             currentCards.filter(card =>
               !expiredCards.some(expired => expired.id === card.id)
             )
           );
-
-          // Clean up expired cards from storage
-        }, 500); // 500ms animation delay
+        }, 500);
       }
     } catch (error) {
       console.error("Failed to check expired cards:", error);
     }
-  }, [cards, showAlert]);
+  }, [cards]);
 
-  // Check for expired cards every second (only when there are expiring cards)
+  // Check for expired cards every second
   React.useEffect(() => {
-    // Skip if no expiring cards exist
     if (!hasExpiringOtherCards) return;
-
     checkExpiredCards();
   }, [timerTick, checkExpiredCards, hasExpiringOtherCards]);
 
@@ -164,12 +187,13 @@ export default function HomeScreen() {
     }
   };
 
-  // Load profile and settings
+  // Load profile, settings, and IDs
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
       checkSecuritySettings();
-    }, [])
+      fetchIDs();
+    }, [fetchIDs])
   );
 
 
@@ -181,20 +205,66 @@ export default function HomeScreen() {
     }
   }, [togglePin]);
 
-
-  const tabIndicatorStyle = useAnimatedStyle(() => {
-    const tabWidth = (containerWidth - 8) / 2;
+  const viewModeIndicatorStyle = useAnimatedStyle(() => {
+    const tabWidth = containerWidth / 2;
     return {
-      width: tabWidth > 0 ? tabWidth : "49%",
+      width: Math.max(tabWidth, 0),
+      height: 3,
+      bottom: 0,
       transform: [
         {
-          translateX: withSpring(activeTab === "self" ? 0 : tabWidth),
+          translateX: tabWidth > 0 ? withSpring(viewMode === "cards" ? 0 : tabWidth, { 
+            damping: 20, 
+            stiffness: 150,
+          }) : 0,
         },
       ],
     };
-  });
+  }, [viewMode, containerWidth]);
 
-  const ListHeader = useMemo(
+  const cardsTabContentStyle = useAnimatedStyle(() => ({
+    opacity: withSpring(viewMode === "cards" ? 1 : 0.4, { damping: 20 }),
+  }));
+
+  const idsTabContentStyle = useAnimatedStyle(() => ({
+    opacity: withSpring(viewMode === "ids" ? 1 : 0.4, { damping: 20 }),
+  }));
+
+  const animatedContentStyle = useAnimatedStyle(() => {
+    return {
+      flex: 1,
+    };
+  }, []);
+
+  const tabIndicatorStyle = useAnimatedStyle(() => {
+    const tabWidth = (subContainerWidth - 8) / 2;
+    return {
+      width: Math.max(tabWidth, 0),
+      transform: [
+        {
+          translateX: tabWidth > 0 ? withSpring(activeTab === "self" ? 0 : tabWidth, { damping: 20, stiffness: 120 }) : 0,
+        },
+      ],
+    };
+  }, [activeTab, subContainerWidth]);
+
+  const handleTabSwitch = useCallback((mode: "cards" | "ids") => {
+    if (viewMode !== mode) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setViewMode(mode);
+    }
+  }, [viewMode]);
+
+  const handleSubTabSwitch = useCallback((tab: "self" | "other") => {
+    if (activeTab !== tab) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setActiveTab(tab);
+    }
+  }, [activeTab]);
+
+  // Stable Header: profile, security alerts, and the main tab toggle
+  // Does NOT depend on viewMode so will NOT re-render when switching tabs
+  const StaticHeader = useMemo(
     () => (
       <>
         {/* Profile Section */}
@@ -204,6 +274,7 @@ export default function HomeScreen() {
               source={avatarSource}
               style={styles.avatar}
               contentFit="cover"
+              cachePolicy="memory"
             />
           </Pressable>
           <View style={styles.profileTextWrapper}>
@@ -227,11 +298,15 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
               <ThemedText style={styles.securityAlertText}>
-                {!isAppLockEnabled && !isCardLockEnabled
-                  ? "App Lock and Card Lock are disabled. Enable them to secure your data."
+                {!isAppLockEnabled && !isCardLockEnabled && !isIDLockEnabled
+                  ? "App Lock, Card Lock, and ID Lock are disabled. Enable them to secure your data."
                   : !isAppLockEnabled
                     ? "App Lock is disabled. Enable it to prevent unauthorized access."
-                    : "Card Lock is disabled. Enable it to protect card details."}
+                    : !isCardLockEnabled && !isIDLockEnabled
+                      ? "Card Lock and ID Lock are disabled. Enable them to protect your documents."
+                      : !isCardLockEnabled
+                        ? "Card Lock is disabled. Enable it to protect card details."
+                        : "ID Lock is disabled. Enable it to protect your Personal IDs."}
               </ThemedText>
               <Pressable
                 onPress={() => router.push("/settings")}
@@ -244,109 +319,155 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-
-        {/* Title and Info */}
-        {cards.length !== 0 && (
-          <View style={styles.listHeaderTitleContainer}>
-            <View style={styles.titleRow}>
-              <ThemedText type="title" style={styles.title}>
-                Your Cards
-              </ThemedText>
-              <Pressable
-                ref={iconRef}
-                onPress={() => {
-                  if (iconRef.current) {
-                    iconRef.current.measure((_x, _y, _width, height, _px, py) => {
-                      setTooltipTop(py + height);
-                      setTooltipLeft(_px);
-                      setShowWarning(true);
-                    });
-                  }
-                }}
-                hitSlop={20}
-              >
-                <Ionicons
-                  name={showWarning ? "information-circle" : "information-circle-outline"}
-                  size={22}
-                  color={showWarning ? palette.primary : palette.icon}
-                />
-              </Pressable>
-            </View>
-
-            <Modal
-              transparent
-              visible={showWarning}
-              onRequestClose={() => setShowWarning(false)}
-              animationType="fade"
-            >
-              <Pressable
-                style={styles.backdrop}
-                onPress={() => setShowWarning(false)}
-              />
-              <View
-                style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
-              >
-                <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
-                <ThemedText style={styles.tooltipText}>
-                  Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently.
-                </ThemedText>
-              </View>
-            </Modal>
-          </View>
-        )}
-
-        {/* Tabs */}
-        {cards.length > 0 && (
-          <View
-            style={styles.tabContainer}
-            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-          >
-            {/* Sliding Indicator */}
-            <Animated.View style={[styles.tabIndicator, tabIndicatorStyle]} />
-            <Pressable
-              style={styles.tab}
-              onPress={() => setActiveTab("self")}
-            >
-              <ThemedText
-                style={[
-                  styles.tabText,
-                  activeTab === "self" && styles.activeTabText,
-                ]}
-              >
-                Self
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              style={styles.tab}
-              onPress={() => setActiveTab("other")}
-            >
-              <ThemedText
-                style={[
-                  styles.tabText,
-                  activeTab === "other" && styles.activeTabText,
-                ]}
-              >
-                Others
-              </ThemedText>
-            </Pressable>
-          </View>
-        )}
       </>
     ),
+    [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, isIDLockEnabled, router, handleProfilePress]
+  );
+
+  // Dynamic tabs + content header: Unified as a "Wrapper" unit
+  const DynamicHeader = useMemo(
+    () => (
+      <View style={styles.headerWrapper}>
+        {/* Main Tab Unit */}
+        <View
+          style={styles.tabContainer}
+          onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+        >
+          <Animated.View style={[styles.tabIndicator, viewModeIndicatorStyle, { backgroundColor: palette.primary }]} />
+          
+          <Pressable
+            style={styles.tab}
+            onPress={() => handleTabSwitch("cards")}
+            hitSlop={5}
+          >
+            <Animated.View style={[styles.tabContent, cardsTabContentStyle]}>
+              <Ionicons
+                name={viewMode === "cards" ? "card" : "card-outline"}
+                size={22}
+                color={viewMode === "cards" ? palette.primary : palette.icon}
+                style={styles.tabIcon}
+              />
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  viewMode === "cards" && styles.activeTabText,
+                  { color: viewMode === "cards" ? palette.primary : palette.icon }
+                ]}
+              >
+                Cards
+              </ThemedText>
+            </Animated.View>
+          </Pressable>
+
+          <Pressable
+            style={styles.tab}
+            onPress={() => handleTabSwitch("ids")}
+            hitSlop={5}
+          >
+            <Animated.View style={[styles.tabContent, idsTabContentStyle]}>
+              <Ionicons
+                name={viewMode === "ids" ? "document-text" : "document-text-outline"}
+                size={22}
+                color={viewMode === "ids" ? palette.primary : palette.icon}
+                style={styles.tabIcon}
+              />
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  viewMode === "ids" && styles.activeTabText,
+                  { color: viewMode === "ids" ? palette.primary : palette.icon }
+                ]}
+              >
+                IDs
+              </ThemedText>
+            </Animated.View>
+          </Pressable>
+        </View>
+
+        {/* Contextual Sub-Header with Controls */}
+        <View style={styles.subHeader}>
+          <View style={styles.subHeaderTitleRow}>
+            <ThemedText type="defaultSemiBold" style={styles.subHeaderTitle}>
+              {viewMode === "cards" ? "Manage Your Cards" : "Personal IDs"}
+            </ThemedText>
+            
+            <Pressable
+              ref={iconRef}
+              onPress={() => {
+                if (iconRef.current) {
+                  iconRef.current.measure((_x, _y, _width, height, _px, py) => {
+                    setTooltipTop(py + height);
+                    setTooltipLeft(_px);
+                    setShowWarning(true);
+                  });
+                }
+              }}
+              hitSlop={20}
+              style={styles.infoIcon}
+            >
+              <Ionicons
+                name={showWarning ? "information-circle" : "information-circle-outline"}
+                size={20}
+                color={showWarning ? palette.primary : palette.icon}
+              />
+            </Pressable>
+          </View>
+
+          {viewMode === "cards" && (
+            <View style={styles.othersToggleContainer}>
+              <ThemedText style={[styles.othersLabel, { color: palette.icon }]}>
+                {activeTab === "self" ? "Switch to Others" : "Viewing Others"}
+              </ThemedText>
+              <Switch
+                value={activeTab === "other"}
+                onValueChange={(val: boolean) => handleSubTabSwitch(val ? "other" : "self")}
+                trackColor={{ false: "#ccc", true: palette.primary }}
+                ios_backgroundColor="#eee"
+                style={{ transform: [{ scale: 0.8 }] }}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Universal Tooltip Modal (Shared between Modes) */}
+        <Modal
+          transparent
+          visible={showWarning}
+          onRequestClose={() => setShowWarning(false)}
+          animationType="fade"
+        >
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setShowWarning(false)}
+          />
+          <View
+            style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
+          >
+            <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
+            <ThemedText style={styles.tooltipText}>
+              {viewMode === "cards" 
+                ? "Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+                : "Your personal IDs are encrypted and stored locally. No one, including the app developer, can access them without your master key."}
+            </ThemedText>
+          </View>
+        </Modal>
+      </View>
+    ),
     [
-      avatarSource,
-      profileName,
-      isAppLockEnabled,
-      isCardLockEnabled,
-      cards.length,
       activeTab,
       containerWidth,
-      router,
       showWarning,
       tooltipTop,
       tooltipLeft,
+      viewMode,
+      viewModeIndicatorStyle,
+      palette,
+      handleTabSwitch,
+      handleSubTabSwitch,
     ]
   );
+
+  const ListHeader = DynamicHeader;
 
   const filteredCards = React.useMemo(() => {
     return cards.filter((card) => {
@@ -357,7 +478,7 @@ export default function HomeScreen() {
     });
   }, [cards, activeTab]);
 
-  const renderCardItem = React.useCallback(({ item }: { item: any }) => (
+  const renderCardItem = React.useCallback(({ item }: { item: StorageCard & { isExpiring?: boolean } }) => (
     <View style={{ paddingHorizontal: 16 }}>
       <CardItem
         id={item.id}
@@ -377,55 +498,60 @@ export default function HomeScreen() {
     </View>
   ), [handlePinChange]);
 
+  const renderIDItem = React.useCallback(({ item }: { item: any }) => (
+    <View style={{ flex: 1, maxWidth: "50%" }}>
+      <IDGridItem item={item} />
+    </View>
+  ), []);
+
+  const ListEmptyComponent = React.useMemo(() => {
+    return (
+      <NoCards
+        showButton={viewMode === "cards" ? cards.length === 0 : ids.length === 0}
+        message={
+          viewMode === "cards"
+            ? (cards.length === 0 ? "No cards listed yet." : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`)
+            : "No ID documents stored yet."
+        }
+        buttonText={viewMode === "cards" ? "Add Your First Card" : "Add Your First ID"}
+        onPress={() => router.push(viewMode === "cards" ? "/add-card" : "/add-id")}
+      />
+    );
+  }, [cards.length, ids.length, viewMode, activeTab]);
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: palette.surface }]}
-      edges={["top", "bottom"]}
-    >
-      <View style={{ flex: 1 }}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={["top"]}>
+      {/* Profile + security alerts — rendered outside FlatList so they never re-render on tab switch */}
+      {StaticHeader}
+
+      <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
         <FlatList
-          data={filteredCards}
+          data={viewMode === "cards" ? filteredCards : ids}
+          renderItem={viewMode === "cards" ? renderCardItem : renderIDItem}
           keyExtractor={(item) => item.id}
-          renderItem={renderCardItem}
+          numColumns={viewMode === "cards" ? 1 : 2}
+          key={viewMode}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 100 }
+          ]}
           ListHeaderComponent={ListHeader}
-          ListEmptyComponent={React.useMemo(() => {
-            const EmptyComponent = () => (
-              <NoCards
-                showButton={cards.length === 0}
-                defaultCardUser={activeTab}
-                message={
-                  cards.length === 0
-                    ? "No cards listed yet."
-                    : `No cards found in ${activeTab === "self" ? "Self" : "Others"}.`
-                }
-              />
-            );
-            EmptyComponent.displayName = "EmptyCardsList";
-            return EmptyComponent;
-          }, [cards.length, activeTab])}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
+          ListEmptyComponent={ListEmptyComponent}
           showsVerticalScrollIndicator={false}
         />
+      </Animated.View>
 
-        {cards.length > 0 && (
-          <View style={styles.stickyButtonContainer}>
-            <Link
-              href={{
-                pathname: "/add-card",
-                params: { defaultCardUser: activeTab },
-              }}
-              asChild
-            >
-              <AppButton
-                title="Add New Card"
-                fullWidth
-                style={styles.footerButton}
-              />
-            </Link>
-          </View>
-        )}
-      </View>
+      {/* Floating Action Button - Only show if list is not empty */}
+      {(viewMode === "cards" ? cards.length > 0 : ids.length > 0) && (
+        <View style={styles.stickyButtonContainer}>
+          <AppButton
+            title={viewMode === "cards" ? "Add New Card" : "Add New ID"}
+            onPress={() => router.push(viewMode === "cards" ? "/add-card" : "/add-id")}
+            icon={viewMode === "cards" ? "add-circle-outline" : "document-text-outline"}
+            style={styles.footerButton}
+          />
+        </View>
+      )}
 
       <AdBanner />
     </SafeAreaView>
@@ -551,52 +677,113 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    marginHorizontal: 16,
+    marginTop: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
   footerButton: {
     marginHorizontal: 16,
     marginBottom: 16,
   },
   stickyButtonContainer: {
     position: "absolute",
-    bottom: 0,
+    bottom: 60, // Adjust to be above AdBanner
     left: 0,
     right: 0,
     backgroundColor: "transparent",
     paddingTop: 12,
+    zIndex: 99,
+    elevation: 5,
+  },
+  headerWrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
   tabContainer: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: "#eee",
-    borderRadius: 8,
-    padding: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 14,
     alignItems: "center",
-    borderRadius: 6,
+    justifyContent: "center",
     zIndex: 1,
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  tabIcon: {
+    marginTop: -1,
   },
   tabIndicator: {
     position: "absolute",
-    top: 4,
-    bottom: 4,
-    left: 4,
-    backgroundColor: "#fff",
-    borderRadius: 6,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    height: 3,
+    bottom: 0,
+    left: 0,
+  },
+  subHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 18,
+    paddingHorizontal: 4,
+  },
+  subHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  subHeaderTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  infoIcon: {
+    padding: 4,
+  },
+  othersToggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  othersLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#888",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   activeTabText: {
-    color: "#000",
+    fontWeight: "800",
+  },
+  listContent: {
+    paddingBottom: 100,
   },
 });
