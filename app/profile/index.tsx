@@ -71,7 +71,11 @@ export default function ProfileScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <View style={{ flex: 1 }}>
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileHeader}>
           <TouchableOpacity
             onPress={() => {
@@ -349,7 +353,7 @@ export default function ProfileScreen() {
             ))}
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <Modal
         visible={showSharingInfo}
