@@ -9,6 +9,7 @@ import React, { ReactNode, createContext, useCallback, useContext, useEffect, us
 import {
     Card,
     getMaskedCards,
+    getUnmaskedCards,
     setCards as persistCards,
     addCard as secureAddCard,
     removeCard as secureRemoveCard,
@@ -39,7 +40,7 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
     const cardsRef = React.useRef<Card[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const { isDeviceCompromised } = useSecurity();
-    const { isReady: isMigrationReady, migratedCount, status: migrationStatus } = useMigration();
+    const { isReady: isMigrationReady } = useMigration();
 
     // Clear cards if device is compromised
     useEffect(() => {
@@ -55,43 +56,44 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
             const storedCards = await getMaskedCards();
             // Check for expired cards and filter them out
             const now = Math.floor(Date.now() / 1000);
-            const expiredCardIds: string[] = [];
-            const activeCards = storedCards.filter((card) => {
-                if (card.cardExpiresAt && now > card.cardExpiresAt && card.cardUser === "other") {
-                    expiredCardIds.push(card.id);
-                    return false; // Remove this card
-                }
-                return true; // Keep this card
-            });
+            const expiredCards = storedCards.filter(card =>
+                card.cardExpiresAt && now > card.cardExpiresAt && card.cardUser === "other"
+            );
 
-            // If any cards were filtered out, persist to storage
-            if (activeCards.length !== storedCards.length) {
-                if (__DEV__) {
-                    expiredCardIds.forEach(id => {
-                        const card = storedCards.find(c => c.id === id);
-                        if (card) {
-                            console.log(`🗑️ Card expired and filtered out: ${id}, expiresAt=${card.cardExpiresAt}, now=${now}`);
-                        }
-                    });
-                    console.log(`📦 Updating storage: removing ${storedCards.length - activeCards.length} expired card(s)`);
-                }
-                // Persist the filtered cards to storage
-                await persistCards(activeCards);
+            // If any cards were filtered out, persist the UNMASKED versions to storage
+            if (expiredCards.length > 0) {
+                if (__DEV__) console.log(`📦 Filtering ${expiredCards.length} expired card(s) and updating storage...`);
+
+                const unmaskedCards = await getUnmaskedCards();
+                const activeUnmaskedCards = unmaskedCards.filter(card =>
+                    !expiredCards.some(expired => expired.id === card.id)
+                );
+
+                // Persist the filtered UNMASKED cards to storage
+                await persistCards(activeUnmaskedCards);
+
+                // Re-fetch masked cards for display
+                const updatedMasked = await getMaskedCards();
+                updateCardsState(updatedMasked);
+                return;
             }
 
             // Update context state if cards changed
-            const prevCards = cardsRef.current;
-            const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(activeCards);
-
-            if (cardsChanged) {
-                cardsRef.current = activeCards;
-                // Update React state to trigger re-render
-                setCards(activeCards);
-            }
+            updateCardsState(storedCards);
         } catch (error) {
             console.error("Failed to load cards:", error);
         } finally {
             setIsLoading(false);
+        }
+    }, []);
+
+    const updateCardsState = useCallback((newCards: Card[]) => {
+        const prevCards = cardsRef.current;
+        const cardsChanged = JSON.stringify(prevCards) !== JSON.stringify(newCards);
+
+        if (cardsChanged) {
+            cardsRef.current = newCards;
+            setCards(newCards);
         }
     }, []);
 
@@ -153,13 +155,9 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
 
     // Refresh cards when migration completes
     useEffect(() => {
-        if (isMigrationReady && migratedCount > 0) {
+        if (isMigrationReady) {
             if (__DEV__) {
-                console.log("🔄 Migration completed, refreshing cards...", {
-                    isMigrationReady,
-                    migratedCount,
-                    migrationStatus,
-                });
+                console.log("🔄 Migration ready check, refreshing cards...");
             }
             // Use a small delay to ensure storage writes are complete
             const timer = setTimeout(() => {
@@ -167,7 +165,7 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [isMigrationReady, migratedCount, refreshCards]);
+    }, [isMigrationReady, refreshCards]);
 
     const value = React.useMemo(() => ({
         cards,

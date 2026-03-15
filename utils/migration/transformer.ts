@@ -186,7 +186,7 @@ export function validateCards(cards: NewCard[]): {
   }
 
   if (invalid.length > 0) {
-    console.warn(`⚠️ Found ${invalid.length} invalid cards:`, invalid);
+    if (__DEV__) console.warn(`⚠️ Found ${invalid.length} invalid cards:`, invalid);
   }
 
   return { valid, invalid };

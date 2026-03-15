@@ -1,12 +1,13 @@
 import {
-    decryptCards,
-    encryptCards,
-    EncryptionResult,
+  decryptCards,
+  encryptCards,
+  EncryptionResult,
 } from "@/utils/encryption/cardEncryption";
 import { deleteMasterKey } from "@/utils/encryption/masterKeyManager";
+import { formatCardNumber } from "@/utils/formatCardNumber";
 import { maskAndFormatCardNumber, maskExpiry } from "@/utils/mask";
-import { normalizeBankName } from "@/utils/normalizeBankName";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { normalizeBankName } from "./normalizeBankName";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -93,9 +94,10 @@ export async function getMaskedCards(): Promise<Card[]> {
 }
 
 export async function setCards(cards: Card[]): Promise<void> {
-  // Normalize bank names in unmasked cards
+  // Normalize bank names and format card numbers in unmasked cards
   const normalizedCards = cards.map((card) => ({
     ...card,
+    cardNumber: formatCardNumber(card.cardNumber),
     bank: normalizeBankName(card.bank),
   }));
 

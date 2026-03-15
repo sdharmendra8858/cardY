@@ -26,6 +26,8 @@ import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import { CARD_TYPES } from "@/constants/cardTypes";
+import { SUPPORTED_CARD_LENGTHS } from "@/constants/cardConfig";
+import { formatCardNumber } from "@/utils/formatCardNumber";
 import { luhnCheck } from "@/utils/cardValidation";
 import { containsProfanity } from "@/utils/profanityFilter";
 
@@ -87,10 +89,6 @@ interface CardFormProps {
   fromShare?: boolean;
 }
 
-function formatCardNumberForDisplay(raw: string): string {
-  const digitsOnly = (raw || "").replace(/[^0-9]/g, "");
-  return digitsOnly.replace(/(.{4})/g, "$1 ").trim();
-}
 
 function normalizeExpiryDigits(raw: string): string {
   const d = (raw || "").replace(/[^0-9]/g, "").slice(0, 4);
@@ -180,7 +178,8 @@ export default function CardForm({
 
   // validation flags
   const cardNumberDigits = cardNumber.replace(/\D/g, "");
-  const cardNumberValid = luhnCheck(cardNumberDigits);
+  const isSupportedLength = SUPPORTED_CARD_LENGTHS.includes(cardNumberDigits.length as any);
+  const cardNumberValid = luhnCheck(cardNumberDigits) && isSupportedLength;
   const holderValid = cardHolder.trim().length > 2;
   const expiryDigits = expiry.replace(/[^0-9]/g, "");
   const expiryRes = validateExpiry(expiry);
@@ -617,7 +616,7 @@ export default function CardForm({
               ]}
               placeholder="Enter card number"
               placeholderTextColor={theme.icon}
-              value={formatCardNumberForDisplay(cardNumber)}
+              value={formatCardNumber(cardNumber)}
               onFocus={() => setFocused("cardNumber")}
               onBlur={() => setFocused(null)}
               onChangeText={(text) => {
@@ -659,9 +658,11 @@ export default function CardForm({
             })()}
           </View>
 
-          {cardNumberDigits.length >= 13 && !cardNumberValid && (
+          {cardNumberDigits.length > 0 && !cardNumberValid && (
             <Text style={styles.errorText}>
-              Invalid card number.
+              {!isSupportedLength && cardNumberDigits.length >= 12
+                ? `Unsupported card length (${cardNumberDigits.length}). Supported: ${SUPPORTED_CARD_LENGTHS.join(", ")}`
+                : cardNumberDigits.length >= 13 && !cardNumberValid ? "Invalid card number." : null}
             </Text>
           )}
         </View>
