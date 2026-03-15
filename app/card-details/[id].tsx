@@ -761,7 +761,7 @@ export default function CardDetailsScreen() {
                   </View>
                   <View style={{ alignItems: 'flex-end', marginLeft: 10, minWidth: 60 }}>
                     <ThemedText style={[styles.label, { color: isDarkCard ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)" }]}>Expiry</ThemedText>
-                    <ThemedText numberOfLines={1} style={[styles.info, { color: contentColor }]}>{showNumber ? card.expiry : "XX/XX"}</ThemedText>
+                    <ThemedText numberOfLines={1} style={[styles.info, { color: contentColor }]}>{card.expiry}</ThemedText>
                   </View>
                 </View>
               </Animated.View>

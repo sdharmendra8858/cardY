@@ -422,7 +422,7 @@ export default function SelectCardScreen() {
                                                             Expires
                                                         </ThemedText>
                                                         <ThemedText style={{ color: '#fff', fontSize: 14, fontWeight: '600', fontFamily: 'monospace', letterSpacing: 1 }}>
-                                                            {isRevealed && revealedCardData ? revealedCardData.expiry : (card.expiry || 'XX/XX')}
+                                                            {isRevealed && revealedCardData ? revealedCardData.expiry : card.expiry}
                                                         </ThemedText>
                                                     </View>
                                                 </View>
