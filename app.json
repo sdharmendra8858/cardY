@@ -15,8 +15,10 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
-        ]
-      }
+        ],
+        "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards"
+      },
+      "appleTeamId": "743LUN242B"
     },
     "android": {
       "adaptiveIcon": {
@@ -67,14 +69,15 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "15.5"
           }
         }
       ],
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-4699580064236799~8493755965"
+          "androidAppId": "ca-app-pub-4699580064236799~8493755965",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511"
         }
       ],
       "expo-secure-store",

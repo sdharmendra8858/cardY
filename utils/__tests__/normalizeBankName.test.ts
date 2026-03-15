@@ -2,7 +2,7 @@
  * Tests for Bank Name Normalization
  */
 
-import { normalizeBankName, normalizeBankNames } from "../normalizeBankName";
+import { normalizeBankName } from "../normalizeBankName";
 
 describe("normalizeBankName", () => {
   it("should convert uppercase to title case", () => {
@@ -51,20 +51,3 @@ describe("normalizeBankName", () => {
   });
 });
 
-describe("normalizeBankNames", () => {
-  it("should normalize multiple bank names", () => {
-    const input = ["HDFC BANK", "axis bank", "IcIcI BaNk"];
-    const expected = ["Hdfc Bank", "Axis Bank", "Icici Bank"];
-    expect(normalizeBankNames(input)).toEqual(expected);
-  });
-
-  it("should filter out undefined values", () => {
-    const input = ["HDFC BANK", undefined, "axis bank", "", "  "];
-    const expected = ["Hdfc Bank", "Axis Bank"];
-    expect(normalizeBankNames(input)).toEqual(expected);
-  });
-
-  it("should handle empty array", () => {
-    expect(normalizeBankNames([])).toEqual([]);
-  });
-});
