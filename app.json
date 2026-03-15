@@ -78,7 +78,22 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos to your library",
+          "isStandardAndroidLibrary": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/cc-round.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

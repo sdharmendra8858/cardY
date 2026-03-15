@@ -7,17 +7,32 @@ import { FC } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, { Path, Rect } from "react-native-svg";
 
-const NoCards: FC<{ message?: string; showButton?: boolean }> = ({
+const NoCards: FC<{ 
+  message?: string; 
+  showButton?: boolean;
+  buttonText?: string;
+  onPress?: () => void;
+}> = ({
   message = "No cards listed yet.",
   showButton = true,
+  buttonText = "Add Your First Card",
+  onPress,
 }) => {
   const router = useRouter();
+  
+  const handlePress = () => {
+    if (onPress) {
+      onPress();
+    } else {
+      router.push("/add-card");
+    }
+  };
 
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
   return (
-    <View style={[styles.container, { backgroundColor: palette.surface }]}>
+    <View style={styles.container}>
       {/* SVG Illustration */}
       <Svg
         width={200}
@@ -46,10 +61,10 @@ const NoCards: FC<{ message?: string; showButton?: boolean }> = ({
       {showButton && (
         <Pressable
           style={[styles.button, { backgroundColor: palette.primary }]}
-          onPress={() => router.push("/add-card")}
+          onPress={handlePress}
         >
           <ThemedText style={[styles.buttonText, { color: palette.onPrimary }]}>
-            Add Your First Card
+            {buttonText}
           </ThemedText>
         </Pressable>
       )}
@@ -65,7 +80,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "transparent",
   },
   message: {
     fontSize: 20,

@@ -9,6 +9,7 @@ import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import AdBanner from "@/components/AdBanner";
 import CardNotFound from "@/components/CardNotFound";
+import DecryptLoader from "@/components/DecryptLoader";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
 import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
@@ -24,7 +25,7 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import * as Clipboard from "expo-clipboard";
@@ -668,12 +669,7 @@ export default function CardDetailsScreen() {
       <SafeAreaView
         style={[styles.safeArea, { backgroundColor: palette.surface }]}
       >
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <MaterialIcons name="credit-card" size={64} color={palette.primary} />
-          <ThemedText style={{ fontSize: 18, marginTop: 16, textAlign: 'center' }}>
-            Loading card details...
-          </ThemedText>
-        </View>
+        <DecryptLoader text="Loading card details..." subtext="Accessing Secure Vault" />
       </SafeAreaView>
     );
   }
