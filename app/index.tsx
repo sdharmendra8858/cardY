@@ -1,9 +1,8 @@
 import AdBanner from "@/components/AdBanner";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
-import NoCards from "@/components/NoCards";
 import IDGridItem from "@/components/IDGridItem";
-import SwipeableCard from "@/components/SwipeableCard";
+import NoCards from "@/components/NoCards";
 import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
@@ -14,13 +13,14 @@ import { Card, useCardsWithMigration as useCards } from "@/context/CardContextWi
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
+import { type Card as StorageCard } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { Link, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, View, useWindowDimensions, Switch } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -194,16 +194,35 @@ export default function HomeScreen() {
   }, [togglePin]);
 
   const viewModeIndicatorStyle = useAnimatedStyle(() => {
-    const tabWidth = (containerWidth - 8) / 2;
+    const tabWidth = containerWidth / 2;
     return {
       width: Math.max(tabWidth, 0),
+      height: 3,
+      bottom: 0,
       transform: [
         {
-          translateX: tabWidth > 0 ? withSpring(viewMode === "cards" ? 0 : tabWidth, { damping: 20, stiffness: 120 }) : 0,
+          translateX: tabWidth > 0 ? withSpring(viewMode === "cards" ? 0 : tabWidth, { 
+            damping: 20, 
+            stiffness: 150,
+          }) : 0,
         },
       ],
     };
   }, [viewMode, containerWidth]);
+
+  const cardsTabContentStyle = useAnimatedStyle(() => ({
+    opacity: withSpring(viewMode === "cards" ? 1 : 0.4, { damping: 20 }),
+  }));
+
+  const idsTabContentStyle = useAnimatedStyle(() => ({
+    opacity: withSpring(viewMode === "ids" ? 1 : 0.4, { damping: 20 }),
+  }));
+
+  const animatedContentStyle = useAnimatedStyle(() => {
+    return {
+      flex: 1,
+    };
+  }, []);
 
   const tabIndicatorStyle = useAnimatedStyle(() => {
     const tabWidth = (subContainerWidth - 8) / 2;
@@ -289,185 +308,149 @@ export default function HomeScreen() {
     [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, router, handleProfilePress]
   );
 
-  // Dynamic tabs + content header: depends on viewMode, cards, activeTab
+  // Dynamic tabs + content header: Unified as a "Wrapper" unit
   const DynamicHeader = useMemo(
     () => (
-      <>
-        {/* View Mode Toggle (Cards / IDs) */}
+      <View style={styles.headerWrapper}>
+        {/* Main Tab Unit */}
         <View
-          style={[styles.tabContainer, { backgroundColor: palette.card, borderColor: palette.border, borderWidth: 1 }]}
+          style={styles.tabContainer}
           onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
         >
-          <Animated.View style={[styles.tabIndicator, viewModeIndicatorStyle, { backgroundColor: palette.surface }]} />
+          <Animated.View style={[styles.tabIndicator, viewModeIndicatorStyle, { backgroundColor: palette.primary }]} />
+          
           <Pressable
             style={styles.tab}
             onPress={() => handleTabSwitch("cards")}
             hitSlop={5}
           >
-            <ThemedText
-              style={[
-                styles.tabText,
-                viewMode === "cards" && styles.activeTabText,
-                { color: viewMode === "cards" ? palette.primary : palette.icon }
-              ]}
-            >
-              Cards
-            </ThemedText>
+            <Animated.View style={[styles.tabContent, cardsTabContentStyle]}>
+              <Ionicons
+                name={viewMode === "cards" ? "card" : "card-outline"}
+                size={22}
+                color={viewMode === "cards" ? palette.primary : palette.icon}
+                style={styles.tabIcon}
+              />
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  viewMode === "cards" && styles.activeTabText,
+                  { color: viewMode === "cards" ? palette.primary : palette.icon }
+                ]}
+              >
+                Cards
+              </ThemedText>
+            </Animated.View>
           </Pressable>
+
           <Pressable
             style={styles.tab}
             onPress={() => handleTabSwitch("ids")}
             hitSlop={5}
           >
-            <ThemedText
-              style={[
-                styles.tabText,
-                viewMode === "ids" && styles.activeTabText,
-                { color: viewMode === "ids" ? palette.primary : palette.icon }
-              ]}
-            >
-              IDs
-            </ThemedText>
+            <Animated.View style={[styles.tabContent, idsTabContentStyle]}>
+              <Ionicons
+                name={viewMode === "ids" ? "document-text" : "document-text-outline"}
+                size={22}
+                color={viewMode === "ids" ? palette.primary : palette.icon}
+                style={styles.tabIcon}
+              />
+              <ThemedText
+                style={[
+                  styles.tabText,
+                  viewMode === "ids" && styles.activeTabText,
+                  { color: viewMode === "ids" ? palette.primary : palette.icon }
+                ]}
+              >
+                IDs
+              </ThemedText>
+            </Animated.View>
           </Pressable>
         </View>
 
-        {/* Cards Specific Header */}
-        {viewMode === "cards" && (
-          <>
-            <View style={styles.listHeaderTitleContainer}>
-              <View style={[styles.titleRow, { justifyContent: 'space-between', width: '100%' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <ThemedText type="title" style={styles.title}>
-                    Your Cards
-                  </ThemedText>
-                  <Pressable
-                    ref={iconRef}
-                    onPress={() => {
-                      if (iconRef.current) {
-                        iconRef.current.measure((_x, _y, _width, height, _px, py) => {
-                          setTooltipTop(py + height);
-                          setTooltipLeft(_px);
-                          setShowWarning(true);
-                        });
-                      }
-                    }}
-                    hitSlop={20}
-                  >
-                    <Ionicons
-                      name={showWarning ? "information-circle" : "information-circle-outline"}
-                      size={22}
-                      color={showWarning ? palette.primary : palette.icon}
-                    />
-                  </Pressable>
-                </View>
-
-                {/* Switch moved to the title row */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <ThemedText style={{ fontSize: 13, fontWeight: '500', opacity: 0.8, color: palette.text }}>
-                    Others
-                  </ThemedText>
-                  <Switch
-                    value={activeTab === "other"}
-                    onValueChange={(val: boolean) => handleSubTabSwitch(val ? "other" : "self")}
-                    trackColor={{ false: "#767577", true: palette.primary }}
-                    style={{ transform: [{ scale: 0.85 }] }}
-                  />
-                </View>
-              </View>
-
-              <Modal
-                transparent
-                visible={showWarning}
-                onRequestClose={() => setShowWarning(false)}
-                animationType="fade"
-              >
-                <Pressable
-                  style={styles.backdrop}
-                  onPress={() => setShowWarning(false)}
-                />
-                <View
-                  style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
-                >
-                  <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
-                  <ThemedText style={styles.tooltipText}>
-                    Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently.
-                  </ThemedText>
-                </View>
-              </Modal>
-            </View>
-          </>
-        )}
-
-        {/* IDs Specific Header */}
-        {viewMode === "ids" && (
-          <View style={styles.listHeaderTitleContainer}>
-            <View style={styles.titleRow}>
-              <ThemedText type="title" style={styles.title}>
-                Personal IDs
-              </ThemedText>
-              <Pressable
-                ref={iconRef}
-                onPress={() => {
-                  if (iconRef.current) {
-                    iconRef.current.measure((_x, _y, _width, height, _px, py) => {
-                      setTooltipTop(py + height);
-                      setTooltipLeft(_px);
-                      setShowWarning(true);
-                    });
-                  }
-                }}
-                hitSlop={20}
-              >
-                <Ionicons
-                  name={showWarning ? "information-circle" : "information-circle-outline"}
-                  size={22}
-                  color={showWarning ? palette.primary : palette.icon}
-                />
-              </Pressable>
-            </View>
-
-            <Modal
-              transparent
-              visible={showWarning}
-              onRequestClose={() => setShowWarning(false)}
-              animationType="fade"
+        {/* Contextual Sub-Header with Controls */}
+        <View style={styles.subHeader}>
+          <View style={styles.subHeaderTitleRow}>
+            <ThemedText type="defaultSemiBold" style={styles.subHeaderTitle}>
+              {viewMode === "cards" ? "Manage Your Cards" : "Protected Identities"}
+            </ThemedText>
+            
+            <Pressable
+              ref={iconRef}
+              onPress={() => {
+                if (iconRef.current) {
+                  iconRef.current.measure((_x, _y, _width, height, _px, py) => {
+                    setTooltipTop(py + height);
+                    setTooltipLeft(_px);
+                    setShowWarning(true);
+                  });
+                }
+              }}
+              hitSlop={20}
+              style={styles.infoIcon}
             >
-              <Pressable
-                style={styles.backdrop}
-                onPress={() => setShowWarning(false)}
+              <Ionicons
+                name={showWarning ? "information-circle" : "information-circle-outline"}
+                size={20}
+                color={showWarning ? palette.primary : palette.icon}
               />
-              <View
-                style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
-              >
-                <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
-                <ThemedText style={styles.tooltipText}>
-                  Your IDs are stored only on this device. If you delete the app or clear its data, all saved IDs will be lost permanently.
-                </ThemedText>
-              </View>
-            </Modal>
+            </Pressable>
           </View>
-        )}
-      </>
+
+          {viewMode === "cards" && (
+            <View style={styles.othersToggleContainer}>
+              <ThemedText style={[styles.othersLabel, { color: palette.icon }]}>
+                {activeTab === "self" ? "Switch to Others" : "Viewing Others"}
+              </ThemedText>
+              <Switch
+                value={activeTab === "other"}
+                onValueChange={(val: boolean) => handleSubTabSwitch(val ? "other" : "self")}
+                trackColor={{ false: "#ccc", true: palette.primary }}
+                ios_backgroundColor="#eee"
+                style={{ transform: [{ scale: 0.8 }] }}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Universal Tooltip Modal (Shared between Modes) */}
+        <Modal
+          transparent
+          visible={showWarning}
+          onRequestClose={() => setShowWarning(false)}
+          animationType="fade"
+        >
+          <Pressable
+            style={styles.backdrop}
+            onPress={() => setShowWarning(false)}
+          />
+          <View
+            style={[styles.tooltipContainer, { top: tooltipTop + 5 }]}
+          >
+            <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
+            <ThemedText style={styles.tooltipText}>
+              {viewMode === "cards" 
+                ? "Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
+                : "Your personal IDs are encrypted and stored locally. No one, including the app developer, can access them without your master key."}
+            </ThemedText>
+          </View>
+        </Modal>
+      </View>
     ),
     [
-      cards.length,
       activeTab,
       containerWidth,
-      router,
       showWarning,
       tooltipTop,
       tooltipLeft,
       viewMode,
       viewModeIndicatorStyle,
-      tabIndicatorStyle,
       palette,
       handleTabSwitch,
       handleSubTabSwitch,
     ]
   );
 
-  // The FlatList only needs the dynamic portion (tabs + titles) as its header.
-  // Profile section is rendered outside the FlatList to prevent re-renders on tab switch.
   const ListHeader = DynamicHeader;
 
   const filteredCards = React.useMemo(() => {
@@ -479,7 +462,7 @@ export default function HomeScreen() {
     });
   }, [cards, activeTab]);
 
-  const renderCardItem = React.useCallback(({ item }: { item: any }) => (
+  const renderCardItem = React.useCallback(({ item }: { item: StorageCard & { isExpiring?: boolean } }) => (
     <View style={{ paddingHorizontal: 16 }}>
       <CardItem
         id={item.id}
@@ -525,20 +508,22 @@ export default function HomeScreen() {
       {/* Profile + security alerts — rendered outside FlatList so they never re-render on tab switch */}
       {StaticHeader}
 
-      <FlatList
-        data={viewMode === "cards" ? filteredCards : ids}
-        renderItem={viewMode === "cards" ? renderCardItem : renderIDItem}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={ListHeader}
-        ListEmptyComponent={ListEmptyComponent}
-        numColumns={viewMode === "ids" ? 2 : 1}
-        key={viewMode} // Force re-render when switching layouts
-        contentContainerStyle={{
-          paddingBottom: 100,
-        }}
-        columnWrapperStyle={viewMode === "ids" ? { paddingHorizontal: 8 } : undefined}
-        showsVerticalScrollIndicator={false}
-      />
+      <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
+        <FlatList
+          data={viewMode === "cards" ? filteredCards : ids}
+          renderItem={viewMode === "cards" ? renderCardItem : renderIDItem}
+          keyExtractor={(item) => item.id}
+          numColumns={viewMode === "cards" ? 1 : 2}
+          key={viewMode}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: 100 }
+          ]}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={ListEmptyComponent}
+          showsVerticalScrollIndicator={false}
+        />
+      </Animated.View>
 
       {/* Floating Action Button - Only show if list is not empty */}
       {(viewMode === "cards" ? cards.length > 0 : ids.length > 0) && (
@@ -710,43 +695,79 @@ const styles = StyleSheet.create({
     zIndex: 99,
     elevation: 5,
   },
+  headerWrapper: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
   tabContainer: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 14,
-    padding: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+    paddingHorizontal: 4,
   },
   tab: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
-    borderRadius: 10,
+    justifyContent: "center",
     zIndex: 1,
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  tabIcon: {
+    marginTop: -1,
   },
   tabIndicator: {
     position: "absolute",
-    top: 4,
-    bottom: 4,
-    left: 4,
-    borderRadius: 10,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    height: 3,
+    bottom: 0,
+    left: 0,
+  },
+  subHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 18,
+    paddingHorizontal: 4,
+  },
+  subHeaderTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  subHeaderTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  infoIcon: {
+    padding: 4,
+  },
+  othersToggleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  othersLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.3,
   },
   activeTabText: {
     fontWeight: "800",
+  },
+  listContent: {
+    paddingBottom: 100,
   },
 });

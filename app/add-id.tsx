@@ -78,7 +78,13 @@ export default function AddIDScreen() {
   const handleSave = async () => {
     if (!selectedType || !images.front) return;
 
-    setIsProcessing(true);
+    const trimmedIdNumber = idNumber.trim();
+    if (trimmedIdNumber.length > 30) {
+      setError("ID number cannot exceed 30 characters.");
+      setIsProcessing(false);
+      return;
+    }
+
     try {
       const docId = Math.random().toString(36).substr(2, 9);
       const assets = [];
@@ -216,13 +222,27 @@ export default function AddIDScreen() {
             <ThemedText type="defaultSemiBold" style={styles.label}>ID Number</ThemedText>
             <ThemedText style={styles.optionalLabel}>(Optional)</ThemedText>
           </View>
-          <TextInput
-            style={[styles.input, { backgroundColor: palette.card, borderColor: palette.border, color: palette.text }]}
-            placeholder="Enter document number"
-            placeholderTextColor={palette.icon}
-            value={idNumber}
-            onChangeText={setIdNumber}
-          />
+            <TextInput
+              style={[
+                styles.input, 
+                { backgroundColor: palette.card, borderColor: palette.border, color: palette.text },
+                idNumber.trim().length > 30 && { borderColor: palette.danger }
+              ]}
+              placeholder="Enter document number"
+              placeholderTextColor={palette.icon}
+              value={idNumber}
+              onChangeText={setIdNumber}
+            />
+            <View style={styles.inputFooter}>
+              {idNumber.trim().length > 30 && (
+                <ThemedText style={[styles.errorText, { color: palette.danger }]}>
+                  Maximum 30 characters allowed
+                </ThemedText>
+              )}
+              <ThemedText style={[styles.counter, { color: idNumber.trim().length > 30 ? palette.danger : palette.icon }]}>
+                {idNumber.trim().length}/30
+              </ThemedText>
+            </View>
         </View>
 
         <ImageSlot slot="front" label="Front Side" />
@@ -288,6 +308,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     fontSize: 16,
+  },
+  inputFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  counter: {
+    fontSize: 12,
+    marginLeft: 'auto',
   },
   dropdown: {
     height: 56,
