@@ -16,7 +16,11 @@ export async function authenticateUser(
 
     const appLock = parsed.appLock ?? false;
     const cardLock = parsed.cardLock ?? false;
-    const shouldLock = context === "app" ? appLock : cardLock;
+    const idLock = parsed.idLock ?? false;
+    
+    const shouldLock = 
+      context === "app" ? appLock : 
+      context === "card" ? cardLock : idLock;
     
     if (!shouldLock) {
       return true;

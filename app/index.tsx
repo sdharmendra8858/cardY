@@ -28,7 +28,16 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  useScreenProtection();
+  const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{ 
+    redirectToTab: "self" | "other",
+    viewMode: "cards" | "ids" 
+  }>();
+
+  const [viewMode, setViewMode] = useState<"cards" | "ids">(paramViewMode || "cards");
+  
+  // Enable screen protection only when viewing Personal IDs
+  useScreenProtection(viewMode === 'ids');
+
   const { showAlert } = useAlert();
   const { cards: contextCards, togglePin, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
@@ -41,7 +50,6 @@ export default function HomeScreen() {
     );
   }, [contextCards]);
 
-  // Always call the hook (required by React rules), but only use it when needed
   const { timerTick } = useTimer();
   const [cards, setCards] = useState<(Card & { isExpiring?: boolean })[]>([]);
 
@@ -58,7 +66,8 @@ export default function HomeScreen() {
 
   const [isAppLockEnabled, setIsAppLockEnabled] = useState(true);
   const [isCardLockEnabled, setIsCardLockEnabled] = useState(true);
-  const [activeTab, setActiveTab] = useState<"self" | "other">("self");
+  const [isIDLockEnabled, setIsIDLockEnabled] = useState(true);
+  const [activeTab, setActiveTab] = useState<"self" | "other">(redirectToTab || "self");
   const isNavigatingRef = useRef(false);
 
   const handleProfilePress = useCallback(() => {
@@ -71,14 +80,16 @@ export default function HomeScreen() {
       isNavigatingRef.current = false;
     }, 1000);
   }, [router]);
-  const { redirectToTab } = useLocalSearchParams<{ redirectToTab: "self" | "other" }>();
 
   // Handle redirection from other screens
   useEffect(() => {
     if (redirectToTab) {
       setActiveTab(redirectToTab);
     }
-  }, [redirectToTab]);
+    if (paramViewMode) {
+      setViewMode(paramViewMode);
+    }
+  }, [redirectToTab, paramViewMode]);
 
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(windowWidth - 32); // Initial guess
@@ -91,16 +102,17 @@ export default function HomeScreen() {
         const parsed = JSON.parse(saved);
         setIsAppLockEnabled(parsed.appLock ?? false);
         setIsCardLockEnabled(parsed.cardLock ?? false);
+        setIsIDLockEnabled(parsed.idLock ?? false);
       } else {
         setIsAppLockEnabled(false);
         setIsCardLockEnabled(false);
+        setIsIDLockEnabled(false);
       }
     } catch {
       // ignore
     }
   };
 
-  const [viewMode, setViewMode] = useState<"cards" | "ids">("cards");
   const [ids, setIds] = useState<any[]>([]);
 
   const fetchIDs = useCallback(async () => {
@@ -286,11 +298,15 @@ export default function HomeScreen() {
                 </ThemedText>
               </View>
               <ThemedText style={styles.securityAlertText}>
-                {!isAppLockEnabled && !isCardLockEnabled
-                  ? "App Lock and Card Lock are disabled. Enable them to secure your data."
+                {!isAppLockEnabled && !isCardLockEnabled && !isIDLockEnabled
+                  ? "App Lock, Card Lock, and ID Lock are disabled. Enable them to secure your data."
                   : !isAppLockEnabled
                     ? "App Lock is disabled. Enable it to prevent unauthorized access."
-                    : "Card Lock is disabled. Enable it to protect card details."}
+                    : !isCardLockEnabled && !isIDLockEnabled
+                      ? "Card Lock and ID Lock are disabled. Enable them to protect your documents."
+                      : !isCardLockEnabled
+                        ? "Card Lock is disabled. Enable it to protect card details."
+                        : "ID Lock is disabled. Enable it to protect your Personal IDs."}
               </ThemedText>
               <Pressable
                 onPress={() => router.push("/settings")}
@@ -305,7 +321,7 @@ export default function HomeScreen() {
         )}
       </>
     ),
-    [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, router, handleProfilePress]
+    [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, isIDLockEnabled, router, handleProfilePress]
   );
 
   // Dynamic tabs + content header: Unified as a "Wrapper" unit
@@ -372,7 +388,7 @@ export default function HomeScreen() {
         <View style={styles.subHeader}>
           <View style={styles.subHeaderTitleRow}>
             <ThemedText type="defaultSemiBold" style={styles.subHeaderTitle}>
-              {viewMode === "cards" ? "Manage Your Cards" : "Protected Identities"}
+              {viewMode === "cards" ? "Manage Your Cards" : "Personal IDs"}
             </ThemedText>
             
             <Pressable

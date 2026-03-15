@@ -9,6 +9,7 @@ import { processIDImage } from "@/utils/imageProcessor";
 import { addID, saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { 
@@ -23,6 +24,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AddIDScreen() {
+  useScreenProtection();
   const router = useRouter();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];

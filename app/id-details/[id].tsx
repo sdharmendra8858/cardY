@@ -14,6 +14,8 @@ import { Image } from "expo-image";
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
+import { formatDate } from "@/utils/date";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -32,6 +34,7 @@ import Share from "react-native-share";
 import Toast from "react-native-toast-message";
 
 export default function IDDetailsScreen() {
+  useScreenProtection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { showAlert } = useAlert();
@@ -370,7 +373,7 @@ export default function IDDetailsScreen() {
                 <View style={styles.metadataText}>
                   <ThemedText style={styles.metadataLabel}>Date Added</ThemedText>
                   <ThemedText style={styles.metadataValue}>
-                    {new Date(idDoc.createdAt).toLocaleDateString()}
+                    {formatDate(idDoc.createdAt)}
                   </ThemedText>
                 </View>
               </View>
