@@ -393,6 +393,7 @@ export default function HomeScreen() {
             const EmptyComponent = () => (
               <NoCards
                 showButton={cards.length === 0}
+                defaultCardUser={activeTab}
                 message={
                   cards.length === 0
                     ? "No cards listed yet."
@@ -409,7 +410,13 @@ export default function HomeScreen() {
 
         {cards.length > 0 && (
           <View style={styles.stickyButtonContainer}>
-            <Link href="/add-card" asChild>
+            <Link
+              href={{
+                pathname: "/add-card",
+                params: { defaultCardUser: activeTab },
+              }}
+              asChild
+            >
               <AppButton
                 title="Add New Card"
                 fullWidth

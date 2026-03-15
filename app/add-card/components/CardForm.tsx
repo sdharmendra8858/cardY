@@ -302,6 +302,7 @@ export default function CardForm({
 
     if (defaultCardKind) setCardKind(defaultCardKind);
     if (defaultCobrandName) setCobrandName(defaultCobrandName);
+    if (defaultCardUser) setCardUser(defaultCardUser);
     if (defaultDominantColor) setDominantColor(defaultDominantColor);
   }, [
     defaultCardNumber,
@@ -310,6 +311,7 @@ export default function CardForm({
     defaultBank,
     defaultCardKind,
     defaultCobrandName,
+    defaultCardUser,
     defaultDominantColor
   ]);
 
