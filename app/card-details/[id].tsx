@@ -8,6 +8,8 @@ import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 import AdBanner from "@/components/AdBanner";
+import NativeAd from "@/components/AdNative";
+import { showInterstitialAd } from "@/components/AdInterstitial";
 import CardNotFound from "@/components/CardNotFound";
 import DecryptLoader from "@/components/DecryptLoader";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
@@ -22,6 +24,7 @@ import { useTimer } from "@/context/CardContext";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
+import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { authenticateUser } from "@/utils/LockScreen";
 import { formatCardNumber } from "@/utils/formatCardNumber";
@@ -78,6 +81,7 @@ export default function CardDetailsScreen() {
   const { cards, revealCard, removeCard } = useCards();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { timerTick } = useTimer(); // Force re-renders for validity timer
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading } = useQuota('card');
   useScreenProtection();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -105,6 +109,11 @@ export default function CardDetailsScreen() {
   }>({ title: "", message: "", buttons: [] });
   const expiryModalShownRef = useRef(false);
   const isMountedRef = useRef(true);
+  const viewProcessedRef = useRef(false);
+
+  useEffect(() => {
+    viewProcessedRef.current = false;
+  }, [id]);
 
   const flipRotation = useSharedValue(0);
   const isFlipped = useSharedValue(false);
@@ -498,32 +507,43 @@ export default function CardDetailsScreen() {
       return;
     }
 
-    // Check security settings for biometric authentication
-    const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
-    const parsed = saved ? JSON.parse(saved) : {};
-    const cardLock = parsed.cardLock ?? true;
-    const cooldown = parsed.cooldown ?? 0;
+    if (quotaLoading) return;
 
-    // If card lock is disabled or cooldown is active, proceed without auth
-    if (!cardLock || cooldownActiveRef.current) {
-      await performRevealAndShow();
-      return;
-    }
-
-    // Require authentication before revealing/showing card data
-    const ok = await authenticateUser("card");
-    if (ok) {
-      await performRevealAndShow();
-      if (cooldown > 0) {
-        cooldownActiveRef.current = true;
-        setCooldownActive(true);
-        if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
-        cooldownTimerRef.current = setTimeout(() => {
-          cooldownActiveRef.current = false;
-          setCooldownActive(false);
-          cooldownTimerRef.current = null;
-        }, cooldown * 1000);
+    try {
+      // 0. Check Quota System
+      if (isQuotaExceeded) {
+        await showInterstitialAd();
       }
+
+      // Check security settings for biometric authentication
+      const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
+      const parsed = saved ? JSON.parse(saved) : {};
+      const cardLock = parsed.cardLock ?? true;
+      const cooldown = parsed.cooldown ?? 0;
+
+      // If card lock is disabled or cooldown is active, proceed without auth
+      if (!cardLock || cooldownActiveRef.current) {
+        await performRevealAndShow();
+        return;
+      }
+
+      // Require authentication before revealing/showing card data
+      const ok = await authenticateUser("card");
+      if (ok) {
+        await performRevealAndShow();
+        if (cooldown > 0) {
+          cooldownActiveRef.current = true;
+          setCooldownActive(true);
+          if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+          cooldownTimerRef.current = setTimeout(() => {
+            cooldownActiveRef.current = false;
+            setCooldownActive(false);
+            cooldownTimerRef.current = null;
+          }, cooldown * 1000);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to reveal card:", err);
     }
   };
 
@@ -565,6 +585,7 @@ export default function CardDetailsScreen() {
     console.log('👁️ [PiP] Showing card numbers - canUsePip will be set to true');
     setShowNumber(true);
     setCanUsePip(true);
+    await incrementViews();
     console.log('✅ [PiP] Card revealed and ready for PiP');
   };
 
@@ -912,6 +933,7 @@ export default function CardDetailsScreen() {
             </View>
           </View>
           <ThemedText style={styles.note}>Unique ID: {id}</ThemedText>
+          <NativeAd />
         </ScrollView>
       </View>
 

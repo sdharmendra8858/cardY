@@ -1,3 +1,4 @@
+import AdBanner from "@/components/AdBanner";
 import Hero from "@/components/Hero";
 import QRDisplaySection from "@/components/QRDisplaySection";
 import SessionTimerBar from "@/components/SessionTimerBar";
@@ -422,6 +423,8 @@ export default function GenerateQRScreen() {
                         isSharing={isSharing}
                     />
                 </View>
+
+                <AdBanner />
             </SafeAreaView>
 
             <UnifiedModal

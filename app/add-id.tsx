@@ -1,3 +1,4 @@
+import { showInterstitialAd } from "@/components/AdInterstitial";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
@@ -135,6 +136,15 @@ export default function AddIDScreen() {
 
       router.dismissAll();
       router.replace({ pathname: "/", params: { viewMode: "ids" } as any });
+
+      // Show interstitial ad after a short delay
+      setTimeout(() => {
+        showInterstitialAd(
+          () => console.log('Interstitial ad closed'),
+          () => console.log('Interstitial ad failed or was skipped'),
+          2000
+        ).catch(console.warn);
+      }, 300);
     } catch (err) {
       console.error("Failed to save ID:", err);
       setError("Failed to securely save ID document. Please try again.");

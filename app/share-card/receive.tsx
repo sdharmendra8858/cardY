@@ -26,6 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
+import AdRewarded, { showRewardedAd } from "@/components/AdRewarded";
 
 export default function ReceiveCardScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -90,6 +91,23 @@ export default function ReceiveCardScreen() {
             await deleteSession(existingSession.sessionId);
           }
         }
+
+        // Show rewarded ad BEFORE creating new session
+        let adRewardEarned = false;
+        await showRewardedAd(
+          () => { adRewardEarned = true; },
+          () => {
+            if (!adRewardEarned) {
+              setGenerationError("You need to watch the ad to generate a receive code.");
+            }
+          },
+          () => {
+            // Fallback for failed ad load - allow for now but ideally require ad
+            adRewardEarned = true; 
+          }
+        );
+
+        if (!adRewardEarned) return;
 
         // Create new session
         const newSession = await createSession();
@@ -460,6 +478,7 @@ export default function ReceiveCardScreen() {
         type={alertConfig.type}
         onRequestClose={() => setAlertVisible(false)}
       />
+      <AdRewarded />
     </SafeAreaView>
   );
 }
