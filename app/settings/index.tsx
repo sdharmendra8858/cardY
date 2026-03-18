@@ -40,6 +40,7 @@ export default function SettingsScreen() {
   // persistent state
   const [appLock, setAppLock] = useState(false);
   const [cardLock, setCardLock] = useState(false);
+  const [idLock, setIdLock] = useState(false);
   const [cooldown, setCooldown] = useState(3);
 
   const fadeAnim = useRef(new Animated.Value(cardLock ? 1 : 0)).current;
@@ -65,14 +66,16 @@ export default function SettingsScreen() {
           // Apply stored values (fallback to false)
           setAppLock(parsed.appLock ?? false);
           setCardLock(parsed.cardLock ?? false);
+          setIdLock(parsed.idLock ?? false);
           setCooldown(parsed.cooldown ?? 3);
         } else {
           // Initialize storage with defaults
-          const defaults = { appLock: false, cardLock: false, cooldown: 3 };
+          const defaults = { appLock: false, cardLock: false, idLock: false, cooldown: 3 };
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
           // Ensure state matches defaults
           setAppLock(false);
           setCardLock(false);
+          setIdLock(false);
           setCooldown(3);
         }
       } catch (e) {
@@ -86,12 +89,13 @@ export default function SettingsScreen() {
   const saveSettings = async (updated: {
     appLock?: boolean;
     cardLock?: boolean;
+    idLock?: boolean;
     cooldown?: number;
   }) => {
     try {
       const current = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed = current ? JSON.parse(current) : {};
-      const merged = { appLock: false, cardLock: false, cooldown: 3, ...parsed, ...updated }; // default true baseline
+      const merged = { appLock: false, cardLock: false, idLock: false, cooldown: 3, ...parsed, ...updated }; // default true baseline
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     } catch (e) {
       console.error("Error saving settings:", e);
@@ -143,6 +147,30 @@ export default function SettingsScreen() {
     Toast.show({
       type: "success",
       text1: value ? "Card Lock Enabled" : "Card Lock Disabled",
+    });
+  };
+
+  const handleIdLockToggle = async (value: boolean) => {
+    if (!value) {
+      const verified = await authenticateUser("id", {
+        title: "Disable ID Lock",
+        subtitle: "Authenticate to disable ID document verification",
+      });
+      if (!verified) {
+        Toast.show({
+          type: "error",
+          text1: "Authentication Failed",
+          text2: "ID Lock remains active.",
+        });
+        return;
+      }
+    }
+
+    setIdLock(value);
+    saveSettings({ idLock: value });
+    Toast.show({
+      type: "success",
+      text1: value ? "ID Lock Enabled" : "ID Lock Disabled",
     });
   };
 
@@ -247,6 +275,13 @@ export default function SettingsScreen() {
                 Require Auth to View Cards
               </ThemedText>
               <Switch value={cardLock} onValueChange={handleCardLockToggle} />
+            </View>
+
+            <View style={styles.row}>
+              <ThemedText style={styles.label}>
+                Require Auth to View Documents
+              </ThemedText>
+              <Switch value={idLock} onValueChange={handleIdLockToggle} />
             </View>
 
             <Animated.View style={{ opacity: fadeAnim }}>

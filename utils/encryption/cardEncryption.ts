@@ -115,6 +115,33 @@ export async function decryptCards(
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
 
+export async function encryptRaw(
+  data: Uint8Array
+): Promise<EncryptionResult> {
+  const dek =
+    (await AsyncStorage.getItem(ENCRYPTED_DEK_KEY))
+      ? await getDEK()
+      : await createAndStoreDEK();
+
+  const iv = randomBytes(12);
+  const ciphertext = gcm(dek, iv).encrypt(data);
+
+  return {
+    iv: bytesToBase64(iv),
+    ciphertext: bytesToBase64(ciphertext),
+  };
+}
+
+export async function decryptRaw(
+  payload: EncryptionResult
+): Promise<Uint8Array> {
+  const dek = await getDEK();
+
+  return gcm(dek, base64ToBytes(payload.iv)).decrypt(
+    base64ToBytes(payload.ciphertext)
+  );
+}
+
 export function resetEncryptionCache() {
   cachedDEK = null;
 }
@@ -122,3 +149,7 @@ export function resetEncryptionCache() {
 // Aliases for compatibility with the rest of the project
 export const encryptCardData = encryptCards;
 export const decryptCardData = decryptCards;
+
+// Generic aliases for ID Vault and other features
+export const encryptData = encryptCards;
+export const decryptData = decryptCards;

@@ -7,7 +7,7 @@ const { LockModule } = NativeModules;
 const STORAGE_KEY = SECURITY_SETTINGS_KEY;
 
 export async function authenticateUser(
-  context: "app" | "card" = "app",
+  context: "app" | "card" | "id" = "app",
   options?: { title?: string; subtitle?: string }
 ): Promise<boolean> {
   try {
@@ -16,7 +16,11 @@ export async function authenticateUser(
 
     const appLock = parsed.appLock ?? false;
     const cardLock = parsed.cardLock ?? false;
-    const shouldLock = context === "app" ? appLock : cardLock;
+    const idLock = parsed.idLock ?? false;
+    
+    const shouldLock = 
+      context === "app" ? appLock : 
+      context === "card" ? cardLock : idLock;
     
     if (!shouldLock) {
       return true;
@@ -30,11 +34,14 @@ export async function authenticateUser(
 
     // Default titles
     const defaultTitle =
-      context === "app" ? "Unlock Cardy Wall" : "Card Access Verification";
+      context === "app" ? "Unlock Cardy Wall" : 
+      context === "card" ? "Card Access Verification" : "ID Access Verification";
     const defaultSubtitle =
       context === "app"
         ? "Authenticate to continue"
-        : "Authenticate to view sensitive card details";
+        : context === "card"
+          ? "Authenticate to view sensitive card details"
+          : "Authenticate to view secure ID document";
 
     const title = options?.title ?? defaultTitle;
     const subtitle = options?.subtitle ?? defaultSubtitle;
