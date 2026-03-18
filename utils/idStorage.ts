@@ -171,3 +171,39 @@ export async function deleteID(id: string): Promise<void> {
     console.log(`✅ ID ${id} deleted successfully`);
   }
 }
+
+/**
+ * Clear all ID documents and their associated files
+ */
+export async function clearAllIDs(): Promise<void> {
+  console.log("🧹 Clearing all ID documents...");
+  try {
+    const ids = await getIDs();
+    
+    // Delete all files
+    for (const doc of ids) {
+      for (const asset of doc.assets) {
+        try {
+          await FileSystem.deleteAsync(asset.uri, { idempotent: true });
+          await FileSystem.deleteAsync(asset.thumbnailUri, { idempotent: true });
+        } catch (e) {
+          console.warn(`  - Failed to delete asset during clearAll: ${asset.uri}`, e);
+        }
+      }
+    }
+
+    // Explicitly delete the directory to be sure
+    await FileSystem.deleteAsync(IDS_DIR, { idempotent: true });
+    
+    // Clear metadata
+    await AsyncStorage.removeItem(ID_STORAGE_KEYS.METADATA);
+    
+    // Recreate directory for future use
+    await ensureDir();
+    
+    console.log("✅ All ID documents and files cleared");
+  } catch (error) {
+    console.error("❌ Failed to clear all IDs:", error);
+    throw error;
+  }
+}

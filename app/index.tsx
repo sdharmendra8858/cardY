@@ -299,14 +299,14 @@ export default function HomeScreen() {
               </View>
               <ThemedText style={styles.securityAlertText}>
                 {!isAppLockEnabled && !isCardLockEnabled && !isIDLockEnabled
-                  ? "App Lock, Card Lock, and ID Lock are disabled. Enable them to secure your data."
+                  ? "App Lock, Card View, and ID View are disabled. Enable them to secure your data."
                   : !isAppLockEnabled
                     ? "App Lock is disabled. Enable it to prevent unauthorized access."
                     : !isCardLockEnabled && !isIDLockEnabled
-                      ? "Card Lock and ID Lock are disabled. Enable them to protect your documents."
+                      ? "Card View and ID View are disabled. Enable them to protect your documents."
                       : !isCardLockEnabled
-                        ? "Card Lock is disabled. Enable it to protect card details."
-                        : "ID Lock is disabled. Enable it to protect your Personal IDs."}
+                        ? "Card View is disabled. Enable it to protect card details."
+                        : "ID View is disabled. Enable it to protect your Personal IDs."}
               </ThemedText>
               <Pressable
                 onPress={() => router.push("/settings")}
