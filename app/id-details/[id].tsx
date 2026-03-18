@@ -1,3 +1,5 @@
+import { showInterstitialAd } from "@/components/AdInterstitial";
+import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
@@ -6,19 +8,20 @@ import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useQuota } from "@/hooks/useQuota";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { IDDocument } from "@/types/id";
+import { formatDate } from "@/utils/date";
 import { decryptImageToTemp, deleteID, getIDs } from "@/utils/idStorage";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
-import { formatDate } from "@/utils/date";
-import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -26,8 +29,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
-  ViewToken,
-  Alert
+  ViewToken
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
@@ -37,6 +39,7 @@ export default function IDDetailsScreen() {
   useScreenProtection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading } = useQuota('id');
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -52,10 +55,25 @@ export default function IDDetailsScreen() {
   // Image container should be slightly smaller than screen width
   const IMAGE_WIDTH = width - 32;
 
+  const viewProcessedRef = React.useRef(false);
+
+  useEffect(() => {
+    viewProcessedRef.current = false;
+  }, [id]);
+
   const fetchIDAndDecrypt = useCallback(async () => {
     if (!id) return;
+    // Wait for quota to load
+    if (quotaLoading || viewProcessedRef.current) return;
+
+    viewProcessedRef.current = true;
     setIsLoading(true);
     try {
+      // 0. Check Quota System
+      if (isQuotaExceeded) {
+        await showInterstitialAd();
+      }
+
       // 1. Authenticate first if needed
       const { authenticateUser } = await import("@/utils/LockScreen");
       const ok = await authenticateUser("id");
@@ -87,6 +105,7 @@ export default function IDDetailsScreen() {
         setError("This ID document was stored using an older version of the app and is no longer available. Please delete and re-add it.");
       } else {
         setDecryptedUris(successfulUris);
+        await incrementViews();
       }
     } catch (err) {
       console.error("Failed to fetch/decrypt ID:", err);
@@ -94,7 +113,7 @@ export default function IDDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, router]);
+  }, [id, router, quotaLoading, isQuotaExceeded, incrementViews]);
 
   useEffect(() => {
     fetchIDAndDecrypt();
@@ -130,13 +149,13 @@ export default function IDDetailsScreen() {
 
   const handleDownload = async () => {
     console.log("📥 handleDownload triggered, activeIndex:", activeIndex);
-    
+
     if (!decryptedUris.length) {
       console.warn("⚠️ No decrypted URIs available");
       Alert.alert("Error", "No Image available to download.");
       return;
     }
-    
+
     try {
       const sourceUri = decryptedUris[activeIndex];
 
@@ -149,10 +168,10 @@ export default function IDDetailsScreen() {
 
       // 2. Request permissions (Notifications)
       const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
-      
+
       // 3. Save to Gallery
       const asset = await MediaLibrary.createAssetAsync(sourceUri);
-      
+
       // 4. Trigger OS Notification (Android drawer)
       if (notifyStatus === 'granted') {
         await Notifications.setNotificationHandler({
@@ -418,6 +437,7 @@ export default function IDDetailsScreen() {
           </View>
 
           <ThemedText style={styles.note}>Unique Document ID: {id}</ThemedText>
+          <NativeAd />
         </ScrollView>
       </View>
 

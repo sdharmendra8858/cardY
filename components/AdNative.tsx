@@ -27,8 +27,8 @@ export default function NativeAd({ style }: NativeAdProps) {
     ? TestIds.BANNER
     : ADMOB_CONFIG.bannerAdUnitId; // <-- MUST be Banner/MREC unit
 
-  // Only show ads on Android for now
-  if (Platform.OS !== "android" || !adUnitId) {
+  // Only show ads on Android and iOS if we have a valid ad unit ID
+  if ((Platform.OS !== "android" && Platform.OS !== "ios") || !adUnitId) {
     return null;
   }
 
