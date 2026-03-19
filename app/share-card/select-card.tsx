@@ -24,6 +24,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
+import AdRewarded, { showRewardedAd } from "@/components/AdRewarded";
 
 export default function SelectCardScreen() {
     const scheme = useColorScheme() ?? "light";
@@ -199,7 +200,7 @@ export default function SelectCardScreen() {
         }
     }, [revealedCardId, revealCard]);
 
-    const handleGenerateQR = useCallback(() => {
+    const handleGenerateQR = useCallback(async () => {
         if (!selectedCardId || !sessionPayload) {
             setAlertConfig({
                 title: "Error",
@@ -209,6 +210,29 @@ export default function SelectCardScreen() {
             setAlertVisible(true);
             return;
         }
+
+        // Show rewarded ad BEFORE allowing QR generation
+        let adRewardEarned = false;
+        await showRewardedAd(
+            () => { adRewardEarned = true; },
+            () => {
+                if (!adRewardEarned) {
+                    setAlertConfig({
+                        title: "Action Required",
+                        message: "Please watch the full ad to unlock sharing.",
+                        type: "warning",
+                        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
+                    });
+                    setAlertVisible(true);
+                }
+            },
+            () => {
+                // Fallback for failed ad load
+                adRewardEarned = true;
+            }
+        );
+
+        if (!adRewardEarned) return;
 
         // Navigate to generate QR screen
         router.push({
@@ -545,7 +569,7 @@ export default function SelectCardScreen() {
                                     },
                                 ]}
                             >
-                                {isGenerating ? "Processing..." : "Generate Secure QR"}
+                                {isGenerating ? "Processing..." : "Watch Ad & Share"}
                             </ThemedText>
                         </TouchableOpacity>
                     </View>
@@ -561,6 +585,7 @@ export default function SelectCardScreen() {
                 type={alertConfig.type}
                 onRequestClose={() => setAlertVisible(false)}
             />
+            <AdRewarded />
         </SafeAreaView>
     );
 }

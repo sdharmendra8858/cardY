@@ -1,3 +1,5 @@
+import { showInterstitialAd } from "@/components/AdInterstitial";
+import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
@@ -7,9 +9,11 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
+import { IDDocument } from "@/types/id";
 import { formatDate } from "@/utils/date";
-import { decryptImageToTemp } from "@/utils/idStorage";
+import { decryptImageToTemp, deleteID, getIDs } from "@/utils/idStorage";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -36,6 +40,7 @@ export default function IDDetailsScreen() {
   useScreenProtection();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading } = useQuota('id');
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -52,6 +57,11 @@ export default function IDDetailsScreen() {
   const IMAGE_WIDTH = width - 32;
 
   const idDoc = ids.find(d => d.id === id);
+  const viewProcessedRef = React.useRef(false);
+
+  useEffect(() => {
+    viewProcessedRef.current = false;
+  }, [id]);
 
   const fetchIDAndDecrypt = useCallback(async () => {
     if (!id) return;
@@ -62,14 +72,23 @@ export default function IDDetailsScreen() {
       return; // The effect will re-run when hasLoaded changes
     }
 
+    // Wait for quota to load
+    if (quotaLoading || viewProcessedRef.current) return;
+
     if (!idDoc) {
       setError("ID document not found.");
       setIsLoading(false);
       return;
     }
 
+    viewProcessedRef.current = true;
     setIsLoading(true);
     try {
+      // 0. Check Quota System
+      if (isQuotaExceeded) {
+        await showInterstitialAd();
+      }
+
       // 1. Authenticate first if needed
       const { authenticateUser } = await import("@/utils/LockScreen");
       const ok = await authenticateUser("id");
@@ -91,6 +110,7 @@ export default function IDDetailsScreen() {
         setError("This ID document was stored using an older version of the app and is no longer available. Please delete and re-add it.");
       } else {
         setDecryptedUris(successfulUris);
+        await incrementViews();
       }
     } catch (err) {
       console.error("Failed to fetch/decrypt ID:", err);
@@ -98,7 +118,7 @@ export default function IDDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, idDoc, hasLoaded, refreshIDs, router]);
+  }, [id, idDoc, hasLoaded, refreshIDs, router, quotaLoading, isQuotaExceeded, incrementViews]);
 
   useEffect(() => {
     fetchIDAndDecrypt();
@@ -422,6 +442,7 @@ export default function IDDetailsScreen() {
           </View>
 
           <ThemedText style={styles.note}>Unique Document ID: {id}</ThemedText>
+          <NativeAd />
         </ScrollView>
       </View>
 

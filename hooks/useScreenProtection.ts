@@ -9,7 +9,8 @@ import { useCallback } from 'react';
 export function useScreenProtection(isEnabled: boolean = true) {
   useFocusEffect(
     useCallback(() => {
-      if (!isEnabled) {
+      // Don't block screenshots in development builds
+      if (!isEnabled || __DEV__) {
         return;
       }
 

@@ -12,6 +12,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
+import { AppOpenAd, AdEventType, TestIds } from "react-native-google-mobile-ads";
+import { ADMOB_CONFIG } from "@/constants/admob";
 
 import AuthRequired from "@/components/AuthRequired";
 import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
@@ -37,6 +39,12 @@ SplashScreen.preventAutoHideAsync();
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+const appOpenAdUnitId = __DEV__ ? TestIds.APP_OPEN : (ADMOB_CONFIG.appOpenAdUnitId || TestIds.APP_OPEN);
+
+const appOpenAd = AppOpenAd.createForAdRequest(appOpenAdUnitId, {
+  requestNonPersonalizedAdsOnly: true,
+});
 
 function AppShell() {
   // ✅ ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL RETURNS
@@ -97,8 +105,18 @@ function AppShell() {
 
     (async () => {
       try {
+        // App Open Ad logic
+        const unsubscribe = appOpenAd.addAdEventListener(AdEventType.LOADED, () => {
+          appOpenAd.show();
+        });
+
+        appOpenAd.load();
+
         const ok = await authenticateUser();
         setAuthenticated(ok);
+        
+        // Clean up ad listener after brief timeout or on success
+        setTimeout(() => unsubscribe(), 10000);
       } finally {
         setChecked(true);
         await SplashScreen.hideAsync();

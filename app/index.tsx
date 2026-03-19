@@ -1,4 +1,5 @@
 import AdBanner from "@/components/AdBanner";
+import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import IDGridItem from "@/components/IDGridItem";
@@ -14,7 +15,6 @@ import { IDProvider, useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
-import { type Card as StorageCard } from "@/utils/secureStorage";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -29,13 +29,13 @@ import Animated, {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
-  const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{ 
+  const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{
     redirectToTab: "self" | "other",
-    viewMode: "cards" | "ids" 
+    viewMode: "cards" | "ids"
   }>();
 
   const [viewMode, setViewMode] = useState<"cards" | "ids">(paramViewMode || "cards");
-  
+
   // Enable screen protection only when viewing Personal IDs
   useScreenProtection(viewMode === 'ids');
 
@@ -210,8 +210,8 @@ export default function HomeScreen() {
       bottom: 0,
       transform: [
         {
-          translateX: tabWidth > 0 ? withSpring(viewMode === "cards" ? 0 : tabWidth, { 
-            damping: 20, 
+          translateX: tabWidth > 0 ? withSpring(viewMode === "cards" ? 0 : tabWidth, {
+            damping: 20,
             stiffness: 150,
           }) : 0,
         },
@@ -331,7 +331,7 @@ export default function HomeScreen() {
           onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
         >
           <Animated.View style={[styles.tabIndicator, viewModeIndicatorStyle, { backgroundColor: palette.primary }]} />
-          
+
           <Pressable
             style={styles.tab}
             onPress={() => handleTabSwitch("cards")}
@@ -387,7 +387,7 @@ export default function HomeScreen() {
             <ThemedText type="defaultSemiBold" style={styles.subHeaderTitle}>
               {viewMode === "cards" ? "Manage Your Cards" : "Personal IDs"}
             </ThemedText>
-            
+
             <Pressable
               ref={iconRef}
               onPress={() => {
@@ -442,7 +442,7 @@ export default function HomeScreen() {
           >
             <View style={[styles.tooltipArrow, { left: tooltipLeft - 20 - 8 + (22 / 2) }]} />
             <ThemedText style={styles.tooltipText}>
-              {viewMode === "cards" 
+              {viewMode === "cards"
                 ? "Your cards are stored only on this device. If you delete the app or clear its data, all saved cards will be lost permanently."
                 : "Your personal IDs are encrypted and stored locally. No one, including the app developer, can access them without your master key."}
             </ThemedText>
@@ -467,39 +467,77 @@ export default function HomeScreen() {
   const ListHeader = DynamicHeader;
 
   const filteredCards = React.useMemo(() => {
-    return cards.filter((card) => {
+    const base = cards.filter((card) => {
       if (activeTab === "self") {
         return !card.cardUser || card.cardUser === "self";
       }
       return card.cardUser === "other";
     });
+
+    // Inject ads
+    const withAds: any[] = [];
+    base.forEach((item, index) => {
+      if (index > 0 && index % 5 === 0) {
+        withAds.push({ id: `ad-${index}`, isAd: true });
+      }
+      withAds.push(item);
+    });
+    return withAds;
   }, [cards, activeTab]);
 
-  const renderCardItem = React.useCallback(({ item }: { item: StorageCard & { isExpiring?: boolean } }) => (
-    <View style={{ paddingHorizontal: 16 }}>
-      <CardItem
-        id={item.id}
-        cardName={item.bank || item.cardName || `Unknown Bank`}
-        cardNumber={item.cardNumber}
-        cardHolder={item.cardHolder}
-        cardKind={item.cardKind}
-        cobrandName={item.cobrandName}
-        cardUser={item.cardUser}
-        dominantColor={item.dominantColor}
-        cardExpiresAt={item.cardExpiresAt}
-        expiry={item.expiry}
-        isExpiring={item.isExpiring}
-        isPinned={item.isPinned}
-        onPinChange={handlePinChange}
-      />
-    </View>
-  ), [handlePinChange]);
+  const filteredIDs = React.useMemo(() => {
+    const withAds: any[] = [];
+    ids.forEach((item, index) => {
+      // For 2-column IDs, we inject ad every 6 items (3 rows)
+      if (index > 0 && index % 6 === 0) {
+        withAds.push({ id: `ad-id-${index}`, isAd: true });
+      }
+      withAds.push(item);
+    });
+    return withAds;
+  }, [ids]);
 
-  const renderIDItem = React.useCallback(({ item }: { item: any }) => (
-    <View style={{ flex: 1, maxWidth: "50%" }}>
-      <IDGridItem item={item} />
-    </View>
-  ), []);
+  const renderCardItem = React.useCallback(({ item }: { item: any }) => {
+    if (item.isAd) {
+      return <NativeAd />;
+    }
+
+    return (
+      <View style={{ paddingHorizontal: 16 }}>
+        <CardItem
+          id={item.id}
+          cardName={item.bank || item.cardName || `Unknown Bank`}
+          cardNumber={item.cardNumber}
+          cardHolder={item.cardHolder}
+          cardKind={item.cardKind}
+          cobrandName={item.cobrandName}
+          cardUser={item.cardUser}
+          dominantColor={item.dominantColor}
+          cardExpiresAt={item.cardExpiresAt}
+          expiry={item.expiry}
+          isExpiring={item.isExpiring}
+          isPinned={item.isPinned}
+          onPinChange={handlePinChange}
+        />
+      </View>
+    );
+  }, [handlePinChange]);
+
+  const renderIDItem = React.useCallback(({ item }: { item: any }) => {
+    if (item.isAd) {
+      return (
+        <View style={{ width: containerWidth }}>
+          <NativeAd />
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ flex: 1, maxWidth: "50%" }}>
+        <IDGridItem item={item} />
+      </View>
+    );
+  }, [containerWidth]);
 
   const ListEmptyComponent = React.useMemo(() => {
     if (viewMode === "ids" && isIdsLoading && ids.length === 0) {
@@ -534,7 +572,7 @@ export default function HomeScreen() {
 
       <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
         <FlatList
-          data={(viewMode === "cards" ? filteredCards : ids) as any[]}
+          data={viewMode === "cards" ? filteredCards : filteredIDs}
           renderItem={viewMode === "cards" ? renderCardItem : renderIDItem}
           keyExtractor={(item) => item.id}
           numColumns={viewMode === "cards" ? 1 : 2}

@@ -396,6 +396,11 @@ export default function SettingsScreen() {
             </Animated.View>
           </View>
 
+          {/* Native Ad Section - Moved to more prominent position */}
+          <View style={styles.adSection}>
+            <NativeAd />
+          </View>
+
           {/* Section: Data Management */}
           <View style={[styles.card, { backgroundColor: palette.card }]}>
             <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>
@@ -458,17 +463,11 @@ export default function SettingsScreen() {
             </ThemedText>
           </View>
 
-          {/* Native Ad Section - Below Version Info */}
-          <View style={styles.adSection}>
-            <NativeAd />
-          </View>
-
           {/* Future Ad Section */}
           {/* 
           <View style={styles.adContainer}>
             <AdMobBanner
               adUnitID="ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy"
-              servePersonalizedAds={false}
             />
           </View>
           */}
