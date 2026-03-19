@@ -159,9 +159,10 @@ export async function deleteID(id: string): Promise<void> {
       try {
         await FileSystem.deleteAsync(asset.uri, { idempotent: true });
         await FileSystem.deleteAsync(asset.thumbnailUri, { idempotent: true });
-        console.log(`  - Deleted asset: ${asset.uri}`);
+        console.log(`  - Deleted encrypted file: ${asset.uri}`);
+        console.log(`  - Deleted thumbnail file: ${asset.thumbnailUri}`);
       } catch (e) {
-        console.warn(`  - Failed to delete asset: ${asset.uri}`, e);
+        console.warn(`  - Failed to delete asset files: ${asset.uri}`, e);
       }
     }
     

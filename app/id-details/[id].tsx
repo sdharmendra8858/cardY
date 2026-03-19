@@ -5,20 +5,20 @@ import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { IDDocument } from "@/types/id";
-import { decryptImageToTemp, deleteID, getIDs } from "@/utils/idStorage";
+import { useScreenProtection } from "@/hooks/useScreenProtection";
+import { formatDate } from "@/utils/date";
+import { decryptImageToTemp } from "@/utils/idStorage";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Notifications from 'expo-notifications';
-import { formatDate } from "@/utils/date";
-import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -26,8 +26,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
-  ViewToken,
-  Alert
+  ViewToken
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
@@ -41,7 +40,7 @@ export default function IDDetailsScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
-  const [idDoc, setIdDoc] = useState<IDDocument | null>(null);
+  const { ids, removeID: contextRemoveID, hasLoaded, refreshIDs } = useIDs();
   const [decryptedUris, setDecryptedUris] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -52,8 +51,23 @@ export default function IDDetailsScreen() {
   // Image container should be slightly smaller than screen width
   const IMAGE_WIDTH = width - 32;
 
+  const idDoc = ids.find(d => d.id === id);
+
   const fetchIDAndDecrypt = useCallback(async () => {
     if (!id) return;
+
+    // If ids haven't loaded yet (e.g. direct link), load them first
+    if (!hasLoaded) {
+      await refreshIDs();
+      return; // The effect will re-run when hasLoaded changes
+    }
+
+    if (!idDoc) {
+      setError("ID document not found.");
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
       // 1. Authenticate first if needed
@@ -65,25 +79,15 @@ export default function IDDetailsScreen() {
       }
       setIsAuthenticated(true);
 
-      // 2. Fetch and decrypt
-      const allIDs = await getIDs();
-      const doc = allIDs.find(d => d.id === id);
-
-      if (!doc) {
-        setError("ID document not found.");
-        return;
-      }
-
-      setIdDoc(doc);
-
+      // 2. Decrypt assets
       // Decrypt all assets to temp files
       const uris = await Promise.all(
-        doc.assets.map(asset => decryptImageToTemp(asset.uri))
+        idDoc.assets.map(asset => decryptImageToTemp(asset.uri))
       );
 
       const successfulUris = uris.filter((uri): uri is string => uri !== null);
 
-      if (successfulUris.length === 0 && doc.assets.length > 0) {
+      if (successfulUris.length === 0 && idDoc.assets.length > 0) {
         setError("This ID document was stored using an older version of the app and is no longer available. Please delete and re-add it.");
       } else {
         setDecryptedUris(successfulUris);
@@ -94,7 +98,7 @@ export default function IDDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, router]);
+  }, [id, idDoc, hasLoaded, refreshIDs, router]);
 
   useEffect(() => {
     fetchIDAndDecrypt();
@@ -130,13 +134,13 @@ export default function IDDetailsScreen() {
 
   const handleDownload = async () => {
     console.log("📥 handleDownload triggered, activeIndex:", activeIndex);
-    
+
     if (!decryptedUris.length) {
       console.warn("⚠️ No decrypted URIs available");
       Alert.alert("Error", "No Image available to download.");
       return;
     }
-    
+
     try {
       const sourceUri = decryptedUris[activeIndex];
 
@@ -149,10 +153,10 @@ export default function IDDetailsScreen() {
 
       // 2. Request permissions (Notifications)
       const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
-      
+
       // 3. Save to Gallery
       const asset = await MediaLibrary.createAssetAsync(sourceUri);
-      
+
       // 4. Trigger OS Notification (Android drawer)
       if (notifyStatus === 'granted') {
         await Notifications.setNotificationHandler({
@@ -208,7 +212,7 @@ export default function IDDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteID(id as string);
+              await contextRemoveID(id as string);
               router.back();
             } catch (err) {
               setError("Failed to delete ID document.");
@@ -378,10 +382,10 @@ export default function IDDetailsScreen() {
                 </View>
               </View>
               <View style={styles.metadataItem}>
-                <MaterialIcons name="lock-outline" size={18} color={palette.icon} />
+                <MaterialIcons name="security" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
-                  <ThemedText style={styles.metadataLabel}>Encryption</ThemedText>
-                  <ThemedText style={styles.metadataValue}>AES-256</ThemedText>
+                  <ThemedText style={styles.metadataLabel}>Privacy Level</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Zero-Cloud (Ultra Private)</ThemedText>
                 </View>
               </View>
             </View>
@@ -393,14 +397,14 @@ export default function IDDetailsScreen() {
                 <MaterialIcons name="sd-storage" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
                   <ThemedText style={styles.metadataLabel}>Storage</ThemedText>
-                  <ThemedText style={styles.metadataValue}>Local Only</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Device-Isolated (Local)</ThemedText>
                 </View>
               </View>
               <View style={styles.metadataItem}>
                 <MaterialIcons name="fingerprint" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
-                  <ThemedText style={styles.metadataLabel}>Security</ThemedText>
-                  <ThemedText style={styles.metadataValue}>Biometric</ThemedText>
+                  <ThemedText style={styles.metadataLabel}>Vault Security</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Hardware-Locked</ThemedText>
                 </View>
               </View>
             </View>

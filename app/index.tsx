@@ -10,6 +10,7 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useTimer } from "@/context/CardContext";
 import { Card, useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
+import { IDProvider, useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
@@ -20,7 +21,7 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions } from "react-native";
+import { FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions, ActivityIndicator } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
@@ -70,6 +71,8 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<"self" | "other">(redirectToTab || "self");
   const isNavigatingRef = useRef(false);
 
+  const { ids, isLoading: isIdsLoading, hasLoaded: idsHasLoaded, refreshIDs } = useIDs();
+
   const handleProfilePress = useCallback(() => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
@@ -112,18 +115,6 @@ export default function HomeScreen() {
       // ignore
     }
   };
-
-  const [ids, setIds] = useState<any[]>([]);
-
-  const fetchIDs = useCallback(async () => {
-    try {
-      const { getIDs } = await import("@/utils/idStorage");
-      const fetchedIDs = await getIDs();
-      setIds(fetchedIDs);
-    } catch (error) {
-      console.error("Failed to fetch IDs:", error);
-    }
-  }, []);
 
   // Sync context cards to local state whenever context updates
   React.useEffect(() => {
@@ -187,13 +178,19 @@ export default function HomeScreen() {
     }
   };
 
-  // Load profile, settings, and IDs
+  // Lazy load IDs only when the tab is active
+  useEffect(() => {
+    if (viewMode === 'ids' && !idsHasLoaded && !isIdsLoading) {
+      refreshIDs();
+    }
+  }, [viewMode, idsHasLoaded, isIdsLoading, refreshIDs]);
+
+  // Load profile and settings
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
       checkSecuritySettings();
-      fetchIDs();
-    }, [fetchIDs])
+    }, [])
   );
 
 
@@ -505,6 +502,17 @@ export default function HomeScreen() {
   ), []);
 
   const ListEmptyComponent = React.useMemo(() => {
+    if (viewMode === "ids" && isIdsLoading && ids.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={palette.primary} />
+          <ThemedText style={[styles.loadingText, { color: palette.icon, marginTop: 12 }]}>
+            Fetching your IDs...
+          </ThemedText>
+        </View>
+      );
+    }
+
     return (
       <NoCards
         showButton={viewMode === "cards" ? cards.length === 0 : ids.length === 0}
@@ -517,7 +525,7 @@ export default function HomeScreen() {
         onPress={() => router.push(viewMode === "cards" ? "/add-card" : "/add-id")}
       />
     );
-  }, [cards.length, ids.length, viewMode, activeTab]);
+  }, [cards.length, ids.length, viewMode, activeTab, isIdsLoading, palette]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={["top"]}>
@@ -526,7 +534,7 @@ export default function HomeScreen() {
 
       <Animated.View style={[{ flex: 1 }, animatedContentStyle]}>
         <FlatList
-          data={viewMode === "cards" ? filteredCards : ids}
+          data={(viewMode === "cards" ? filteredCards : ids) as any[]}
           renderItem={viewMode === "cards" ? renderCardItem : renderIDItem}
           keyExtractor={(item) => item.id}
           numColumns={viewMode === "cards" ? 1 : 2}
@@ -587,6 +595,16 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 25,
     fontWeight: "bold",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
   securityAlertContainer: {
     marginHorizontal: 16,
