@@ -1,4 +1,4 @@
-import { IDAsset, IDDocument, ID_STORAGE_KEYS } from "@/types/id";
+import { IDDocument, ID_STORAGE_KEYS } from "@/types/id";
 import { decryptData, decryptRaw, encryptData, encryptRaw } from "@/utils/encryption/cardEncryption";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
@@ -81,9 +81,19 @@ export async function saveEncryptedImage(sourceUri: string, id: string, name: st
 export async function saveThumbnail(sourceUri: string, id: string): Promise<string> {
   await ensureDir();
   const destPath = IDS_DIR + `thumb_${id}.jpg`;
-  await FileSystem.copyAsync({ from: sourceUri, to: destPath });
-  console.log(`🖼️ Saved thumbnail: ${destPath}`);
-  return destPath;
+  try {
+    const sourceInfo = await FileSystem.getInfoAsync(sourceUri);
+    if (!sourceInfo.exists) {
+      console.error(`❌ saveThumbnail: Source file does not exist: ${sourceUri}`);
+      throw new Error(`Source file for thumbnail not found: ${sourceUri}`);
+    }
+    await FileSystem.copyAsync({ from: sourceUri, to: destPath });
+    console.log(`🖼️ Saved thumbnail: ${destPath}`);
+    return destPath;
+  } catch (error) {
+    console.error(`❌ saveThumbnail failed for ${id}:`, error);
+    throw error;
+  }
 }
 
 /**
