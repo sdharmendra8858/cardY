@@ -6,7 +6,7 @@ import {
 import * as Linking from "expo-linking";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
@@ -29,6 +29,8 @@ import { SecurityProvider } from "@/context/SecurityContext";
 import { ThemeOverrideProvider } from "@/context/ThemeContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { authenticateUser } from "@/utils/LockScreen";
+import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -52,6 +54,10 @@ function AppShell() {
   const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
+  const adShownRef = useRef(false);
+  const lastAdShowTimeRef = useRef(0);
+  const tncShownInSessionRef = useRef(false);
   const [appIsActive, setAppIsActive] = useState(
     AppState.currentState === "active"
   );
@@ -98,31 +104,96 @@ function AppShell() {
     cleanup();
   }, []);
 
-  // 🔒 Biometric authentication for both Android and iOS
+  // Check Terms on mount
+  useEffect(() => {
+    AsyncStorage.getItem("terms_accepted").then((val) => {
+      const accepted = val === "true";
+      setTermsAccepted(accepted);
+      if (!accepted) {
+        tncShownInSessionRef.current = true;
+      }
+    });
+  }, []);
+
+  // Centralized ad trigger to handle both initial launch and foregrounding
+  const triggerAdAfterUnlock = useCallback(() => {
+    // Skip if ad already shown recently, terms not accepted, or TnC was shown this session
+    if (tncShownInSessionRef.current || termsAccepted !== true) return;
+    
+    // Cooldown: 15 seconds to avoid spamming
+    const now = Date.now();
+    if (now - lastAdShowTimeRef.current < 15000) return;
+
+    if (appOpenAd.loaded) {
+      appOpenAd.show();
+      lastAdShowTimeRef.current = Date.now();
+      adShownRef.current = true;
+    } else {
+      const unsubscribeLoaded = appOpenAd.addAdEventListener(AdEventType.LOADED, () => {
+        if (!adShownRef.current) {
+          appOpenAd.show();
+          adShownRef.current = true;
+          lastAdShowTimeRef.current = Date.now();
+        }
+        cleanup();
+      });
+
+      const unsubscribeError = appOpenAd.addAdEventListener(AdEventType.ERROR, () => {
+        cleanup();
+      });
+
+      const cleanup = () => {
+        unsubscribeLoaded();
+        unsubscribeError();
+      };
+
+      try {
+        appOpenAd.load();
+      } catch (e) {}
+      
+      setTimeout(cleanup, 10000);
+    }
+  }, [termsAccepted]);
+
+  // 🔒 Biometric authentication
   useEffect(() => {
     if (checked) return; // already handled
     if (!appIsActive) return;
 
     (async () => {
       try {
-        // App Open Ad logic
-        const unsubscribe = appOpenAd.addAdEventListener(AdEventType.LOADED, () => {
-          appOpenAd.show();
-        });
+        // 1. Preload ad in background if terms were previously accepted
+        const termsVal = await AsyncStorage.getItem("terms_accepted");
+        if (termsVal === "true") {
+          appOpenAd.load();
+        }
 
-        appOpenAd.load();
+        // 2. Check if App Lock is enabled
+        const settingsRaw = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
+        const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+        const isAppLockEnabled = settings.appLock ?? false;
 
-        const ok = await authenticateUser();
-        setAuthenticated(ok);
-        
-        // Clean up ad listener after brief timeout or on success
-        setTimeout(() => unsubscribe(), 10000);
+        if (isAppLockEnabled) {
+          const ok = await authenticateUser();
+          setAuthenticated(ok);
+        } else {
+          setAuthenticated(true);
+        }
+      } catch (err) {
+        setAuthenticated(true);
       } finally {
         setChecked(true);
         await SplashScreen.hideAsync();
       }
     })();
   }, [appIsActive, checked]);
+
+  // Handle ad trigger on foreground transitions and initial check
+  useEffect(() => {
+    if (authenticated && termsAccepted === true && appIsActive) {
+      triggerAdAfterUnlock();
+    }
+  }, [authenticated, termsAccepted, appIsActive, triggerAdAfterUnlock]);
 
   // 🔗 Deep linking setup
   useEffect(() => {
@@ -147,7 +218,9 @@ function AppShell() {
     try {
       const ok = await authenticateUser();
       setAuthenticated(ok);
-      if (!ok) {
+      if (ok) {
+        triggerAdAfterUnlock();
+      } else {
         Toast.show({ type: "error", text1: "Authentication canceled" });
       }
     } catch {
@@ -192,7 +265,7 @@ function AppShell() {
         <AlertProvider>
           <SecurityProvider>
             <MigrationProvider>
-              <MigrationAwareContent />
+              <MigrationAwareContent onTermsAccepted={() => setTermsAccepted(true)} />
             </MigrationProvider>
           </SecurityProvider>
         </AlertProvider>
@@ -202,7 +275,7 @@ function AppShell() {
 }
 
 // Separate component to access migration context
-function MigrationAwareContent() {
+function MigrationAwareContent({ onTermsAccepted }: { onTermsAccepted: () => void }) {
   const { needsMigration, cardCount, isReady, handleMigrate, handleFreshSetup, handleComplete } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
@@ -252,7 +325,7 @@ function MigrationAwareContent() {
           <TimerProvider>
             <CompromisedDeviceModal />
             <Stack screenOptions={{ headerShown: false }} />
-            <TermsPopup />
+            <TermsPopup onAccept={onTermsAccepted} />
             <StatusBar
               style={barStyle}
               backgroundColor={barBg}
