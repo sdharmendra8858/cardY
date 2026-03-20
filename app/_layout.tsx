@@ -23,6 +23,7 @@ import { AlertProvider } from "@/context/AlertContext";
 import { TimerProvider } from "@/context/CardContext";
 import { CardProviderWithMigration } from "@/context/CardContextWithMigration";
 import { CardPinningProvider } from "@/context/CardPinningContext";
+import { IDProvider } from "@/context/IDContext";
 import { MigrationProvider, useMigration } from "@/context/MigrationContext";
 import { SecurityProvider } from "@/context/SecurityContext";
 import { ThemeOverrideProvider } from "@/context/ThemeContext";
@@ -246,20 +247,22 @@ function MigrationAwareContent() {
 
   return (
     <CardProviderWithMigration>
-      <CardPinningProvider>
-        <TimerProvider>
-          <CompromisedDeviceModal />
-          <Stack screenOptions={{ headerShown: false }} />
-          <TermsPopup />
-          <StatusBar
-            style={barStyle}
-            backgroundColor={barBg}
-            translucent={false}
-            animated
-          />
-          <Toast position="bottom" visibilityTime={3000} />
-        </TimerProvider>
-      </CardPinningProvider>
+      <IDProvider>
+        <CardPinningProvider>
+          <TimerProvider>
+            <CompromisedDeviceModal />
+            <Stack screenOptions={{ headerShown: false }} />
+            <TermsPopup />
+            <StatusBar
+              style={barStyle}
+              backgroundColor={barBg}
+              translucent={false}
+              animated
+            />
+            <Toast position="bottom" visibilityTime={3000} />
+          </TimerProvider>
+        </CardPinningProvider>
+      </IDProvider>
     </CardProviderWithMigration>
   );
 }

@@ -1,4 +1,5 @@
 import AdBanner from "@/components/AdBanner";
+import { showInterstitialAd } from "@/components/AdInterstitial";
 import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
@@ -8,24 +9,26 @@ import { ThemedText } from "@/components/themed-text";
 import { getAvatarById } from "@/constants/avatars";
 import { SECURITY_SETTINGS_KEY } from "@/constants/storage";
 import { Colors } from "@/constants/theme";
-import { useAlert } from "@/context/AlertContext";
 import { useTimer } from "@/context/CardContext";
 import { Card, useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
+import { useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Switch, View, useWindowDimensions } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 export default function HomeScreen() {
   const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{
@@ -38,7 +41,6 @@ export default function HomeScreen() {
   // Enable screen protection only when viewing Personal IDs
   useScreenProtection(viewMode === 'ids');
 
-  const { showAlert } = useAlert();
   const { cards: contextCards, togglePin, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -69,6 +71,14 @@ export default function HomeScreen() {
   const [isIDLockEnabled, setIsIDLockEnabled] = useState(true);
   const [activeTab, setActiveTab] = useState<"self" | "other">(redirectToTab || "self");
   const isNavigatingRef = useRef(false);
+
+  const { ids, isLoading: isIdsLoading, hasLoaded: idsHasLoaded, refreshIDs } = useIDs();
+  const { isQuotaExceeded, viewsCount, loading: quotaLoading, incrementViews, maxFreeViews } = useQuota('id');
+
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [isAdLoading, setIsAdLoading] = useState(false);
+  const [isAdWatched, setIsAdWatched] = useState(false);
+  const [pendingIDId, setPendingIDId] = useState<string | null>(null);
 
   const handleProfilePress = useCallback(() => {
     if (isNavigatingRef.current) return;
@@ -112,18 +122,6 @@ export default function HomeScreen() {
       // ignore
     }
   };
-
-  const [ids, setIds] = useState<any[]>([]);
-
-  const fetchIDs = useCallback(async () => {
-    try {
-      const { getIDs } = await import("@/utils/idStorage");
-      const fetchedIDs = await getIDs();
-      setIds(fetchedIDs);
-    } catch (error) {
-      console.error("Failed to fetch IDs:", error);
-    }
-  }, []);
 
   // Sync context cards to local state whenever context updates
   React.useEffect(() => {
@@ -187,13 +185,19 @@ export default function HomeScreen() {
     }
   };
 
-  // Load profile, settings, and IDs
+  // Lazy load IDs only when the tab is active
+  useEffect(() => {
+    if (viewMode === 'ids' && !idsHasLoaded && !isIdsLoading) {
+      refreshIDs();
+    }
+  }, [viewMode, idsHasLoaded, isIdsLoading, refreshIDs]);
+
+  // Load profile and settings
   useFocusEffect(
     useCallback(() => {
       fetchProfile();
       checkSecuritySettings();
-      fetchIDs();
-    }, [fetchIDs])
+    }, [])
   );
 
 
@@ -262,6 +266,57 @@ export default function HomeScreen() {
     }
   }, [activeTab]);
 
+  const handleIDPress = useCallback((id: string) => {
+    if (isNavigatingRef.current) return;
+
+    console.log(`📊 [Quota] View Count: ${viewsCount}/${maxFreeViews} | Exceeded: ${isQuotaExceeded}`);
+    if (isQuotaExceeded && !isAdWatched) {
+      setPendingIDId(id);
+      setShowQuotaModal(true);
+      return;
+    }
+
+    incrementViews();
+    console.log(`📊 [Quota] View Granted! New Count: ${viewsCount + 1}/${maxFreeViews}`);
+    isNavigatingRef.current = true;
+    router.push({ pathname: "/id-details/[id]", params: { id: id, unlocked: 'true' } });
+    setIsAdWatched(false);
+
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 1000);
+  }, [isQuotaExceeded, isAdWatched, router, incrementViews, viewsCount, maxFreeViews]);
+
+  const handleWatchAd = async () => {
+    setIsAdLoading(true);
+    setShowQuotaModal(false);
+    try {
+      await showInterstitialAd();
+      setIsAdWatched(true);
+      // Proceed to ID details
+      if (pendingIDId) {
+        console.log(`📊 [Quota] Incrementing view via Ad for ${pendingIDId}`);
+        incrementViews();
+        isNavigatingRef.current = true;
+        router.push({ pathname: "/id-details/[id]", params: { id: pendingIDId, unlocked: 'true' } });
+        setPendingIDId(null);
+        setIsAdWatched(false);
+        setTimeout(() => {
+          isNavigatingRef.current = false;
+        }, 1000);
+      }
+    } catch (err) {
+      console.error("Ad failed to show:", err);
+      Toast.show({
+        type: "error",
+        text1: "Ad Error",
+        text2: "Failed to load ad. Please try again.",
+      });
+    } finally {
+      setIsAdLoading(false);
+    }
+  };
+
   // Stable Header: profile, security alerts, and the main tab toggle
   // Does NOT depend on viewMode so will NOT re-render when switching tabs
   const StaticHeader = useMemo(
@@ -288,7 +343,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Security Alerts */}
-        {(!isAppLockEnabled || !isCardLockEnabled) && (
+        {(!isAppLockEnabled || !isCardLockEnabled || !isIDLockEnabled) && (
           <View style={styles.securityAlertContainer}>
             <View style={styles.securityAlertContent}>
               <View style={styles.securityAlertHeader}>
@@ -299,14 +354,14 @@ export default function HomeScreen() {
               </View>
               <ThemedText style={styles.securityAlertText}>
                 {!isAppLockEnabled && !isCardLockEnabled && !isIDLockEnabled
-                  ? "App Lock, Card Lock, and ID Lock are disabled. Enable them to secure your data."
+                  ? "App Lock, Card View, and ID View are disabled. Enable them to secure your data."
                   : !isAppLockEnabled
                     ? "App Lock is disabled. Enable it to prevent unauthorized access."
                     : !isCardLockEnabled && !isIDLockEnabled
-                      ? "Card Lock and ID Lock are disabled. Enable them to protect your documents."
-                      : !isCardLockEnabled
-                        ? "Card Lock is disabled. Enable it to protect card details."
-                        : "ID Lock is disabled. Enable it to protect your Personal IDs."}
+                      ? "Card View and ID View are disabled. Enable them to protect your sensitive documents."
+                      : !isIDLockEnabled
+                        ? "ID View Lock is disabled. Enable it to protect your Personal IDs."
+                        : "Card View Lock is disabled. Enable it to protect card details."}
               </ThemedText>
               <Pressable
                 onPress={() => router.push("/settings")}
@@ -506,7 +561,7 @@ export default function HomeScreen() {
     }
 
     return (
-      <View style={{ paddingHorizontal: 16 }}>
+      <View style={{ paddingHorizontal: 8 }}>
         <CardItem
           id={item.id}
           cardName={item.bank || item.cardName || `Unknown Bank`}
@@ -529,20 +584,31 @@ export default function HomeScreen() {
   const renderIDItem = React.useCallback(({ item }: { item: any }) => {
     if (item.isAd) {
       return (
-        <View style={{ width: containerWidth }}>
+        <View style={{ width: (windowWidth - 16) / 2 - 16, margin: 8 }}>
           <NativeAd />
         </View>
       );
     }
 
     return (
-      <View style={{ flex: 1, maxWidth: "50%" }}>
-        <IDGridItem item={item} />
+      <View style={{ width: (windowWidth - 16) / 2 }}>
+        <IDGridItem item={item} onPress={handleIDPress} />
       </View>
     );
-  }, [containerWidth]);
+  }, [windowWidth, handleIDPress]);
 
   const ListEmptyComponent = React.useMemo(() => {
+    if (viewMode === "ids" && isIdsLoading && ids.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={palette.primary} />
+          <ThemedText style={[styles.loadingText, { color: palette.icon, marginTop: 12 }]}>
+            Fetching your IDs...
+          </ThemedText>
+        </View>
+      );
+    }
+
     return (
       <NoCards
         showButton={viewMode === "cards" ? cards.length === 0 : ids.length === 0}
@@ -555,7 +621,7 @@ export default function HomeScreen() {
         onPress={() => router.push(viewMode === "cards" ? "/add-card" : "/add-id")}
       />
     );
-  }, [cards.length, ids.length, viewMode, activeTab]);
+  }, [cards.length, ids.length, viewMode, activeTab, isIdsLoading, palette]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={["top"]}>
@@ -569,6 +635,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           numColumns={viewMode === "cards" ? 1 : 2}
           key={viewMode}
+          columnWrapperStyle={viewMode === "ids" ? { justifyContent: "flex-start" } : undefined}
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: 100 }
@@ -592,6 +659,71 @@ export default function HomeScreen() {
       )}
 
       <AdBanner />
+
+      <Modal
+        visible={showQuotaModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowQuotaModal(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowQuotaModal(false)}
+        >
+          <Pressable
+            style={[styles.quotaModalContent, { backgroundColor: palette.card }]}
+            onPress={(e: any) => e.stopPropagation()}
+          >
+            <View style={[styles.quotaIconContainer, { backgroundColor: `${palette.primary}15` }]}>
+              <MaterialIcons name="security" size={40} color={palette.primary} />
+            </View>
+
+            <ThemedText type="subtitle" style={styles.quotaTitle}>Daily Limit Reached</ThemedText>
+
+            <ThemedText style={styles.quotaDescription}>
+              You've used your 5 free ID views for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
+            </ThemedText>
+
+            <View style={styles.quotaInfoBox}>
+              <MaterialIcons name="info-outline" size={16} color={palette.icon} />
+              <ThemedText style={styles.quotaInfoText}>
+                Your data remains encrypted locally. Ads help us maintain the infrastructure.
+              </ThemedText>
+            </View>
+
+            <View style={styles.quotaActions}>
+              <AppButton
+                title={isAdLoading ? "Loading Ad..." : "Watch Video to Unlock"}
+                onPress={handleWatchAd}
+                disabled={isAdLoading}
+                icon="play-circle-outline"
+              />
+
+              <Pressable
+                style={styles.premiumButton}
+                onPress={() => {
+                  Toast.show({
+                    type: "info",
+                    text1: "Coming Soon!",
+                    text2: "Premium for unlimited access is in development.",
+                  });
+                }}
+              >
+                <ThemedText style={[styles.premiumText, { color: palette.primary }]}>
+                  Go Premium (Coming Soon)
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => setShowQuotaModal(false)}
+              >
+                <ThemedText style={styles.cancelText}>Maybe Later</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -625,6 +757,16 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 25,
     fontWeight: "bold",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: "500",
   },
   securityAlertContainer: {
     marginHorizontal: 16,
@@ -822,6 +964,78 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   listContent: {
+    paddingHorizontal: 8,
     paddingBottom: 100,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  quotaModalContent: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  quotaIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  quotaTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  quotaDescription: {
+    fontSize: 15,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  quotaInfoBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  quotaInfoText: {
+    fontSize: 12,
+    flex: 1,
+    opacity: 0.6,
+  },
+  quotaActions: {
+    width: '100%',
+    gap: 12,
+  },
+  premiumButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  premiumText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 14,
+    opacity: 0.5,
   },
 });

@@ -1,4 +1,3 @@
-import { showInterstitialAd } from "@/components/AdInterstitial";
 import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
@@ -7,7 +6,10 @@ import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
+import { useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { IDDocument } from "@/types/id";
@@ -21,6 +23,7 @@ import * as Notifications from 'expo-notifications';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -37,75 +40,103 @@ import Toast from "react-native-toast-message";
 
 export default function IDDetailsScreen() {
   useScreenProtection();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, unlocked } = useLocalSearchParams<{ id: string, unlocked?: string }>();
   const router = useRouter();
-  const { isQuotaExceeded, incrementViews, loading: quotaLoading } = useQuota('id');
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading, viewsCount } = useQuota('id');
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
-  const [idDoc, setIdDoc] = useState<IDDocument | null>(null);
+  const { ids, removeID: contextRemoveID, hasLoaded, refreshIDs } = useIDs();
   const [decryptedUris, setDecryptedUris] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
   const { width } = useWindowDimensions();
   // Image container should be slightly smaller than screen width
   const IMAGE_WIDTH = width - 32;
 
+  const idDoc = ids.find(d => d.id === id);
   const viewProcessedRef = React.useRef(false);
 
   useEffect(() => {
     viewProcessedRef.current = false;
+    setIsAuthenticated(false);
+    setDecryptedUris([]);
+    setError(null);
   }, [id]);
 
   const fetchIDAndDecrypt = useCallback(async () => {
     if (!id) return;
+
+    // If ids haven't loaded yet (e.g. direct link), load them first
+    if (!hasLoaded) {
+      await refreshIDs();
+      return; // The effect will re-run when hasLoaded changes
+    }
+
     // Wait for quota to load
     if (quotaLoading || viewProcessedRef.current) return;
 
-    viewProcessedRef.current = true;
-    setIsLoading(true);
-    try {
-      // 0. Check Quota System
-      if (isQuotaExceeded) {
-        await showInterstitialAd();
-      }
+    if (!idDoc) {
+      setError("ID document not found.");
+      setIsLoading(false);
+      return;
+    }
 
+    viewProcessedRef.current = true;
+    try {
       // 1. Authenticate first if needed
       const { authenticateUser } = await import("@/utils/LockScreen");
       const ok = await authenticateUser("id");
       if (!ok) {
+        // Reset ref so they can try again if they come back
+        viewProcessedRef.current = false;
         router.back();
         return;
       }
       setIsAuthenticated(true);
 
-      // 2. Fetch and decrypt
-      const allIDs = await getIDs();
-      const doc = allIDs.find(d => d.id === id);
-
-      if (!doc) {
-        setError("ID document not found.");
-        return;
+      // 2. Decrypt assets and check/regenerate thumbnails
+      const newDecryptedUris: string[] = [];
+      for (const asset of idDoc.assets) {
+        const tempPath = await decryptImageToTemp(asset.uri);
+        if (tempPath) {
+          newDecryptedUris.push(tempPath);
+          
+          // Background: Check if thumbnail exists, if not recreate it
+          const thumbPath = asset.thumbnailUri;
+          if (thumbPath) {
+            // Use .then() to make this non-blocking for the main decryption flow
+            FileSystem.getInfoAsync(thumbPath).then(async (info) => {
+              if (!info.exists) {
+                console.log(`🖼️ [Thumbnail] Missing thumbnail detected, recreating: ${thumbPath}`);
+                try {
+                  const thumb = await ImageManipulator.manipulateAsync(
+                    tempPath,
+                    [{ resize: { width: 200 } }],
+                    { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+                  );
+                  // Copy the generated thumbnail to its expected path
+                  await FileSystem.copyAsync({ from: thumb.uri, to: thumbPath });
+                  console.log(`✅ [Thumbnail] Regenerated and saved: ${thumbPath}`);
+                  refreshIDs(); // Notify other screens (like Home) that data has changed
+                } catch (e) {
+                  console.warn(`❌ [Thumbnail] Failed to regenerate:`, e);
+                }
+              }
+            });
+          }
+        }
       }
 
-      setIdDoc(doc);
-
-      // Decrypt all assets to temp files
-      const uris = await Promise.all(
-        doc.assets.map(asset => decryptImageToTemp(asset.uri))
-      );
-
-      const successfulUris = uris.filter((uri): uri is string => uri !== null);
-
-      if (successfulUris.length === 0 && doc.assets.length > 0) {
+      if (newDecryptedUris.length === 0 && idDoc.assets.length > 0) {
         setError("This ID document was stored using an older version of the app and is no longer available. Please delete and re-add it.");
       } else {
-        setDecryptedUris(successfulUris);
-        await incrementViews();
+        setDecryptedUris(newDecryptedUris);
       }
     } catch (err) {
       console.error("Failed to fetch/decrypt ID:", err);
@@ -113,7 +144,7 @@ export default function IDDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, router, quotaLoading, isQuotaExceeded, incrementViews]);
+  }, [id, idDoc, hasLoaded, refreshIDs, router, quotaLoading, isQuotaExceeded, incrementViews]);
 
   useEffect(() => {
     fetchIDAndDecrypt();
@@ -158,25 +189,35 @@ export default function IDDetailsScreen() {
 
     try {
       const sourceUri = decryptedUris[activeIndex];
+      const idLabel = idDoc?.label || idDoc?.type || "ID";
+      const sideFormatted = activeIndex === 0 ? "Front" : activeIndex === 1 ? "Back" : "Image";
+      
+      // Create a "pretty" name for the gallery, e.g. Passport_Front_12345.jpg
+      // Sanitizing label: replace non-alphanumeric with underscore
+      const cleanLabel = idLabel.replace(/[^a-z0-9]/gi, '_');
+      const prettyName = `${cleanLabel}_${sideFormatted}_${Date.now()}.jpg`;
+      const prettyUri = `${FileSystem.cacheDirectory}${prettyName}`;
 
-      // 1. Request permissions (MediaLibrary)
+      // 1. Copy to the pretty location so MediaLibrary uses this as the filename
+      await FileSystem.copyAsync({ from: sourceUri, to: prettyUri });
+
+      // 2. Request permissions (MediaLibrary)
       const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
       if (mediaStatus !== 'granted') {
         Alert.alert("Permission Required", "Gallery access is required to save the image. Please enable it in settings.");
         return;
       }
 
-      // 2. Request permissions (Notifications)
+      // 3. Request permissions (Notifications)
       const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
 
-      // 3. Save to Gallery
-      const asset = await MediaLibrary.createAssetAsync(sourceUri);
+      // 4. Save to Gallery using the pretty filename
+      const asset = await MediaLibrary.createAssetAsync(prettyUri);
 
       // 4. Trigger OS Notification (Android drawer)
       if (notifyStatus === 'granted') {
         await Notifications.setNotificationHandler({
           handleNotification: async () => ({
-            shouldShowAlert: true,
             shouldPlaySound: false,
             shouldSetBadge: false,
             shouldShowBanner: true,
@@ -187,19 +228,26 @@ export default function IDDetailsScreen() {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: "Download Complete",
-            body: "The ID document has been saved to your gallery.",
+            body: `${sideFormatted} - ${idLabel} has been saved to your gallery.`,
             data: { id, assetId: asset.id },
           },
           trigger: null, // immediate
         });
-      }
 
-      Toast.show({
-        type: "success",
-        text1: "Saved to Gallery",
-        text2: "The image has been saved to your device.",
-        position: "bottom",
-      });
+        Toast.show({
+          type: "success",
+          text1: "Saved to Gallery",
+          text2: `${sideFormatted} of ${idLabel} is now in your device.`,
+          position: "bottom",
+        });
+
+        // Cleanup the temporary pretty file
+        try {
+          await FileSystem.deleteAsync(prettyUri, { idempotent: true });
+        } catch (e) {
+          console.warn("⚠️ [Cleanup] Failed to delete prettyUri:", e);
+        }
+      }
     } catch (err) {
       console.error("❌ Download Error:", err);
       Alert.alert("Download Error", err instanceof Error ? err.message : "An unexpected error occurred while saving.");
@@ -227,7 +275,7 @@ export default function IDDetailsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              await deleteID(id as string);
+              await contextRemoveID(id as string);
               router.back();
             } catch (err) {
               setError("Failed to delete ID document.");
@@ -261,6 +309,7 @@ export default function IDDetailsScreen() {
       </View>
     );
   }
+
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.surface }]}>
@@ -361,6 +410,25 @@ export default function IDDetailsScreen() {
                     </Pressable>
                   </View>
                 )}
+                ListEmptyComponent={() => (
+                  <View style={{ width: width, paddingHorizontal: 16, alignItems: 'center' }}>
+                    <View style={[styles.imageContainer, { width: IMAGE_WIDTH, borderColor: palette.border, backgroundColor: palette.card, justifyContent: 'center', alignItems: 'center' }]}>
+                      {idDoc?.assets[0]?.thumbnailUri ? (
+                        <Image
+                          source={{ uri: idDoc.assets[0].thumbnailUri }}
+                          style={styles.image}
+                          contentFit="contain"
+                          transition={200}
+                        />
+                      ) : (
+                        <ActivityIndicator size="large" color={palette.primary} />
+                      )}
+                      <View style={styles.zoomIconOverlay}>
+                         <ActivityIndicator size="small" color="white" />
+                      </View>
+                    </View>
+                  </View>
+                )}
               />
               {/* Pagination Dots */}
               {decryptedUris.length > 1 && (
@@ -397,10 +465,10 @@ export default function IDDetailsScreen() {
                 </View>
               </View>
               <View style={styles.metadataItem}>
-                <MaterialIcons name="lock-outline" size={18} color={palette.icon} />
+                <MaterialIcons name="security" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
-                  <ThemedText style={styles.metadataLabel}>Encryption</ThemedText>
-                  <ThemedText style={styles.metadataValue}>AES-256</ThemedText>
+                  <ThemedText style={styles.metadataLabel}>Privacy Level</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Zero-Cloud (Ultra Private)</ThemedText>
                 </View>
               </View>
             </View>
@@ -412,14 +480,14 @@ export default function IDDetailsScreen() {
                 <MaterialIcons name="sd-storage" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
                   <ThemedText style={styles.metadataLabel}>Storage</ThemedText>
-                  <ThemedText style={styles.metadataValue}>Local Only</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Device-Isolated (Local)</ThemedText>
                 </View>
               </View>
               <View style={styles.metadataItem}>
                 <MaterialIcons name="fingerprint" size={18} color={palette.icon} />
                 <View style={styles.metadataText}>
-                  <ThemedText style={styles.metadataLabel}>Security</ThemedText>
-                  <ThemedText style={styles.metadataValue}>Biometric</ThemedText>
+                  <ThemedText style={styles.metadataLabel}>Vault Security</ThemedText>
+                  <ThemedText style={styles.metadataValue}>Hardware-Locked</ThemedText>
                 </View>
               </View>
             </View>
@@ -536,6 +604,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     opacity: 0.3,
   },
+  decryptBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 12,
+    padding: 6,
+  },
   flipHint: { marginTop: 12, fontSize: 12, opacity: 0.5, textAlign: "center" },
   headerSection: {
     marginBottom: 24,
@@ -644,4 +720,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   note: { fontSize: 10, textAlign: "center", marginTop: 32, opacity: 0.3 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  cancelText: {
+    fontSize: 14,
+    opacity: 0.5,
+  },
 });

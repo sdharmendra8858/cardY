@@ -11,6 +11,7 @@ import AdBanner from "@/components/AdBanner";
 import NativeAd from "@/components/AdNative";
 import { showInterstitialAd } from "@/components/AdInterstitial";
 import CardNotFound from "@/components/CardNotFound";
+import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import ExpiryTimerSection from "@/components/ExpiryTimerSection";
 import Hero from "@/components/Hero";
@@ -36,6 +37,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Modal,
   NativeModules,
   Platform,
   Pressable,
@@ -81,7 +83,7 @@ export default function CardDetailsScreen() {
   const { cards, revealCard, removeCard } = useCards();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { timerTick } = useTimer(); // Force re-renders for validity timer
-  const { isQuotaExceeded, incrementViews, loading: quotaLoading } = useQuota('card');
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading, viewsCount } = useQuota('card');
   useScreenProtection();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -99,7 +101,11 @@ export default function CardDetailsScreen() {
   const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigation = useNavigation();
   const router = useRouter();
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [isAdLoading, setIsAdLoading] = useState(false);
+  const [isAdWatched, setIsAdWatched] = useState(false);
   const [alertVisible, setAlertVisible] = useState(false);
+
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
     message: string;
@@ -120,10 +126,8 @@ export default function CardDetailsScreen() {
   const revealButtonShake = useSharedValue(0);
 
   useEffect(() => {
-    setCanUsePip(false);
-    flipRotation.value = 0;
-    isFlipped.value = false;
     setFlipped(false);
+    setIsAdWatched(false);
     expiryModalShownRef.current = false; // Reset the ref when card changes
   }, [id]);
 
@@ -464,7 +468,7 @@ export default function CardDetailsScreen() {
     };
   }, []);
 
-  const handleDeviceLock = async () => {
+  const handleDeviceLock = async (ignoreQuota = false) => {
     // Check if card is expired
     if (cardIsExpired) {
       console.log("⏰ [PiP] Card is expired, showing expiry alert");
@@ -509,12 +513,16 @@ export default function CardDetailsScreen() {
 
     if (quotaLoading) return;
 
-    try {
-      // 0. Check Quota System
-      if (isQuotaExceeded) {
-        await showInterstitialAd();
-      }
+    // 1. Quota Check
+    console.log(`📊 [Quota] Card view count: ${viewsCount}, isQuotaExceeded: ${isQuotaExceeded}, isAdWatched: ${isAdWatched}, ignoreQuota: ${ignoreQuota}`);
+    
+    if (isQuotaExceeded && !isAdWatched && !ignoreQuota) {
+      setShowQuotaModal(true);
+      return;
+    }
 
+    try {
+      // 2. Authentication Check
       // Check security settings for biometric authentication
       const saved = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
       const parsed = saved ? JSON.parse(saved) : {};
@@ -586,7 +594,28 @@ export default function CardDetailsScreen() {
     setShowNumber(true);
     setCanUsePip(true);
     await incrementViews();
+    setIsAdWatched(false);
     console.log('✅ [PiP] Card revealed and ready for PiP');
+  };
+
+  const handleWatchAd = async () => {
+    setIsAdLoading(true);
+    setShowQuotaModal(false);
+    try {
+      await showInterstitialAd();
+      setIsAdWatched(true);
+      // Re-run lock logic which will now pass the quota check
+      handleDeviceLock(true);
+    } catch (err) {
+      console.error("Ad failed to show:", err);
+      Toast.show({
+        type: "error",
+        text1: "Ad Error",
+        text2: "Failed to load ad. Please try again.",
+      });
+    } finally {
+      setIsAdLoading(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -690,7 +719,10 @@ export default function CardDetailsScreen() {
       <SafeAreaView
         style={[styles.safeArea, { backgroundColor: palette.surface }]}
       >
-        <DecryptLoader text="Loading card details..." subtext="Accessing Secure Vault" />
+        <DecryptLoader 
+          text="Loading card details..." 
+          subtext="Accessing Secure Vault" 
+        />
       </SafeAreaView>
     );
   }
@@ -811,7 +843,7 @@ export default function CardDetailsScreen() {
 
           <View style={styles.actionRow}>
             <Animated.View style={revealButtonAnimatedStyle}>
-              <Pressable style={styles.actionButton} onPress={handleDeviceLock}>
+              <Pressable style={styles.actionButton} onPress={() => handleDeviceLock()}>
                 <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
                   <Ionicons name={!showNumber ? "eye-off-outline" : "eye-outline"} size={24} color="white" />
                 </View>
@@ -948,6 +980,72 @@ export default function CardDetailsScreen() {
       />
 
       <AdBanner />
+
+      {/* Quota Exceeded Modal */}
+      <Modal
+        visible={showQuotaModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowQuotaModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowQuotaModal(false)}
+        >
+          <Pressable 
+            style={[styles.quotaModalContent, { backgroundColor: palette.card }]}
+            onPress={(e) => e.stopPropagation()} // Prevent closing when clicking inside
+          >
+            <View style={[styles.quotaIconContainer, { backgroundColor: `${palette.primary}15` }]}>
+              <Ionicons name="shield-checkmark" size={40} color={palette.primary} />
+            </View>
+            
+            <ThemedText type="subtitle" style={styles.quotaTitle}>Daily Limit Reached</ThemedText>
+            
+            <ThemedText style={styles.quotaDescription}>
+              You've used your 5 free card reveals for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
+            </ThemedText>
+
+            <View style={styles.quotaInfoBox}>
+              <Ionicons name="information-circle-outline" size={16} color={palette.icon} />
+              <ThemedText style={styles.quotaInfoText}>
+                Your data remains encrypted locally. Ads help us maintain the infrastructure.
+              </ThemedText>
+            </View>
+
+            <View style={styles.quotaActions}>
+              <AppButton 
+                title={isAdLoading ? "Loading Ad..." : "Watch Video to Unlock"} 
+                onPress={handleWatchAd}
+                disabled={isAdLoading}
+                icon="play-circle-outline"
+              />
+              
+              <Pressable 
+                style={styles.premiumButton}
+                onPress={() => {
+                  Toast.show({
+                    type: "info",
+                    text1: "Coming Soon!",
+                    text2: "Premium for unlimited access is in development.",
+                  });
+                }}
+              >
+                <ThemedText style={[styles.premiumText, { color: palette.primary }]}>
+                  Go Premium (Coming Soon)
+                </ThemedText>
+              </Pressable>
+
+              <Pressable 
+                style={styles.cancelButton}
+                onPress={() => setShowQuotaModal(false)}
+              >
+                <ThemedText style={styles.cancelText}>Maybe Later</ThemedText>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1034,4 +1132,75 @@ const styles = StyleSheet.create({
   insightText: { fontSize: 11, opacity: 0.7, marginLeft: 6 },
   note: { fontSize: 10, textAlign: "center", marginTop: 32, opacity: 0.3 },
   pipIconButton: { backgroundColor: "rgba(255,255,255, 0.2)", borderRadius: 20, padding: 6 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  quotaModalContent: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  quotaIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  quotaTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  quotaDescription: {
+    fontSize: 15,
+    textAlign: 'center',
+    opacity: 0.8,
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  quotaInfoBox: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 24,
+  },
+  quotaInfoText: {
+    fontSize: 12,
+    flex: 1,
+    opacity: 0.6,
+  },
+  quotaActions: {
+    width: '100%',
+    gap: 12,
+  },
+  premiumButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  premiumText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 14,
+    opacity: 0.5,
+  },
 });

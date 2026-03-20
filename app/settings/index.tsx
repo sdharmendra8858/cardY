@@ -2,6 +2,7 @@ import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
 import { useAlert } from "@/context/AlertContext";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
+import { clearAllIDs } from "@/utils/idStorage";
 import { clearCards } from "@/utils/secureStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -129,14 +130,14 @@ export default function SettingsScreen() {
   const handleCardLockToggle = async (value: boolean) => {
     if (!value) {
       const verified = await authenticateUser("card", {
-        title: "Disable Card Lock",
-        subtitle: "Authenticate to disable card verification",
+        title: "Disable Card View Lock",
+        subtitle: "Authenticate to disable card view",
       });
       if (!verified) {
         Toast.show({
           type: "error",
           text1: "Authentication Failed",
-          text2: "Card Lock remains active.",
+          text2: "Card View Lock remains active.",
         });
         return;
       }
@@ -146,21 +147,21 @@ export default function SettingsScreen() {
     saveSettings({ cardLock: value });
     Toast.show({
       type: "success",
-      text1: value ? "Card Lock Enabled" : "Card Lock Disabled",
+      text1: value ? "Card View Lock Enabled" : "Card View Lock Disabled",
     });
   };
 
   const handleIdLockToggle = async (value: boolean) => {
     if (!value) {
       const verified = await authenticateUser("id", {
-        title: "Disable ID Lock",
-        subtitle: "Authenticate to disable ID document verification",
+        title: "Disable ID View Lock",
+        subtitle: "Authenticate to disable ID document view",
       });
       if (!verified) {
         Toast.show({
           type: "error",
           text1: "Authentication Failed",
-          text2: "ID Lock remains active.",
+          text2: "ID View Lock remains active.",
         });
         return;
       }
@@ -170,7 +171,7 @@ export default function SettingsScreen() {
     saveSettings({ idLock: value });
     Toast.show({
       type: "success",
-      text1: value ? "ID Lock Enabled" : "ID Lock Disabled",
+      text1: value ? "ID View Lock Enabled" : "ID View Lock Disabled",
     });
   };
 
@@ -209,6 +210,38 @@ export default function SettingsScreen() {
     });
   };
 
+  const handleClearIDs = () => {
+    showAlert({
+      title: "Clear All Saved Documents",
+      message:
+        "This will permanently delete all saved ID documents from your device. Are you sure?",
+      buttons: [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearAllIDs();
+              Toast.show({
+                type: "success",
+                text1: "All documents cleared securely",
+              });
+              // Navigate back to home screen
+              router.push({ pathname: "/", params: { viewMode: "ids" } as any });
+            } catch (error) {
+              console.error("Error clearing IDs:", error);
+              Toast.show({
+                type: "error",
+                text1: "Something went wrong while clearing documents.",
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
   const handleClearCache = async () => {
     try {
       console.log("🧹 Clearing system cache via CacheModule...");
@@ -227,16 +260,6 @@ export default function SettingsScreen() {
       });
     }
   };
-
-  // const handleClearCache = () => {
-  //   Toast.show({
-  //     type: "info",
-  //     text1: "Cache Cleared",
-  //     text2: "Temporary data has been removed.",
-  //   });
-  // };
-
-
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -390,6 +413,15 @@ export default function SettingsScreen() {
             >
               <ThemedText style={styles.label}>
                 Clear All Saved Cards
+              </ThemedText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleClearIDs}
+              style={styles.touchRow}
+            >
+              <ThemedText style={styles.label}>
+                Clear All Saved Documents
               </ThemedText>
             </TouchableOpacity>
 

@@ -1,4 +1,4 @@
-import { IDAsset, IDDocument, ID_STORAGE_KEYS } from "@/types/id";
+import { IDDocument, ID_STORAGE_KEYS } from "@/types/id";
 import { decryptData, decryptRaw, encryptData, encryptRaw } from "@/utils/encryption/cardEncryption";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
@@ -81,9 +81,19 @@ export async function saveEncryptedImage(sourceUri: string, id: string, name: st
 export async function saveThumbnail(sourceUri: string, id: string): Promise<string> {
   await ensureDir();
   const destPath = IDS_DIR + `thumb_${id}.jpg`;
-  await FileSystem.copyAsync({ from: sourceUri, to: destPath });
-  console.log(`🖼️ Saved thumbnail: ${destPath}`);
-  return destPath;
+  try {
+    const sourceInfo = await FileSystem.getInfoAsync(sourceUri);
+    if (!sourceInfo.exists) {
+      console.error(`❌ saveThumbnail: Source file does not exist: ${sourceUri}`);
+      throw new Error(`Source file for thumbnail not found: ${sourceUri}`);
+    }
+    await FileSystem.copyAsync({ from: sourceUri, to: destPath });
+    console.log(`🖼️ Saved thumbnail: ${destPath}`);
+    return destPath;
+  } catch (error) {
+    console.error(`❌ saveThumbnail failed for ${id}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -159,9 +169,10 @@ export async function deleteID(id: string): Promise<void> {
       try {
         await FileSystem.deleteAsync(asset.uri, { idempotent: true });
         await FileSystem.deleteAsync(asset.thumbnailUri, { idempotent: true });
-        console.log(`  - Deleted asset: ${asset.uri}`);
+        console.log(`  - Deleted encrypted file: ${asset.uri}`);
+        console.log(`  - Deleted thumbnail file: ${asset.thumbnailUri}`);
       } catch (e) {
-        console.warn(`  - Failed to delete asset: ${asset.uri}`, e);
+        console.warn(`  - Failed to delete asset files: ${asset.uri}`, e);
       }
     }
     
@@ -169,5 +180,41 @@ export async function deleteID(id: string): Promise<void> {
     const filtered = ids.filter(i => i.id !== id);
     await saveIDs(filtered);
     console.log(`✅ ID ${id} deleted successfully`);
+  }
+}
+
+/**
+ * Clear all ID documents and their associated files
+ */
+export async function clearAllIDs(): Promise<void> {
+  console.log("🧹 Clearing all ID documents...");
+  try {
+    const ids = await getIDs();
+    
+    // Delete all files
+    for (const doc of ids) {
+      for (const asset of doc.assets) {
+        try {
+          await FileSystem.deleteAsync(asset.uri, { idempotent: true });
+          await FileSystem.deleteAsync(asset.thumbnailUri, { idempotent: true });
+        } catch (e) {
+          console.warn(`  - Failed to delete asset during clearAll: ${asset.uri}`, e);
+        }
+      }
+    }
+
+    // Explicitly delete the directory to be sure
+    await FileSystem.deleteAsync(IDS_DIR, { idempotent: true });
+    
+    // Clear metadata
+    await AsyncStorage.removeItem(ID_STORAGE_KEYS.METADATA);
+    
+    // Recreate directory for future use
+    await ensureDir();
+    
+    console.log("✅ All ID documents and files cleared");
+  } catch (error) {
+    console.error("❌ Failed to clear all IDs:", error);
+    throw error;
   }
 }

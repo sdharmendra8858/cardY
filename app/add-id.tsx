@@ -7,9 +7,10 @@ import { ID_TYPES } from "@/types/id";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { processIDImage } from "@/utils/imageProcessor";
-import { addID, saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
+import { saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
@@ -27,6 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function AddIDScreen() {
   useScreenProtection();
   const router = useRouter();
+  const { addID: contextAddID } = useIDs();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
@@ -124,8 +126,8 @@ export default function AddIDScreen() {
         });
       }
 
-      // 3. Save to encrypted storage
-      await addID({
+      // 3. Save to context (which handles storage + state)
+      await contextAddID({
         id: docId,
         type: selectedType as any,
         label: selectedType === "Other" && customName.trim() ? customName.trim() : `${selectedType} document`,
