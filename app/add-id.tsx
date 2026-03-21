@@ -10,6 +10,7 @@ import { processIDImage } from "@/utils/imageProcessor";
 import { saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import ImageCropPicker from 'react-native-image-crop-picker';
 import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
@@ -129,7 +130,7 @@ export default function AddIDScreen() {
       // Suppress App Open Ad when returning from system picker/camera
       ignoreNextAppOpenAd();
 
-      // Save current state to survive process death
+      // Save current state to survive process death (mostly for Android)
       await Promise.all([
         AsyncStorage.setItem("add_id_type", selectedType || ""),
         AsyncStorage.setItem("add_id_name", customName),
@@ -139,24 +140,36 @@ export default function AddIDScreen() {
         AsyncStorage.setItem("active_flow", "add-id"),
       ]).catch(() => {});
 
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            quality: 1,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            allowsEditing: true,
-            quality: 1,
-          });
+      const pickerOptions = {
+        cropping: true,
+        width: 1200,
+        height: 800,
+        freeStyleCropEnabled: true,
+        mediaType: 'photo' as const,
+        includeBase64: false,
+        compressImageQuality: 0.8,
+      };
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        setImages(prev => ({ ...prev, [slot]: result.assets[0].uri }));
+      let image;
+      if (useCamera) {
+        image = await ImageCropPicker.openCamera(pickerOptions);
+      } else {
+        image = await ImageCropPicker.openPicker(pickerOptions);
+      }
+
+      if (image && image.path) {
+        // Ensure the path has the file:// prefix for Expo libraries
+        const uri = image.path.startsWith('file://') ? image.path : `file://${image.path}`;
+        setImages(prev => ({ ...prev, [slot]: uri }));
         setActiveSlot(null);
       }
       
       // Clear flow marker since we returned normally
       AsyncStorage.removeItem("active_flow").catch(() => {});
     } catch (err) {
+      if (err instanceof Error && err.message.includes("User cancelled")) {
+        return;
+      }
       console.error("Failed to pick image:", err);
       setError("Failed to capture image. Please try again.");
     }

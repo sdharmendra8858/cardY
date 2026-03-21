@@ -34,12 +34,13 @@ export function IDProvider({ children }: { children: ReactNode }) {
   const addID = useCallback(async (idDoc: IDDocument) => {
     try {
       await storageAddID(idDoc);
-      setIds(prev => [...prev, idDoc]);
+      // Re-fetch all IDs from storage to ensure we have normalized absolute paths in our state
+      await refreshIDs();
     } catch (error) {
        console.error("❌ IDContext: Failed to add ID:", error);
        throw error;
     }
-  }, []);
+  }, [refreshIDs]);
 
   const removeID = useCallback(async (id: string) => {
     try {

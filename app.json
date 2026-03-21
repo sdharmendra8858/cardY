@@ -16,7 +16,10 @@
         "UIBackgroundModes": [
           "audio"
         ],
-        "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards"
+        "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards",
+        "NSCameraUsageDescription": "Allow Cardy Wall to use your camera to scan ID documents",
+        "NSPhotoLibraryUsageDescription": "Allow Cardy Wall to access your photo library to upload ID documents",
+        "NSPhotoLibraryAddUsageDescription": "Allow Cardy Wall to save processed ID documents to your library"
       },
       "appleTeamId": "743LUN242B"
     },

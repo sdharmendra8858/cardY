@@ -38,6 +38,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import MigrationScreen from "./migration-screen";
 import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
+import { cleanupOrphanedAssets } from "@/utils/idStorage";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -104,6 +105,9 @@ function AppShell() {
             }
           })
         );
+        
+        // 2. Also cleanup orphaned ID assets (files not linked to any document)
+        await cleanupOrphanedAssets().catch(() => {});
       } catch { }
     }
     cleanup();
