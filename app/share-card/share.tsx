@@ -5,6 +5,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
 import { isSessionValid } from "@/utils/session";
+import { setGlobalAdSuppression } from "@/utils/adControl";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Camera } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
@@ -20,6 +21,12 @@ export default function ShareScreen() {
     const palette = Colors[scheme];
     const navigation = useNavigation();
     const router = useRouter();
+
+    // Suppress App Open Ads while in this flow
+    useEffect(() => {
+        setGlobalAdSuppression(true);
+        return () => setGlobalAdSuppression(false);
+    }, []);
 
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -76,14 +83,8 @@ export default function ShareScreen() {
 
     const handleScanQR = useCallback(async () => {
         try {
-            console.log('Requesting camera permissions...');
-            const { status } = await Camera.requestCameraPermissionsAsync();
-            console.log('Camera permission status:', status);
-
-            if (status !== "granted") {
-                // If permission was already denied once, show modal with "Open Settings"
-                if (permissionDeniedRef.current) {
-                    console.log('Permission denied again - showing modal with Open Settings');
+        if (status !== "granted") {
+            if (permissionDeniedRef.current) {
                     setAlertConfig({
                         title: "Camera permission denied",
                         message: "Camera permission is required to scan QR codes. Please enable it in settings.",
@@ -109,8 +110,6 @@ export default function ShareScreen() {
                     });
                     setAlertVisible(true);
                 } else {
-                    // First time denied - just mark it
-                    console.log('Permission denied first time');
                     permissionDeniedRef.current = true;
                 }
                 return;
@@ -118,7 +117,6 @@ export default function ShareScreen() {
 
             // Permission granted - reset the ref and start scanning
             permissionDeniedRef.current = false;
-            console.log('Starting camera scan...');
             setIsScanning(true);
 
             // Start scan line animation
@@ -154,8 +152,6 @@ export default function ShareScreen() {
                     if (!qrResult.success || !qrResult.data) {
                         throw new Error(qrResult.error || "Could not read QR code from image");
                     }
-
-                    console.log("✅ QR decoded from image:", qrResult.data);
 
                     // Parse and validate the QR
                     let sessionPayload;
@@ -214,7 +210,6 @@ export default function ShareScreen() {
     }, [router]);
 
     const handleBarCodeScanned = useCallback(async (data: { type: string; data: string }) => {
-        console.log("📱 QR code scanned:", data.data);
         setIsScanning(false);
         scanLineAnimation.stopAnimation();
         setIsProcessing(true);
@@ -226,12 +221,6 @@ export default function ShareScreen() {
             if (!sessionPayload) {
                 throw new Error("Invalid QR code format");
             }
-
-            console.log("✅ Session payload parsed:", {
-                sessionId: sessionPayload.sessionId,
-                receiverPublicKey: sessionPayload.receiverPublicKey ? "present" : "MISSING",
-                expiresAt: sessionPayload.expiresAt,
-            });
 
             // Check if session is expired
             if (!isSessionValid(sessionPayload.expiresAt)) {

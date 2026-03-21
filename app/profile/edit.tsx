@@ -24,6 +24,7 @@ import {
   getProfile,
   setProfile,
 } from "../../utils/profileStorage";
+import { setGlobalAdSuppression } from "../../utils/adControl";
 
 const AVATARS = AVATAR_CATALOG;
 
@@ -37,6 +38,12 @@ export default function EditProfileScreen() {
   );
   const [originalAvatarId, setOriginalAvatarId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => setGlobalAdSuppression(false);
+  }, []);
 
   useLayoutEffect(() => {
     // Set header title if navigator shows it
@@ -61,7 +68,6 @@ export default function EditProfileScreen() {
   // Handle avatar selection - ad is already preloaded on screen mount
   const handleAvatarSelect = (avatarId: string) => {
     setSelectedAvatarId(avatarId);
-    console.log('Avatar selected:', avatarId);
   };
 
   async function onSave() {
@@ -87,7 +93,6 @@ export default function EditProfileScreen() {
           // Show ad before navigation (blocking)
           await showInterstitialAd(
             () => {
-              console.log('Avatar update: Interstitial ad closed, navigating back');
               router.back();
             },
             () => {

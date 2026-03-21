@@ -11,6 +11,7 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
 import { getUnmaskedCards, getMaskedCards as secureGetCards } from "@/utils/secureStorage";
+import { setGlobalAdSuppression } from "@/utils/adControl";
 import { MaterialIcons } from "@expo/vector-icons";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
@@ -93,19 +94,14 @@ export default function AddCardScreen() {
     ? Math.floor(cardExpiresAtNum / 1000)
     : cardExpiresAtNum;
 
-  if (__DEV__ && cardExpiresAtNum) {
-    const now = Math.floor(Date.now() / 1000);
-    console.log("🔍 Add-card expiry debug:", {
-      cardExpiresAt,
-      cardExpiresAtNum,
-      normalizedCardExpiresAt,
-      now,
-      timeRemaining: normalizedCardExpiresAt ? normalizedCardExpiresAt - now : 0,
-    });
-  }
-
   const { timeLeft: cardTimeLeft, isExpired: cardIsExpired, formatTime } = useCountdown(normalizedCardExpiresAt);
   const showExpiryWarning = normalizedCardExpiresAt && cardTimeLeft > 0 && cardTimeLeft < 300; // Less than 5 minutes
+
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => setGlobalAdSuppression(false);
+  }, []);
 
   const clearImageDump = async () => {
     try {
@@ -155,7 +151,6 @@ export default function AddCardScreen() {
           }
         } catch (error) {
           // Silently continue if directory doesn't exist or can't be read
-          console.warn(`⚠️ Could not process directory ${dirPath}:`, error);
         }
       };
 
@@ -169,7 +164,7 @@ export default function AddCardScreen() {
         await deleteImagesInDir(FileSystem.documentDirectory);
       }
     } catch (error) {
-      console.warn('⚠️ Failed to clear image dump:', error);
+      // Failed to clear image dump
     }
   };
 
@@ -179,16 +174,12 @@ export default function AddCardScreen() {
 
   // Load existing card data for edit mode
   useEffect(() => {
-
     if (isEditMode && editId) {
       const loadCardForEdit = async () => {
         try {
-          const cards = await secureGetCards();
-          const existingCard = cards.find((c: any) => c.id === editId);
-          if (existingCard) {
-            // The card data will be passed via params, so we don't need to do anything here
-            // The form will be prefilled with the default* parameters
-          }
+          await secureGetCards();
+          // The card data will be passed via params, so we don't need to do anything here
+          // The form will be prefilled with the default* parameters
         } catch (error) {
           console.error("Failed to load card for editing:", error);
         }
@@ -405,12 +396,10 @@ export default function AddCardScreen() {
       // This allows the navigation to complete first
       setTimeout(() => {
         showInterstitialAd(
-          () => console.log('Interstitial ad closed'),
-          () => console.log('Interstitial ad failed or was skipped'),
+          () => {},
+          () => {},
           2000 // 2 second timeout for faster UX
-        ).catch((error) => {
-          console.warn("Failed to show interstitial ad:", error);
-        });
+        ).catch(() => {});
       }, 300); // Small delay to ensure navigation completes
 
     } catch (err) {

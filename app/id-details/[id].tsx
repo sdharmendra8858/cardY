@@ -15,6 +15,7 @@ import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { IDDocument } from "@/types/id";
 import { formatDate } from "@/utils/date";
 import { decryptImageToTemp, deleteID, getIDs } from "@/utils/idStorage";
+import { ignoreNextAppOpenAd } from "@/utils/adControl";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -165,6 +166,7 @@ export default function IDDetailsScreen() {
   const handleShare = async () => {
     if (!decryptedUris.length) return;
     try {
+      ignoreNextAppOpenAd();
       const playStoreLink = "https://play.google.com/store/apps/details?id=com.redonelabs.cardywall";
       const message = `Securely shared via Cardy Wall. Get the app to store your IDs safely!\nDownload here: ${playStoreLink}`;
       await Share.open({

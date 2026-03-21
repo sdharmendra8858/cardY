@@ -4,6 +4,7 @@ import { useAlert } from "@/context/AlertContext";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
 import { clearAllIDs } from "@/utils/idStorage";
 import { clearCards } from "@/utils/secureStorage";
+import { ignoreNextAppOpenAd } from "@/utils/adControl";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { ThemedText } from "@/components/themed-text";
@@ -442,6 +443,7 @@ export default function SettingsScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
+                  ignoreNextAppOpenAd();
                   await Share.share({
                     message:
                       "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://play.google.com/store/apps/details?id=com.redonelabs.cardywall",

@@ -1,4 +1,5 @@
 import { ADMOB_CONFIG } from '@/constants/admob';
+import { ignoreNextAppOpenAd } from '@/utils/adControl';
 import React, { useEffect } from 'react';
 import { AdEventType, InterstitialAd as RNInterstitialAd, TestIds } from 'react-native-google-mobile-ads';
 
@@ -94,6 +95,9 @@ export class InterstitialAdManager {
         // Preload next ad for better UX
         this.loadAd().catch(console.warn);
       });
+      
+      // Prevent App Open Ad from triggering when this interstitial is closed
+      ignoreNextAppOpenAd();
 
       this.adRef.show();
     });

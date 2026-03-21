@@ -14,6 +14,8 @@ import "react-native-reanimated";
 import Toast from "react-native-toast-message";
 import { AppOpenAd, AdEventType, TestIds } from "react-native-google-mobile-ads";
 import { ADMOB_CONFIG } from "@/constants/admob";
+import * as ImagePicker from "expo-image-picker";
+import { Platform } from "react-native";
 
 import AuthRequired from "@/components/AuthRequired";
 import CompromisedDeviceModal from "@/components/CompromisedDeviceModal";
@@ -35,6 +37,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import MigrationScreen from "./migration-screen";
+import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -58,6 +61,8 @@ function AppShell() {
   const adShownRef = useRef(false);
   const lastAdShowTimeRef = useRef(0);
   const tncShownInSessionRef = useRef(false);
+  const coldStartAdTriggeredRef = useRef(false); // 🔥 Track if we've handled the cold start ad
+  const recoveryProcessedRef = useRef(false); // 🔥 Ensure recovery only runs once per mount
   const [appIsActive, setAppIsActive] = useState(
     AppState.currentState === "active"
   );
@@ -115,9 +120,69 @@ function AppShell() {
     });
   }, []);
 
-  // Centralized ad trigger to handle both initial launch and foregrounding
-  const triggerAdAfterUnlock = useCallback(() => {
-    // Skip if ad already shown recently, terms not accepted, or TnC was shown this session
+  // Android Process Death recovery check
+  useEffect(() => {
+    const checkRecovery = async () => {
+      // 1. Only run once per mount to prevent loops
+      if (recoveryProcessedRef.current) return;
+      recoveryProcessedRef.current = true;
+
+      if (Platform.OS === 'android') {
+        try {
+          // 2. Check ImagePicker pending results
+          const result = await ImagePicker.getPendingResultAsync();
+          let shouldRedirect = false;
+
+          if (result) {
+            const results = Array.isArray(result) ? result : [result];
+            if (results.length > 0 && !results[0].canceled) {
+              shouldRedirect = true;
+            }
+          }
+
+          // 3. Fallback: Check active_flow flag
+          const activeFlow = await AsyncStorage.getItem("active_flow");
+          if (activeFlow === "add-id") {
+             shouldRedirect = true;
+          }
+
+          if (shouldRedirect) {
+             // 4. CRITICAL: Clear flag IMMEDIATELY before pushing to prevent re-triggering
+             await AsyncStorage.removeItem("active_flow").catch(() => {});
+             
+             // Only push if we are likely at the root/initial state to avoid interrupting other flows
+             if (!router.canGoBack() || !router.canDismiss()) {
+                router.push("/add-id?recovered=true");
+             }
+          }
+        } catch (e) {
+          // Silent fail to prevent crash
+        }
+      }
+    };
+    
+    checkRecovery();
+  }, [router]);
+
+  // Centralized ad trigger to handle COLD START ONLY (per user request)
+  useEffect(() => {
+    if (authenticated && termsAccepted && !coldStartAdTriggeredRef.current) {
+      coldStartAdTriggeredRef.current = true;
+      triggerAdAfterUnlock();
+    }
+  }, [authenticated, termsAccepted]);
+
+  // (Optional) If you want to keep background/foreground ads ONLY for long breaks, 
+  // you would add a timestamp check here. But user said "do not load on brief moment".
+  // Most intrusive is foregrounding, so we'll stick to cold start for now.
+
+  const triggerAdAfterUnlock = useCallback(async () => {
+    // 1. Skip if intentionally suppressed (e.g. coming back from image picker)
+    if (await checkAndResetIgnoreAd()) {
+      return;
+    }
+
+    // 2. Skip if ad already shown recently, terms not accepted, or TnC was shown this session
     if (tncShownInSessionRef.current || termsAccepted !== true) return;
     
     // Cooldown: 15 seconds to avoid spamming
@@ -188,12 +253,7 @@ function AppShell() {
     })();
   }, [appIsActive, checked]);
 
-  // Handle ad trigger on foreground transitions and initial check
-  useEffect(() => {
-    if (authenticated && termsAccepted === true && appIsActive) {
-      triggerAdAfterUnlock();
-    }
-  }, [authenticated, termsAccepted, appIsActive, triggerAdAfterUnlock]);
+  // Trigger ad logic is now handled by the cold start effect above
 
   // 🔗 Deep linking setup
   useEffect(() => {

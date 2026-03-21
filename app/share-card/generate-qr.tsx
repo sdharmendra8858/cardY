@@ -38,7 +38,7 @@ export default function GenerateQRScreen() {
 
     const [qrData, setQrData] = useState<string>("");
     const [error, setError] = useState<string>("");
-    const { isExpired, timeLeft } = expiresAt ? useCountdown(expiresAt) : { isExpired: false, timeLeft: 0 };
+    const { isExpired, timeLeft } = useCountdown(expiresAt);
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState<{
         title: string;
