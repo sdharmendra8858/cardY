@@ -12,8 +12,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useState, useEffect } from "react";
 import { 
   ActivityIndicator, 
   Image, 
@@ -39,15 +41,79 @@ export default function AddIDScreen() {
   });
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [activeSlot, setActiveSlot] = useState<'front' | 'back' | null>(null);
   const [customName, setCustomName] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const params = useLocalSearchParams<{ recovered?: string }>();
+
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => {
+      setGlobalAdSuppression(false);
+      // Also clear active_flow if we unmount normally (e.g. back button)
+      AsyncStorage.removeItem("active_flow").catch(() => {});
+    }
+  }, []);
 
   const handleTypeSelect = (type: string) => {
     setSelectedType(type);
     setShowTypePicker(false);
   };
+
+  // Recovery logic for Android process death
+  useEffect(() => {
+    const recoverState = async () => {
+      try {
+        const [savedType, savedName, savedNumber, savedSlot, savedImages] = await Promise.all([
+          AsyncStorage.getItem("add_id_type"),
+          AsyncStorage.getItem("add_id_name"),
+          AsyncStorage.getItem("add_id_number"),
+          AsyncStorage.getItem("add_id_active_slot"),
+          AsyncStorage.getItem("add_id_images"),
+        ]);
+
+        if (savedType) setSelectedType(savedType);
+        if (savedName) setCustomName(savedName);
+        if (savedNumber) setIdNumber(savedNumber);
+        if (savedImages) {
+          try {
+            setImages(JSON.parse(savedImages));
+          } catch (e) {
+            // Invalid JSON, ignore
+          }
+        }
+
+        // Get the photo from the pending result
+        const result = await ImagePicker.getPendingResultAsync();
+        if (result) {
+          const results = Array.isArray(result) ? result : [result];
+          if (results.length > 0) {
+            const lastResult = results[results.length - 1];
+            if (!lastResult.canceled && lastResult.assets && lastResult.assets[0]) {
+              const slot = (savedSlot as 'front' | 'back') || 'front';
+              setImages(prev => ({ ...prev, [slot]: lastResult.assets[0].uri }));
+            }
+          }
+        }
+      } catch (err) {
+        // Silent recovery fail
+      } finally {
+        // Clean up recovery storage - BUT DONT CLEAN active_flow yet as it's used by _layout
+        AsyncStorage.multiRemove([
+          "add_id_type", "add_id_name", "add_id_number", "add_id_active_slot", "add_id_images"
+        ]).catch(() => {});
+      }
+    };
+
+    if (params?.recovered === "true") {
+      recoverState();
+      // Clear flow marker since we are safely back
+      AsyncStorage.removeItem("active_flow").catch(() => {});
+    }
+  }, [params.recovered]);
 
   const pickImage = async (useCamera: boolean, slot: 'front' | 'back') => {
     try {
@@ -59,6 +125,19 @@ export default function AddIDScreen() {
         setError(`Permission to access ${useCamera ? "camera" : "gallery"} is required.`);
         return;
       }
+
+      // Suppress App Open Ad when returning from system picker/camera
+      ignoreNextAppOpenAd();
+
+      // Save current state to survive process death
+      await Promise.all([
+        AsyncStorage.setItem("add_id_type", selectedType || ""),
+        AsyncStorage.setItem("add_id_name", customName),
+        AsyncStorage.setItem("add_id_number", idNumber),
+        AsyncStorage.setItem("add_id_active_slot", slot),
+        AsyncStorage.setItem("add_id_images", JSON.stringify(images)),
+        AsyncStorage.setItem("active_flow", "add-id"),
+      ]).catch(() => {});
 
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
@@ -74,6 +153,9 @@ export default function AddIDScreen() {
         setImages(prev => ({ ...prev, [slot]: result.assets[0].uri }));
         setActiveSlot(null);
       }
+      
+      // Clear flow marker since we returned normally
+      AsyncStorage.removeItem("active_flow").catch(() => {});
     } catch (err) {
       console.error("Failed to pick image:", err);
       setError("Failed to capture image. Please try again.");
@@ -142,10 +224,10 @@ export default function AddIDScreen() {
       // Show interstitial ad after a short delay
       setTimeout(() => {
         showInterstitialAd(
-          () => console.log('Interstitial ad closed'),
-          () => console.log('Interstitial ad failed or was skipped'),
+          () => {},
+          () => {},
           2000
-        ).catch(console.warn);
+        ).catch(() => {});
       }, 300);
     } catch (err) {
       console.error("Failed to save ID:", err);

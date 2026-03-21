@@ -6,6 +6,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { StackActions, useFocusEffect, useNavigation } from "@react-navigation/native";
+import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -30,8 +31,16 @@ export default function ScanScreen() {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
+  const [scannedData, setScannedData] = useState<any>(null);
+
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => setGlobalAdSuppression(false);
+  }, []);
+
   const navigation = useNavigation();
-  useLayoutEffect(() => {
+  useEffect(() => {
     navigation.setOptions({ title: "Capture Card" });
   }, [navigation]);
 
@@ -76,6 +85,9 @@ export default function ScanScreen() {
   const handleCapture = async () => {
     if (!cameraRef.current) return;
     try {
+      // Suppress App Open Ad during photo capture and transition
+      ignoreNextAppOpenAd();
+      
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.7,
         skipProcessing: true,

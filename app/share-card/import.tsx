@@ -11,6 +11,7 @@ import { getCardType } from "@/utils/CardType";
 import { maskAndFormatCardNumber } from "@/utils/mask";
 import { parseCardQRString, parseSessionQRString } from "@/utils/qr";
 import { decodeQRFromImage } from "@/utils/qrDecoder";
+import { setGlobalAdSuppression } from "@/utils/adControl";
 import {
   canUseSession,
   deleteSession,
@@ -46,6 +47,12 @@ export default function ImportCardScreen() {
     buttons?: UnifiedModalButton[];
     type?: "default" | "error" | "warning" | "success";
   }>({ title: "", message: "" });
+
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => setGlobalAdSuppression(false);
+  }, []);
 
   const handleBackAction = useCallback(() => {
     if (isScanning) {
@@ -91,9 +98,7 @@ export default function ImportCardScreen() {
   useEffect(() => {
     const subscription = AppState.addEventListener("change", async (state) => {
       if (state === "background" || state === "inactive") {
-        console.log("📱 Import screen: App going to background, cleaning up active sessions...");
-        // Note: We don't know which sessions are active here, so we rely on
-        // the receive screen and successful import to clean up
+        // App going to background, clean up if needed
       }
     });
 
@@ -101,28 +106,20 @@ export default function ImportCardScreen() {
   }, []);
 
   const requestCameraPermission = useCallback(async () => {
-    console.log('Requesting camera permissions...');
     try {
       const { status } = await Camera.requestCameraPermissionsAsync();
-      console.log('Camera permission status:', status);
       return status === "granted";
     } catch (error) {
-      console.error('Error requesting camera permission:', error);
       return false;
     }
   }, []);
 
   const handleScanQR = useCallback(async () => {
-    console.log('handleScanQR called');
-
     try {
       const permissionGranted = await requestCameraPermission();
-      console.log('Permission granted:', permissionGranted);
-
       if (!permissionGranted) {
         // If permission was already denied once, show modal with "Open Settings"
         if (permissionDeniedRef.current) {
-          console.log('Permission denied again - showing modal with Open Settings');
           setAlertConfig({
             title: "Camera permission denied",
             message: "Camera permission is required to scan QR codes. Please enable it in settings.",
@@ -148,8 +145,6 @@ export default function ImportCardScreen() {
           });
           setAlertVisible(true);
         } else {
-          // First time denied - just mark it
-          console.log('Permission denied first time');
           permissionDeniedRef.current = true;
         }
         return;
@@ -157,7 +152,6 @@ export default function ImportCardScreen() {
 
       // Permission granted - reset the ref and start scanning
       permissionDeniedRef.current = false;
-      console.log('Starting camera scan...');
       setIsScanning(true);
 
       // Start scan line animation
@@ -184,22 +178,13 @@ export default function ImportCardScreen() {
 
     setTimeout(async () => {
       try {
-        // Spec 10: Card decryption on Device A
-        console.log("🔐 Starting card import process (spec 10)...");
-
-        // Try to parse as card QR first
         try {
           const qrPayload = parseCardQRString(data);
 
-          // Validate QR payload structure (spec 9.1)
           if (!validateQRPayload(qrPayload)) {
             throw new Error("Invalid card QR payload");
           }
 
-          // This is a card QR - proceed with import
-          console.log("📋 Detected card QR code");
-
-          // Retrieve receiver's session from storage (spec 10.1)
           const sessionId = qrPayload.sessionId;
           const session = await retrieveSession(sessionId);
 
@@ -214,7 +199,6 @@ export default function ImportCardScreen() {
             return;
           }
 
-          // Validate session can be used (spec 10.1)
           if (!canUseSession(session)) {
             setIsProcessing(false);
             setAlertConfig({
@@ -227,18 +211,12 @@ export default function ImportCardScreen() {
           }
 
           try {
-            // Decrypt card from QR (spec 10.2-10.4)
             const cardData = await decryptCardFromQR(
               qrPayload,
               session.receiverPrivateKey
             );
-            console.log("✅ Card data decrypted (spec 10):", cardData);
 
-            // Detect card type from card number BIN
             const detectedCardType = getCardType(cardData.cardNumber);
-            console.log("🏦 Detected card type:", detectedCardType);
-
-            // Check if card already exists in the "other" section
             const maskedCardNumber = maskAndFormatCardNumber(cardData.cardNumber);
 
             const cardExists = cards.some(
@@ -258,7 +236,6 @@ export default function ImportCardScreen() {
               return;
             }
 
-            // Map decrypted card data to Card format
             const cardToImport = {
               id: `imported_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
               cardNumber: cardData.cardNumber,
@@ -266,27 +243,19 @@ export default function ImportCardScreen() {
               expiry: `${cardData.expiryMonth}/${cardData.expiryYear}`,
               cvv: "",
               cardName: `${cardData.brand} Card`,
-              cardKind: cardData.cardKind || "credit" as "credit" | "debit", // Use shared value or default
-              cobrandName: cardData.cobrandName || "", // Use shared value or empty
+              cardKind: cardData.cardKind || "credit" as "credit" | "debit",
+              cobrandName: cardData.cobrandName || "",
               cardUser: "other" as "self" | "other",
-              dominantColor: cardData.dominantColor || "#1E90FF", // Use shared color or default blue
-              bank: cardData.bank || "", // Use shared bank or empty
-              cardType: detectedCardType || undefined, // Detect and save card type from BIN
-              cardExpiresAt: cardData.cardExpiresAt, // Set expiry from shared data
-              isPinned: false, // Imported cards always start unpinned (device-specific property)
+              dominantColor: cardData.dominantColor || "#1E90FF",
+              bank: cardData.bank || "",
+              cardType: detectedCardType || undefined,
+              cardExpiresAt: cardData.cardExpiresAt,
+              isPinned: false,
             };
 
-            console.log("💳 Importing card:", cardToImport);
-
-            // Save the imported card
             await addCard(cardToImport);
-
-            // Mark session as used (spec 10.5)
             await markSessionAsUsed(sessionId);
-
-            // Delete session after successful import (spec 10.5)
             await deleteSession(sessionId);
-            console.log("✅ Session cleaned up after successful import");
 
             setIsProcessing(false);
             setAlertConfig({
@@ -317,14 +286,8 @@ export default function ImportCardScreen() {
             return;
           }
         } catch (cardParseError) {
-          // Not a card QR, try parsing as session QR
-          console.log("📱 Not a card QR, checking if it's a session QR...");
-
           try {
             const sessionPayload = parseSessionQRString(data);
-            console.log("📱 Detected session QR code - redirecting to share screen");
-
-            // This is a session QR - redirect to share screen
             setIsProcessing(false);
             setAlertConfig({
               title: "Session QR Detected",
@@ -354,8 +317,6 @@ export default function ImportCardScreen() {
             setAlertVisible(true);
             return;
           } catch (sessionParseError) {
-            // Neither card nor session QR
-            console.error("Failed to parse QR code:", sessionParseError);
             setIsProcessing(false);
             setAlertConfig({
               title: "Couldn't Read Card",
@@ -366,7 +327,6 @@ export default function ImportCardScreen() {
           }
         }
       } catch (error) {
-        console.error("Failed to process QR code:", error);
         setIsProcessing(false);
         setAlertConfig({
           title: "Error",
@@ -382,7 +342,6 @@ export default function ImportCardScreen() {
     try {
       console.log('Requesting media library permissions...');
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      console.log('Media library permission status:', status);
 
       if (status !== "granted") {
         setAlertConfig({
@@ -402,22 +361,18 @@ export default function ImportCardScreen() {
       });
 
       if (result.canceled) {
-        console.log('Image picker canceled');
         return;
       }
 
-      console.log('Image selected:', result.assets[0].uri);
       setIsProcessing(true);
 
       try {
-        console.log('🔍 Decoding QR code from image...');
         const qrResult = await decodeQRFromImage(result.assets[0].uri);
 
         if (qrResult.success && qrResult.data) {
           // Process the decoded QR code data using existing handler
           handleBarCodeScanned({ type: 'QR', data: qrResult.data });
         } else {
-          console.log('❌ No QR code found in image');
           setIsProcessing(false);
           setAlertConfig({
             title: "No QR Code Found",

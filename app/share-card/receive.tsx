@@ -24,6 +24,7 @@ import RNFS from "react-native-fs";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
+import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
 import AdRewarded, { showRewardedAd } from "@/components/AdRewarded";
@@ -50,6 +51,12 @@ export default function ReceiveCardScreen() {
   const [showRegenerateInfo, setShowRegenerateInfo] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
 
+  // Suppress App Open Ads while in this flow
+  useEffect(() => {
+    setGlobalAdSuppression(true);
+    return () => setGlobalAdSuppression(false);
+  }, []);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       title: "Receive Card",
@@ -68,7 +75,6 @@ export default function ReceiveCardScreen() {
   useEffect(() => {
     const loadOrGenerateSession = async () => {
       try {
-        console.log("🔐 Loading or generating session...");
 
         // Try to load existing session
         const existingSession = await getCurrentSession();
@@ -77,7 +83,6 @@ export default function ReceiveCardScreen() {
           // Check if session is still valid
           if (isSessionValid(existingSession.expiresAt)) {
             // Session is still valid, use it
-            console.log("✅ Using existing session:", existingSession.sessionId);
             const payload = createSessionPayload(existingSession);
             const qr = sessionPayloadToQRString(payload);
 
@@ -87,7 +92,6 @@ export default function ReceiveCardScreen() {
             return;
           } else {
             // Session expired, delete it
-            console.log("⏰ Existing session expired, deleting...");
             await deleteSession(existingSession.sessionId);
           }
         }
@@ -173,6 +177,8 @@ export default function ReceiveCardScreen() {
       lastTempFileRef.current = uri;
 
       console.log("🔗 Sharing file:", uri);
+      
+      ignoreNextAppOpenAd();
 
       await Share.open({
         url: uri,

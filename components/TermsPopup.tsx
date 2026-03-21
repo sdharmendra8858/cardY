@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const TERMS_KEY = "terms_accepted";
 const TERMS_DATE_KEY = "terms_accepted_at";
 
-export default function TermsPopup() {
+export default function TermsPopup({ onAccept }: { onAccept?: () => void }) {
   const [visible, setVisible] = useState(false);
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -36,6 +36,7 @@ export default function TermsPopup() {
     await AsyncStorage.setItem(TERMS_KEY, "true");
     await AsyncStorage.setItem(TERMS_DATE_KEY, now);
     setVisible(false);
+    if (onAccept) onAccept();
   };
 
   const screenHeight = Dimensions.get("window").height;

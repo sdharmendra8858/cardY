@@ -1,4 +1,5 @@
 import NativeAd from "@/components/AdNative";
+import { showInterstitialAd } from "@/components/AdInterstitial";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
@@ -12,9 +13,9 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
-import { IDDocument } from "@/types/id";
 import { formatDate } from "@/utils/date";
-import { decryptImageToTemp, deleteID, getIDs } from "@/utils/idStorage";
+import { decryptImageToTemp } from "@/utils/idStorage";
+import { ignoreNextAppOpenAd } from "@/utils/adControl";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
@@ -40,9 +41,9 @@ import Toast from "react-native-toast-message";
 
 export default function IDDetailsScreen() {
   useScreenProtection();
-  const { id, unlocked } = useLocalSearchParams<{ id: string, unlocked?: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { isQuotaExceeded, incrementViews, loading: quotaLoading, viewsCount } = useQuota('id');
+  const { loading: quotaLoading } = useQuota('id');
   const { showAlert } = useAlert();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -50,7 +51,6 @@ export default function IDDetailsScreen() {
   const { ids, removeID: contextRemoveID, hasLoaded, refreshIDs } = useIDs();
   const [decryptedUris, setDecryptedUris] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -64,7 +64,6 @@ export default function IDDetailsScreen() {
 
   useEffect(() => {
     viewProcessedRef.current = false;
-    setIsAuthenticated(false);
     setDecryptedUris([]);
     setError(null);
   }, [id]);
@@ -98,7 +97,6 @@ export default function IDDetailsScreen() {
         router.back();
         return;
       }
-      setIsAuthenticated(true);
 
       // 2. Decrypt assets and check/regenerate thumbnails
       const newDecryptedUris: string[] = [];
@@ -113,7 +111,6 @@ export default function IDDetailsScreen() {
             // Use .then() to make this non-blocking for the main decryption flow
             FileSystem.getInfoAsync(thumbPath).then(async (info) => {
               if (!info.exists) {
-                console.log(`🖼️ [Thumbnail] Missing thumbnail detected, recreating: ${thumbPath}`);
                 try {
                   const thumb = await ImageManipulator.manipulateAsync(
                     tempPath,
@@ -122,10 +119,9 @@ export default function IDDetailsScreen() {
                   );
                   // Copy the generated thumbnail to its expected path
                   await FileSystem.copyAsync({ from: thumb.uri, to: thumbPath });
-                  console.log(`✅ [Thumbnail] Regenerated and saved: ${thumbPath}`);
                   refreshIDs(); // Notify other screens (like Home) that data has changed
                 } catch (e) {
-                  console.warn(`❌ [Thumbnail] Failed to regenerate:`, e);
+                  // Silent fail for background tasks
                 }
               }
             });
@@ -144,7 +140,7 @@ export default function IDDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, idDoc, hasLoaded, refreshIDs, router, quotaLoading, isQuotaExceeded, incrementViews]);
+  }, [id, idDoc, hasLoaded, refreshIDs, router, quotaLoading]);
 
   useEffect(() => {
     fetchIDAndDecrypt();
@@ -165,6 +161,7 @@ export default function IDDetailsScreen() {
   const handleShare = async () => {
     if (!decryptedUris.length) return;
     try {
+      ignoreNextAppOpenAd();
       const playStoreLink = "https://play.google.com/store/apps/details?id=com.redonelabs.cardywall";
       const message = `Securely shared via Cardy Wall. Get the app to store your IDs safely!\nDownload here: ${playStoreLink}`;
       await Share.open({
@@ -174,84 +171,77 @@ export default function IDDetailsScreen() {
         failOnCancel: false,
       });
     } catch (err) {
-      console.log("Share skipped/failed", err);
+      // Share skipped/failed
     }
   };
 
   const handleDownload = async () => {
-    console.log("📥 handleDownload triggered, activeIndex:", activeIndex);
-
     if (!decryptedUris.length) {
-      console.warn("⚠️ No decrypted URIs available");
       Alert.alert("Error", "No Image available to download.");
       return;
     }
 
-    try {
-      const sourceUri = decryptedUris[activeIndex];
-      const idLabel = idDoc?.label || idDoc?.type || "ID";
-      const sideFormatted = activeIndex === 0 ? "Front" : activeIndex === 1 ? "Back" : "Image";
-      
-      // Create a "pretty" name for the gallery, e.g. Passport_Front_12345.jpg
-      // Sanitizing label: replace non-alphanumeric with underscore
-      const cleanLabel = idLabel.replace(/[^a-z0-9]/gi, '_');
-      const prettyName = `${cleanLabel}_${sideFormatted}_${Date.now()}.jpg`;
-      const prettyUri = `${FileSystem.cacheDirectory}${prettyName}`;
+    const proceedWithDownload = async () => {
+      try {
+        const sourceUri = decryptedUris[activeIndex];
+        const idLabel = idDoc?.label || idDoc?.type || "ID";
+        const sideFormatted = activeIndex === 0 ? "Front" : activeIndex === 1 ? "Back" : "Image";
+        
+        const cleanLabel = idLabel.replace(/[^a-z0-9]/gi, '_');
+        const prettyName = `${cleanLabel}_${sideFormatted}_${Date.now()}.jpg`;
+        const prettyUri = `${FileSystem.cacheDirectory}${prettyName}`;
 
-      // 1. Copy to the pretty location so MediaLibrary uses this as the filename
-      await FileSystem.copyAsync({ from: sourceUri, to: prettyUri });
+        await FileSystem.copyAsync({ from: sourceUri, to: prettyUri });
 
-      // 2. Request permissions (MediaLibrary)
-      const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-      if (mediaStatus !== 'granted') {
-        Alert.alert("Permission Required", "Gallery access is required to save the image. Please enable it in settings.");
-        return;
-      }
-
-      // 3. Request permissions (Notifications)
-      const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
-
-      // 4. Save to Gallery using the pretty filename
-      const asset = await MediaLibrary.createAssetAsync(prettyUri);
-
-      // 4. Trigger OS Notification (Android drawer)
-      if (notifyStatus === 'granted') {
-        await Notifications.setNotificationHandler({
-          handleNotification: async () => ({
-            shouldPlaySound: false,
-            shouldSetBadge: false,
-            shouldShowBanner: true,
-            shouldShowList: true,
-          }),
-        });
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "Download Complete",
-            body: `${sideFormatted} - ${idLabel} has been saved to your gallery.`,
-            data: { id, assetId: asset.id },
-          },
-          trigger: null, // immediate
-        });
-
-        Toast.show({
-          type: "success",
-          text1: "Saved to Gallery",
-          text2: `${sideFormatted} of ${idLabel} is now in your device.`,
-          position: "bottom",
-        });
-
-        // Cleanup the temporary pretty file
-        try {
-          await FileSystem.deleteAsync(prettyUri, { idempotent: true });
-        } catch (e) {
-          console.warn("⚠️ [Cleanup] Failed to delete prettyUri:", e);
+        const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
+        if (mediaStatus !== 'granted') {
+          Alert.alert("Permission Required", "Gallery access is required to save the image.");
+          return;
         }
+
+        const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
+        const asset = await MediaLibrary.createAssetAsync(prettyUri);
+
+        if (notifyStatus === 'granted') {
+          await Notifications.setNotificationHandler({
+            handleNotification: async () => ({
+              shouldPlaySound: false,
+              shouldSetBadge: false,
+              shouldShowBanner: true,
+              shouldShowList: true,
+            }),
+          });
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Download Complete",
+              body: `${sideFormatted} - ${idLabel} has been saved to your gallery.`,
+              data: { id, assetId: asset.id },
+            },
+            trigger: null,
+          });
+
+          Toast.show({
+            type: "success",
+            text1: "Saved to Gallery",
+            text2: `${sideFormatted} of ${idLabel} is now in your device.`,
+            position: "bottom",
+          });
+
+          try {
+            await FileSystem.deleteAsync(prettyUri, { idempotent: true });
+          } catch (e) {}
+        }
+      } catch (err) {
+        Alert.alert("Download Error", err instanceof Error ? err.message : "An unexpected error occurred while saving.");
       }
-    } catch (err) {
-      console.error("❌ Download Error:", err);
-      Alert.alert("Download Error", err instanceof Error ? err.message : "An unexpected error occurred while saving.");
-    }
+    };
+
+    // Show Interstitial Ad before download
+    await showInterstitialAd(
+      () => proceedWithDownload(),
+      () => proceedWithDownload() // Also proceed if ad fails/timeouts to not block user
+    );
   };
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {

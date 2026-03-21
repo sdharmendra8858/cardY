@@ -1,4 +1,5 @@
 import { ADMOB_CONFIG } from '@/constants/admob';
+import { ignoreNextAppOpenAd } from '@/utils/adControl';
 import React, { useEffect } from 'react';
 import { AdEventType, RewardedAd as RNRewardedAd, TestIds, RewardedAdEventType } from 'react-native-google-mobile-ads';
 
@@ -103,6 +104,9 @@ export class RewardedAdManager {
         // Attempt to preload next ad
         this.loadAd().catch(console.warn);
       });
+
+      // Prevent App Open Ad from triggering when this rewarded ad is closed
+      ignoreNextAppOpenAd();
 
       this.adRef.show();
     });
