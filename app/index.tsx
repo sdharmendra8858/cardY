@@ -471,7 +471,7 @@ export default function HomeScreen() {
           {viewMode === "cards" && (
             <View style={styles.othersToggleContainer}>
               <ThemedText style={[styles.othersLabel, { color: palette.icon }]}>
-                {activeTab === "self" ? "Switch to Others" : "Viewing Others"}
+                {activeTab === "self" ? "Self" : "Others"}
               </ThemedText>
               <Switch
                 value={activeTab === "other"}
@@ -935,7 +935,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   subHeaderTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     letterSpacing: -0.5,
   },
@@ -945,14 +945,14 @@ const styles = StyleSheet.create({
   othersToggleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 0,
     backgroundColor: "rgba(0,0,0,0.03)",
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 0,
     borderRadius: 20,
   },
   othersLabel: {
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: "600",
   },
   tabText: {
