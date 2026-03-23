@@ -7,6 +7,7 @@
 
 import { migrateCards, needsMigration } from "@/utils/migration";
 import React, { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { Platform } from "react-native";
 
 type MigrationContextType = {
     needsMigration: boolean;
@@ -28,6 +29,12 @@ export const MigrationProvider = ({ children }: { children: ReactNode }) => {
         let isMounted = true;
 
         const checkMigration = async () => {
+            if (Platform.OS === 'ios') {
+                if (__DEV__) console.log("🍎 iOS detected, skipping migration...");
+                if (isMounted) setIsReady(true);
+                return;
+            }
+
             try {
                 if (__DEV__) console.log("🔄 MigrationContext: Starting migration check...");
 
