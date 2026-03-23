@@ -13,13 +13,12 @@
       "bundleIdentifier": "com.redonelabs.cardywall",
       "buildNumber": "6",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
+        "UIBackgroundModes": [],
         "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards",
-        "NSCameraUsageDescription": "Allow Cardy Wall to use your camera to scan ID documents",
-        "NSPhotoLibraryUsageDescription": "Allow Cardy Wall to access your photo library to upload ID documents",
-        "NSPhotoLibraryAddUsageDescription": "Allow Cardy Wall to save processed ID documents to your library"
+        "NSCameraUsageDescription": "Allow Cardy Wall to use your camera to scan cards, ID documents, and QR codes for secure sharing",
+        "NSPhotoLibraryUsageDescription": "Allow Cardy Wall to access your photo library to upload ID documents and share QR codes",
+        "NSPhotoLibraryAddUsageDescription": "Allow Cardy Wall to save processed ID documents to your library",
+        "NSUserTrackingUsageDescription": "Allow Cardy Wall to track your activity to show more relevant and personalized ads for a better experience"
       },
       "appleTeamId": "743LUN242B"
     },
@@ -79,8 +78,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-4699580064236799~8493755965",
-          "iosAppId": "ca-app-pub-4699580064236799~6045744843"
+          "android_app_id": "ca-app-pub-4699580064236799~8493755965",
+          "ios_app_id": "ca-app-pub-4699580064236799~6045744843"
         }
       ],
       "expo-secure-store",

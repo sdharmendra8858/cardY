@@ -35,7 +35,7 @@
     <key>CFBundleVersion</key>
     <string>6</string>
     <key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-3940256099942544~1458002511</string>
+    <string>ca-app-pub-4699580064236799~6045744843</string>
     <key>GADDelayAppMeasurementInit</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -50,13 +50,13 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <string>Allow Cardy Wall to use your camera to scan cards, ID documents, and QR codes for secure sharing</string>
     <key>NSFaceIDUsageDescription</key>
     <string>Allow Cardy Wall to use Face ID for securing your cards</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Allow Cardy Wall to save processed ID documents to your library</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your photos</string>
+    <string>Allow Cardy Wall to access your photo library to upload ID documents and share QR codes</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
@@ -64,9 +64,9 @@
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UIBackgroundModes</key>
-    <array>
-      <string>audio</string>
-    </array>
+    <array/>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>Allow Cardy Wall to track your activity to show more relevant and personalized ads for a better experience</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
