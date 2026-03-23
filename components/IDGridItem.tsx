@@ -36,7 +36,7 @@ function IDGridItem({ item, onPress }: IDGridItemProps) {
       return (
         <Image
           key={`${thumbnailUri}-${item.id}`}
-          source={{ uri: `${thumbnailUri}${thumbnailUri.includes('?') ? '&' : '?'}t=${Date.now()}` }}
+          source={{ uri: thumbnailUri }}
           style={styles.image}
           contentFit="cover"
           cachePolicy="none"
