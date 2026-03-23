@@ -21,9 +21,6 @@ export default function PrivacyPolicyScreen() {
           contentContainerStyle={{ paddingBottom: 40 }}
         >
           <View>
-            <ThemedText style={styles.date}>
-              Last Updated: October 31, 2025
-            </ThemedText>
 
             <ThemedText style={styles.paragraph}>
               Thank you for using{" "}
@@ -38,12 +35,12 @@ export default function PrivacyPolicyScreen() {
               1. Overview
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              Cardy Wall is an <ThemedText style={styles.bold}>offline digital card wallet</ThemedText> designed for
-              securely storing your personal and financial card details
-              <ThemedText style={styles.bold}>locally on your device</ThemedText>. We do not collect, transmit, or share
-              any personal data to servers, third parties, or cloud platforms.
-              The App functions entirely on-device, ensuring your sensitive
-              information remains private and under your control.
+              Cardy Wall is an <ThemedText style={styles.bold}>offline-first digital card wallet</ThemedText> designed for
+              securely storing your <ThemedText style={styles.bold}>personal cards, ID documents, and profile settings</ThemedText>
+              <ThemedText style={styles.bold}> locally on your device</ThemedText>. Your personal data functions entirely 
+              on-device, ensuring sensitive information remains private. The App 
+              utilizes third-party services for advertising, which may require 
+              limited internet connectivity for ad delivery.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -51,12 +48,13 @@ export default function PrivacyPolicyScreen() {
             </ThemedText>
             <ThemedText style={styles.paragraph}>
               Cardy Wall does <ThemedText style={styles.bold}>not</ThemedText> automatically collect any personal
-              information. All data you enter (such as card number, card holder
-              name, expiry date, CVV, and notes) is stored securely on your own
-              device.{"\n\n"}
+              information. All data you enter (such as card details via manual 
+              entry or <ThemedText style={styles.bold}>NFC scanning</ThemedText>, card holder names, user profile 
+              settings, and <ThemedText style={styles.bold}>scanned ID document images</ThemedText>) is stored securely 
+              on your own device.{"\n\n"}
               We do <ThemedText style={styles.bold}>not</ThemedText> access, upload, or sync this data to our servers or
-              any third-party platform. The App does not use analytics,
-              trackers, or behavioral data tools.
+              any third-party platform. The secure sharing feature uses 
+              point-to-point encryption for user-initiated transfers only.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -78,45 +76,45 @@ export default function PrivacyPolicyScreen() {
             <ThemedText style={styles.paragraph}>
               To provide certain features, Cardy Wall may request limited
               device permissions:{"\n"}
-              • <ThemedText style={styles.bold}>Camera access:</ThemedText> used only for scanning or capturing card
+              • <ThemedText style={styles.bold}>Camera access:</ThemedText> used only for scanning card
               details; images are processed locally and never uploaded.{"\n"}
-              • <ThemedText style={styles.bold}>Biometric or PIN access:</ThemedText> used to lock and unlock the App for
-              your security; biometric data is handled by your device’s secure
-              system (Face ID / fingerprint) and never accessed by Cardy Wall.{"\n"}
-              • <ThemedText style={styles.bold}>File access (if applicable):</ThemedText> used only to temporarily store
-              cropped or scanned images; files are deleted automatically after
-              card creation.
+              • <ThemedText style={styles.bold}>Biometric or PIN access:</ThemedText> used to lock and unlock the App;
+              biometric data is handled by your device’s secure system and never
+              accessed by Cardy Wall.{"\n"}
+              • <ThemedText style={styles.bold}>App Tracking Transparency:</ThemedText> used to deliver more
+              relevant and personalized ads for a better user experience.{"\n"}
+              • <ThemedText style={styles.bold}>File access:</ThemedText> used only to temporarily process scanned
+              images; files are cleared after card creation.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
               5. Security Practices
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              Cardy Wall follows strict security guidelines to protect your
-              privacy:{"\n"}
-              • Local encryption is used wherever supported by your device’s
-              operating system.{"\n"}
-              • Sensitive data (like CVV) is masked and shown only after
-              biometric or passcode verification.{"\n"}
-              • No data is stored outside your device or transmitted via
-              internet.{"\n"}
-              • We strongly recommend enabling your device’s security features
-              (PIN, fingerprint, Face ID) to prevent unauthorized access.
+              Cardy Wall follows a <ThemedText style={styles.bold}>Zero-Cloud (Ultra Private)</ThemedText> architecture:{"\n"}
+              • All data is <ThemedText style={styles.bold}>Device-Isolated (Local)</ThemedText> and encrypted on your storage.{"\n"}
+              • Sensitive items are <ThemedText style={styles.bold}>Hardware-Locked</ThemedText> through your system’s biometric 
+              security.{"\n"}
+              • <ThemedText style={styles.bold}>End-to-End Encrypted Sharing</ThemedText> ensures only the intended 
+              recipient can view shared card details.{"\n"}
+              • NFC scanning data remains ephemeral until stored in your local 
+              encrypted database.{"\n"}
+              • No personal data is stored outside your device or transmitted 
+              via the internet.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
               6. Advertising & Third-Party Services
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              Future versions of Cardy Wall may include <ThemedText style={styles.bold}>non-personalized,
-              non-invasive advertisements</ThemedText> to support app maintenance and
-              development.{"\n\n"}
-              • Ads will never appear on screens displaying card numbers or
-              sensitive details.{"\n"}
-              • Limited, technical data (such as device model or ad performance)
-              may be processed by the ad network to show relevant, safe ads.{"\n"}
-              • Cardy Wall will never use or share your locally stored data for
-              ad targeting.{"\n\n"}
+              Cardy Wall uses <ThemedText style={styles.bold}>Google AdMob</ThemedText> to provide non-intrusive
+              advertisements.{"\n\n"}
+              • Ads will never appear on screens displaying sensitive card data.{"\n"}
+              • If you grant permission, personalized ads may be shown using
+              technical identifiers.{"\n"}
+              • No stored personal or card data is ever shared with ad networks.{"\n"}
+              • Third-party ad networks may process device-specific information
+              (such as IP address) as required by technical standards.{"\n\n"}
               For details on Google’s ad policies, visit:{" "}
               https://policies.google.com/privacy
             </ThemedText>
@@ -185,12 +183,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 12,
-  },
-  date: {
-    fontSize: 13,
-    opacity: 0.7,
-    marginBottom: 16,
-    textAlign: "center",
   },
   heading: {
     fontSize: 16,

@@ -39,6 +39,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import MigrationScreen from "./migration-screen";
 import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
 import { cleanupOrphanedAssets } from "@/utils/idStorage";
+import { LEGAL_CONFIG } from "@/constants/legalConfig";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -113,15 +114,23 @@ function AppShell() {
     cleanup();
   }, []);
 
-  // Check Terms on mount
+  // Check Terms on mount using versioning
   useEffect(() => {
-    AsyncStorage.getItem("terms_accepted").then((val) => {
-      const accepted = val === "true";
-      setTermsAccepted(accepted);
-      if (!accepted) {
-        tncShownInSessionRef.current = true;
+    const checkTerms = async () => {
+      try {
+        const accepted = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED);
+        const version = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_VERSION);
+        const isAccepted = accepted === "true" && version === LEGAL_CONFIG.TERMS_VERSION;
+        
+        setTermsAccepted(isAccepted);
+        if (!isAccepted) {
+          tncShownInSessionRef.current = true;
+        }
+      } catch (error) {
+        setTermsAccepted(false);
       }
-    });
+    };
+    checkTerms();
   }, []);
 
   // Android Process Death recovery check
@@ -329,7 +338,10 @@ function AppShell() {
         <AlertProvider>
           <SecurityProvider>
             <MigrationProvider>
-              <MigrationAwareContent onTermsAccepted={() => setTermsAccepted(true)} />
+              <MigrationAwareContent 
+                termsAccepted={termsAccepted}
+                onTermsAccepted={() => setTermsAccepted(true)} 
+              />
             </MigrationProvider>
           </SecurityProvider>
         </AlertProvider>
@@ -339,7 +351,13 @@ function AppShell() {
 }
 
 // Separate component to access migration context
-function MigrationAwareContent({ onTermsAccepted }: { onTermsAccepted: () => void }) {
+function MigrationAwareContent({ 
+  termsAccepted, 
+  onTermsAccepted 
+}: { 
+  termsAccepted: boolean | null;
+  onTermsAccepted: () => void;
+}) {
   const { needsMigration, cardCount, isReady, handleMigrate, handleFreshSetup, handleComplete } = useMigration();
   const colorScheme = useColorScheme();
   const barStyle = colorScheme === "dark" ? "light" : "dark";
@@ -362,6 +380,7 @@ function MigrationAwareContent({ onTermsAccepted }: { onTermsAccepted: () => voi
           onFreshSetup={handleFreshSetup}
           onComplete={handleComplete}
         />
+        <TermsPopup onAccept={onTermsAccepted} />
       </>
     );
   }
