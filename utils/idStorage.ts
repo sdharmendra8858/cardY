@@ -20,18 +20,21 @@ const IDS_DIR = FileSystem.documentDirectory + ID_STORAGE_KEYS.IMAGES_DIR;
 function normalizePath(path: string): string {
   if (!path) return path;
   
-  // Extract filename from any path format
-  const parts = path.split('/');
-  const filename = parts[parts.length - 1];
+  // Extract filename from any path format (relative or absolute)
+  const filename = path.split('/').pop() || "";
+  if (!filename) return "";
+  
+  // Ensure we don't accidentally double-slash if IDS_DIR already ends with one
+  const cleanDir = IDS_DIR.endsWith('/') ? IDS_DIR : IDS_DIR + '/';
   
   // Return current absolute path
-  return IDS_DIR + filename;
+  return cleanDir + filename;
 }
 
 /**
  * Ensure the IDs directory exists
  */
-async function ensureDir() {
+export async function ensureDir() {
   const dirInfo = await FileSystem.getInfoAsync(IDS_DIR);
   if (!dirInfo.exists) {
     await FileSystem.makeDirectoryAsync(IDS_DIR, { intermediates: true });
@@ -43,6 +46,7 @@ async function ensureDir() {
  */
 export async function getIDs(): Promise<IDDocument[]> {
   try {
+    await ensureDir();
     const raw = await AsyncStorage.getItem(ID_STORAGE_KEYS.METADATA);
     if (!raw) return [];
 
@@ -67,14 +71,17 @@ export async function getIDs(): Promise<IDDocument[]> {
     
     return [];
   } catch (error) {
-    if (__DEV__) console.error("❌ Failed to get IDs (likely key mismatch):", error);
+    if (__DEV__) console.warn("⚠️ Failed to get IDs (likely key mismatch or corruption):", error);
     
     // Self-healing: If metadata exists but cannot be decrypted, it's likely from a 
     // previous install or a session with a different Master Key/DEK.
     // Clearing it allows the app to function with new IDs instead of permanently erroring.
     try {
-      if (error instanceof Error && error.message.includes("ghash tag")) {
-        console.warn("⚠️ Data undecryptable. Clearing invalid ID metadata to restore functionality.");
+      // Treat "ghash tag" (GCM auth failure) or session key mismatches as permanent failures
+      // that require clearing the metadata to restore app functionality.
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("ghash tag") || errorMessage.includes("key mismatch")) {
+        console.warn("⚠️ ID metadata is undecryptable or corrupted. Clearing to restore functionality.");
         await AsyncStorage.removeItem(ID_STORAGE_KEYS.METADATA);
       }
     } catch (e) {
@@ -260,7 +267,15 @@ export async function cleanupOrphanedAssets(): Promise<void> {
     }
 
     const ids = await getIDs();
-    
+
+    // CRITICAL SAFETY CHECK: If we have metadata in storage but getIDs returned nothing,
+    // something went wrong with decryption or parsing. ABORT CLEANUP to prevent mass deletion.
+    const rawMetadata = await AsyncStorage.getItem(ID_STORAGE_KEYS.METADATA);
+    if (rawMetadata && ids.length === 0) {
+      console.warn("⚠️ Cleanup aborted: Metadata exists but could not be parsed into IDs. Protecting files from accidental deletion.");
+      return;
+    }
+
     // Collect all valid filenames from metadata
     const validFilenames = new Set<string>();
     for (const doc of ids) {

@@ -186,10 +186,18 @@ export default function HomeScreen() {
   };
 
   // Lazy load IDs only when the tab is active
+  const retryTimeoutRef = useRef<any>(null);
   useEffect(() => {
     if (viewMode === 'ids' && !idsHasLoaded && !isIdsLoading) {
-      refreshIDs();
+      // Small safeguard: ensure we don't spam refresh calls
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => {
+        refreshIDs();
+      }, 500);
     }
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
   }, [viewMode, idsHasLoaded, isIdsLoading, refreshIDs]);
 
   // Load profile and settings

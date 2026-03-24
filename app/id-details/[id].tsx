@@ -109,6 +109,8 @@ export default function IDDetailsScreen() {
           const thumbPath = asset.thumbnailUri;
           if (thumbPath) {
             // Use .then() to make this non-blocking for the main decryption flow
+            const { ensureDir } = await import("@/utils/idStorage");
+            await ensureDir();
             FileSystem.getInfoAsync(thumbPath).then(async (info) => {
               if (!info.exists) {
                 try {
