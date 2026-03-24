@@ -1,21 +1,9 @@
 import { ThemedText } from "@/components/themed-text";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
-const TERMS_KEY = "terms_accepted";
-const TERMS_DATE_KEY = "terms_accepted_at";
 
 export default function TermsContent() {
-  const [acceptedAt, setAcceptedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const accepted = await AsyncStorage.getItem(TERMS_KEY);
-      const date = await AsyncStorage.getItem(TERMS_DATE_KEY);
-      if (accepted && date) setAcceptedAt(date);
-    })();
-  }, []);
 
   return (
     <ScrollView
@@ -24,30 +12,8 @@ export default function TermsContent() {
     >
       <View>
         <ThemedText style={styles.paragraph}>
-          <ThemedText style={styles.bold}>Last Updated: </ThemedText>
-          {new Date("2025-10-31").toLocaleString("en-IN", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })}
-
-          {acceptedAt && (
-            <ThemedText>
-              {"\n"}
-              <ThemedText style={styles.bold}>Accepted On: </ThemedText>
-              {new Date(acceptedAt).toLocaleString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              })}
-            </ThemedText>
-          )}
-          {"\n\n"}
-          Welcome to <ThemedText style={styles.bold}>Cardy Wall</ThemedText> (“the App”).  
-          By downloading or using Cardy Wall, you agree to the following Terms & Conditions.  
+          Welcome to <ThemedText style={styles.bold}>Cardy Wall</ThemedText> (“the App”).
+          By downloading or using Cardy Wall, you agree to the following Terms & Conditions.
           Please read them carefully before continuing.
         </ThemedText>
 
@@ -56,26 +22,29 @@ export default function TermsContent() {
         </ThemedText>
         <ThemedText style={styles.paragraph}>
           Cardy Wall is a personal, secure digital wallet designed to help you
-          store and manage your physical card details directly on your device.
-          The App is intended for <ThemedText style={styles.bold}>offline use only</ThemedText> — no data you enter is
-          uploaded to external servers or shared with third parties.
+          store and manage your <ThemedText style={styles.bold}>physical cards and ID documents</ThemedText> directly on 
+          your device. The App provides features like <ThemedText style={styles.bold}>NFC scanning</ThemedText> for quick 
+          entry and encrypted storage. The App is intended for offline-first 
+          personal use. While your personal data remains strictly local to your 
+          device, the App may require an internet connection for third-party 
+          services such as advertising.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
           2. Data Storage & Security
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          • All card details (card number, holder name, expiry date, CVV, etc.)
-          are securely stored <ThemedText style={styles.bold}>locally on your device</ThemedText> using system-provided
-          encrypted storage mechanisms.{"\n"}
+          • All details (cards, ID documents, and <ThemedText style={styles.bold}>local user profile</ThemedText>) are 
+          securely stored <ThemedText style={styles.bold}> locally on your device</ThemedText> using system-provided 
+          encrypted storage or SecureStore mechanisms.{"\n"}
+          • Scanned ID images are encrypted and stored within the App's private 
+          data directory.{"\n"}
           • Cardy Wall does <ThemedText style={styles.bold}>not</ThemedText> sync, back up, or transmit any stored data to
           online services.{"\n"}
           • Users are encouraged to protect their devices using screen locks,
-          biometric authentication, or passcodes to prevent unauthorized
-          access.{"\n"}
-          • When viewing or editing sensitive information, the App may prompt
-          for biometric authentication (e.g., fingerprint or Face ID) for your
-          protection.
+          biometric authentication, or passcodes.{"\n"}
+          • Biometric verification (Face ID / Fingerprint) is required for 
+          viewing sensitive details for your protection.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -95,15 +64,17 @@ export default function TermsContent() {
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          4. Privacy & Permissions
+          4. Privacy, Permissions & Sharing
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          Cardy Wall may request certain permissions to provide its features, such
-          as access to the camera for scanning card details. These permissions
-          are used <ThemedText style={styles.bold}>only</ThemedText> for their intended purpose and are never used to
-          collect or transmit your personal data.{"\n\n"}
-          The App does not require or access your internet connection for core
-          features like adding or viewing cards.
+          Cardy Wall requests limited permissions for features like <ThemedText style={styles.bold}>NFC</ThemedText> for 
+          scanning payment cards and <ThemedText style={styles.bold}>camera access</ThemedText> for scanning IDs. 
+          These are used <ThemedText style={styles.bold}>only</ThemedText> locally.{"\n\n"}
+          The <ThemedText style={styles.bold}>Secure Sharing</ThemedText> feature allows you to share card details 
+          via encrypted QR codes. This process is <ThemedText style={styles.bold}>entirely user-initiated</ThemedText> and uses 
+          end-to-end encryption (ECDH/AES) so that only the intended recipient 
+          can decrypt the data. Cardy Wall never sees or stores this shared data 
+          on any server.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -124,14 +95,13 @@ export default function TermsContent() {
           6. Advertising and Monetization
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          Future versions of Cardy Wall may include <ThemedText style={styles.bold}>non-intrusive,
-          non-personalized advertisements</ThemedText> using third-party ad networks such
-          as Google AdMob.{"\n"}
-          • Ads will never appear on screens displaying sensitive information.{"\n"}
-          • Card data will <ThemedText style={styles.bold}>never</ThemedText> be shared, sold, or transmitted for
-          advertising purposes.{"\n"}
-          • You may see optional offers or promotional cards relevant to your
-          region, which will remain fully user-controlled.
+          Cardy Wall includes <ThemedText style={styles.bold}>non-intrusive advertisements</ThemedText> using third-party
+          ad networks such as Google AdMob.{"\n"}
+          • Ads will never appear on screens displaying sensitive card data.{"\n"}
+          • Personalized ads may be shown based on your device settings and permission to track.{"\n"}
+          • Your sensitive card data will <ThemedText style={styles.bold}>never</ThemedText> be shared, sold, or
+          transmitted for advertising purposes.{"\n"}
+          • Advertisements require a limited internet connection to be served.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -156,7 +126,16 @@ export default function TermsContent() {
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
-          9. Contact Information
+          9. Data Migration
+        </ThemedText>
+        <ThemedText style={styles.paragraph}>
+          We may include automated migration tools to upgrade your storage
+          security as the App evolves. This process happens entirely on your
+          device and ensuring the continued protection of your data.
+        </ThemedText>
+
+        <ThemedText type="defaultSemiBold" style={styles.heading}>
+          10. Contact Information
         </ThemedText>
         <ThemedText style={styles.paragraph}>
           For questions, concerns, or feedback, reach out to:{"\n"}

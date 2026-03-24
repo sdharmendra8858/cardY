@@ -2,6 +2,7 @@ import TermsContent from "@/components/TermsContent";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { LEGAL_CONFIG } from "@/constants/legalConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,8 +16,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const TERMS_KEY = "terms_accepted";
-const TERMS_DATE_KEY = "terms_accepted_at";
 
 export default function TermsPopup({ onAccept }: { onAccept?: () => void }) {
   const [visible, setVisible] = useState(false);
@@ -25,18 +24,32 @@ export default function TermsPopup({ onAccept }: { onAccept?: () => void }) {
 
   useEffect(() => {
     const checkTerms = async () => {
-      const accepted = await AsyncStorage.getItem(TERMS_KEY);
-      if (!accepted) setVisible(true);
+      try {
+        const accepted = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED);
+        const version = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_VERSION);
+        
+        // Show popup if never accepted or version mismatch
+        if (!accepted || version !== LEGAL_CONFIG.TERMS_VERSION) {
+          setVisible(true);
+        }
+      } catch (error) {
+        console.error("Error checking terms version:", error);
+        setVisible(true); // Default to showing if error
+      }
     };
     checkTerms();
   }, []);
 
   const handleAccept = async () => {
-    const now = new Date().toISOString();
-    await AsyncStorage.setItem(TERMS_KEY, "true");
-    await AsyncStorage.setItem(TERMS_DATE_KEY, now);
-    setVisible(false);
-    if (onAccept) onAccept();
+    try {
+      await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED, "true");
+      await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_VERSION, LEGAL_CONFIG.TERMS_VERSION);
+      
+      setVisible(false);
+      if (onAccept) onAccept();
+    } catch (error) {
+      console.error("Error accepting terms:", error);
+    }
   };
 
   const screenHeight = Dimensions.get("window").height;

@@ -13,7 +13,8 @@ import {
 
 export type EncryptionResult = {
   iv: string;          // base64
-  ciphertext: string; // base64 (includes auth tag)
+  ciphertext: string; // base64 (includes auth tag, or separate)
+  tag?: string;       // base64 (optional, for backward compatibility)
 };
 
 /* -------------------------------------------------------------------------- */
@@ -42,7 +43,9 @@ async function getDEK(): Promise<Uint8Array> {
     const parsed = JSON.parse(stored);
 
     const dek = gcm(mk, base64ToBytes(parsed.iv)).decrypt(
-      base64ToBytes(parsed.ciphertext)
+      parsed.tag 
+        ? new Uint8Array([...base64ToBytes(parsed.ciphertext), ...base64ToBytes(parsed.tag)])
+        : base64ToBytes(parsed.ciphertext)
     );
 
     cachedDEK = dek;
@@ -108,9 +111,11 @@ export async function decryptCards(
 ): Promise<unknown> {
   const dek = await getDEK();
 
-  const plaintext = gcm(dek, base64ToBytes(payload.iv)).decrypt(
-    base64ToBytes(payload.ciphertext)
-  );
+  const ciphertextWithTag = payload.tag
+    ? new Uint8Array([...base64ToBytes(payload.ciphertext), ...base64ToBytes(payload.tag)])
+    : base64ToBytes(payload.ciphertext);
+
+  const plaintext = gcm(dek, base64ToBytes(payload.iv)).decrypt(ciphertextWithTag);
 
   return JSON.parse(new TextDecoder().decode(plaintext));
 }
@@ -137,9 +142,11 @@ export async function decryptRaw(
 ): Promise<Uint8Array> {
   const dek = await getDEK();
 
-  return gcm(dek, base64ToBytes(payload.iv)).decrypt(
-    base64ToBytes(payload.ciphertext)
-  );
+  const ciphertextWithTag = payload.tag
+    ? new Uint8Array([...base64ToBytes(payload.ciphertext), ...base64ToBytes(payload.tag)])
+    : base64ToBytes(payload.ciphertext);
+
+  return gcm(dek, base64ToBytes(payload.iv)).decrypt(ciphertextWithTag);
 }
 
 export function resetEncryptionCache() {

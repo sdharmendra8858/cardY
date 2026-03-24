@@ -62,13 +62,25 @@ export async function getIDs(): Promise<IDDocument[]> {
         }))
       }));
 
-      console.log(`✅ Fetched and normalized ${normalizedIds.length} IDs`);
       return normalizedIds;
     }
     
     return [];
   } catch (error) {
-    console.error("❌ Failed to get IDs:", error);
+    if (__DEV__) console.error("❌ Failed to get IDs (likely key mismatch):", error);
+    
+    // Self-healing: If metadata exists but cannot be decrypted, it's likely from a 
+    // previous install or a session with a different Master Key/DEK.
+    // Clearing it allows the app to function with new IDs instead of permanently erroring.
+    try {
+      if (error instanceof Error && error.message.includes("ghash tag")) {
+        console.warn("⚠️ Data undecryptable. Clearing invalid ID metadata to restore functionality.");
+        await AsyncStorage.removeItem(ID_STORAGE_KEYS.METADATA);
+      }
+    } catch (e) {
+      // Ignore cleanup error
+    }
+    
     return [];
   }
 }
@@ -94,7 +106,6 @@ async function saveIDs(ids: IDDocument[]): Promise<void> {
 
     const encrypted = await encryptData(storageIds);
     await AsyncStorage.setItem(ID_STORAGE_KEYS.METADATA, JSON.stringify(encrypted));
-    console.log(`💾 Saved ${storageIds.length} ID metadata documents`);
   } catch (error) {
     console.error("❌ Failed to save IDs:", error);
     throw error;
@@ -115,7 +126,6 @@ export async function saveEncryptedImage(sourceUri: string, id: string, name: st
   const destPath = IDS_DIR + filename;
   
   await FileSystem.writeAsStringAsync(destPath, JSON.stringify(encrypted));
-  console.log(`🔒 Encrypted and saved image: ${filename}`);
   return filename; // Return filename for metadata storage
 }
 
@@ -133,7 +143,6 @@ export async function saveThumbnail(sourceUri: string, id: string): Promise<stri
       throw new Error(`Source file for thumbnail not found: ${sourceUri}`);
     }
     await FileSystem.copyAsync({ from: sourceUri, to: destPath });
-    console.log(`🖼️ Saved thumbnail: ${filename}`);
     return filename; // Return filename for metadata storage
   } catch (error) {
     console.error(`❌ saveThumbnail failed for ${id}:`, error);
@@ -234,15 +243,32 @@ export async function deleteID(id: string): Promise<void> {
  */
 export async function cleanupOrphanedAssets(): Promise<void> {
   try {
-    console.log("🧹 Starting orphaned asset cleanup...");
+    
+    // Check if metadata exists but we got 0 IDs - this is the only case where we might have orphans
+    const raw = await AsyncStorage.getItem(ID_STORAGE_KEYS.METADATA);
+    if (raw) {
+       // If metadata exists, but we couldn't parse it or it's empty, 
+       // let's be EXTRA cautious and skip cleanup this time.
+       try {
+         const parsed = JSON.parse(raw);
+         const { decryptCards } = await import("@/utils/encryption/cardEncryption");
+         await decryptCards(parsed); 
+       } catch (e) {
+         console.warn("⚠️ Skipping orphaned asset cleanup due to metadata decryption failure to prevent data loss.");
+         return;
+       }
+    }
+
     const ids = await getIDs();
     
     // Collect all valid filenames from metadata
     const validFilenames = new Set<string>();
     for (const doc of ids) {
       for (const asset of doc.assets) {
-        validFilenames.add(asset.uri.split('/').pop()!);
-        validFilenames.add(asset.thumbnailUri.split('/').pop()!);
+        const uriName = asset.uri.split('/').pop();
+        const thumbName = asset.thumbnailUri.split('/').pop();
+        if (uriName) validFilenames.add(uriName);
+        if (thumbName) validFilenames.add(thumbName);
       }
     }
 
@@ -257,7 +283,6 @@ export async function cleanupOrphanedAssets(): Promise<void> {
       }
     }
 
-    console.log(`✅ Cleanup complete. Removed ${deletedCount} orphaned files.`);
   } catch (error) {
     console.warn("⚠️ Cleanup failed:", error);
   }
@@ -281,7 +306,6 @@ export async function clearAllIDs(): Promise<void> {
     await FileSystem.deleteAsync(IDS_DIR, { idempotent: true });
     await AsyncStorage.removeItem(ID_STORAGE_KEYS.METADATA);
     await ensureDir();
-    console.log("✅ All ID data cleared");
   } catch (error) {
     console.error("❌ Failed to clear all IDs:", error);
     throw error;
