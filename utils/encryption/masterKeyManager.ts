@@ -79,8 +79,8 @@ export async function getMasterKey(): Promise<string> {
       requireAuthentication: false, // User requested no biometric on add/update
     });
     if (__DEV__) console.log("✅ Master key generated and stored securely");
-
     return newKey;
+
   } catch (error) {
     console.error("❌ Failed to get/create master key:", error);
     throw new Error(`Master key management failed: ${error}`);

@@ -19,6 +19,11 @@ export const ADMOB_CONFIG = {
     ios: "ca-app-pub-4699580064236799/5364921287",
   }),
 
+  receiveCardInterstitialUnitId: Platform.select({
+    android: "ca-app-pub-4699580064236799/3474942899",
+    ios: "ca-app-pub-4699580064236799/6841540511",
+  }),
+
   // Native Ad Unit IDs
   nativeAdUnitId: Platform.select({
     android: "ca-app-pub-4699580064236799/2204035009",

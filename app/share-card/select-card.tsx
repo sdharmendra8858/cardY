@@ -1,3 +1,4 @@
+import AdInterstitial, { showInterstitialAd } from "@/components/AdInterstitial";
 import Hero from "@/components/Hero";
 import SessionTimerBar from "@/components/SessionTimerBar";
 import { ThemedText } from "@/components/themed-text";
@@ -24,7 +25,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../constants/theme";
 import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
-import AdRewarded, { showRewardedAd } from "@/components/AdRewarded";
 
 export default function SelectCardScreen() {
     const scheme = useColorScheme() ?? "light";
@@ -211,28 +211,19 @@ export default function SelectCardScreen() {
             return;
         }
 
-        // Show rewarded ad BEFORE allowing QR generation
-        let adRewardEarned = false;
-        await showRewardedAd(
-            () => { adRewardEarned = true; },
-            () => {
-                if (!adRewardEarned) {
-                    setAlertConfig({
-                        title: "Action Required",
-                        message: "Please watch the full ad to unlock sharing.",
-                        type: "warning",
-                        buttons: [{ text: "OK", style: "default", onPress: () => setAlertVisible(false) }]
-                    });
-                    setAlertVisible(true);
-                }
+        // Show interstitial ad BEFORE allowing QR generation
+        if (__DEV__) console.log("📺 Attempting to show interstitial ad for QR generation...");
+
+        await showInterstitialAd(
+            () => { 
+                if (__DEV__) console.log("🚪 Ad closed");
             },
             () => {
+                if (__DEV__) console.log("❌ Ad failed to load/show");
                 // Fallback for failed ad load
-                adRewardEarned = true;
+                console.warn("⚠️ Interstitial ad failed to load. Proceeding with fallback.");
             }
         );
-
-        if (!adRewardEarned) return;
 
         // Navigate to generate QR screen
         router.push({
@@ -585,7 +576,7 @@ export default function SelectCardScreen() {
                 type={alertConfig.type}
                 onRequestClose={() => setAlertVisible(false)}
             />
-            <AdRewarded />
+            <AdInterstitial />
         </SafeAreaView>
     );
 }

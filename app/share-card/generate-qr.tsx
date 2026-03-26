@@ -329,7 +329,7 @@ export default function GenerateQRScreen() {
             await Share.open({
                 url: uri,
                 title: "Share My Card",
-                message: "Scan this QR code with CardyWall to securely receive my card details",
+                message: "Scan this QR code with Cardy Wall to securely receive my card details. Download the app: https://redonelabs.in/products/cardywall/#download",
                 failOnCancel: false,
             });
 

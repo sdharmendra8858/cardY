@@ -234,14 +234,6 @@ export default function HomeScreen() {
     };
   }, [viewMode, containerWidth]);
 
-  const cardsTabContentStyle = useAnimatedStyle(() => ({
-    opacity: withSpring(viewMode === "cards" ? 1 : 0.4, { damping: 20 }),
-  }));
-
-  const idsTabContentStyle = useAnimatedStyle(() => ({
-    opacity: withSpring(viewMode === "ids" ? 1 : 0.4, { damping: 20 }),
-  }));
-
   const animatedContentStyle = useAnimatedStyle(() => {
     return {
       flex: 1,
@@ -403,7 +395,7 @@ export default function HomeScreen() {
             onPress={() => handleTabSwitch("cards")}
             hitSlop={5}
           >
-            <Animated.View style={[styles.tabContent, cardsTabContentStyle]}>
+            <Animated.View style={[styles.tabContent]}>
               <Ionicons
                 name={viewMode === "cards" ? "card" : "card-outline"}
                 size={22}
@@ -427,7 +419,7 @@ export default function HomeScreen() {
             onPress={() => handleTabSwitch("ids")}
             hitSlop={5}
           >
-            <Animated.View style={[styles.tabContent, idsTabContentStyle]}>
+            <Animated.View style={[styles.tabContent]}>
               <Ionicons
                 name={viewMode === "ids" ? "document-text" : "document-text-outline"}
                 size={22}
@@ -936,6 +928,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 18,
     paddingHorizontal: 4,
+    minHeight: 40, // Stabilize height to prevent text shift when switch is hidden
   },
   subHeaderTitleRow: {
     flexDirection: "row",
