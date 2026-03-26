@@ -82,7 +82,7 @@ export async function getMasterKey(): Promise<string> {
     return newKey;
 
   } catch (error) {
-    console.error("❌ Failed to get/create master key:", error);
+    if (__DEV__) console.error("❌ Failed to get/create master key:", error);
     throw new Error(`Master key management failed: ${error}`);
   }
 }
@@ -101,7 +101,7 @@ export async function deleteMasterKey(): Promise<boolean> {
     if (__DEV__) console.log("✅ Master key deleted");
     return true;
   } catch (error) {
-    console.error("❌ Failed to delete master key:", error);
+    if (__DEV__) console.error("❌ Failed to delete master key:", error);
     return false;
   }
 }
@@ -116,7 +116,7 @@ export async function masterKeyExists(): Promise<boolean> {
     const key = await SecureStore.getItemAsync(MASTER_KEY_ID);
     return !!key;
   } catch (error) {
-    console.error("Error checking master key existence:", error);
+    if (__DEV__) console.error("Error checking master key existence:", error);
     return false;
   }
 }
@@ -131,7 +131,7 @@ export async function verifyMasterKey(): Promise<boolean> {
     const key = await getMasterKey();
     return !!(key && key.length > 0);
   } catch (error) {
-    console.error("Master key verification failed:", error);
+    if (__DEV__) console.error("Master key verification failed:", error);
     return false;
   }
 }

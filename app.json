@@ -98,7 +98,8 @@
           "icon": "./assets/images/cc-round.png",
           "color": "#ffffff"
         }
-      ]
+      ],
+      "expo-tracking-transparency"
     ],
     "experiments": {
       "typedRoutes": true,

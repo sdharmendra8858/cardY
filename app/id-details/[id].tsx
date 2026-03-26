@@ -137,7 +137,7 @@ export default function IDDetailsScreen() {
         setDecryptedUris(newDecryptedUris);
       }
     } catch (err) {
-      console.error("Failed to fetch/decrypt ID:", err);
+      if (__DEV__) console.error("Failed to fetch/decrypt ID:", err);
       setError("Failed to securely load ID document.");
     } finally {
       setIsLoading(false);
@@ -235,6 +235,9 @@ export default function IDDetailsScreen() {
           } catch (e) { }
         }
       } catch (err) {
+        if (__DEV__) {
+          console.error("Download Error", err);
+        }
         Alert.alert("Download Error", err instanceof Error ? err.message : "An unexpected error occurred while saving.");
       }
     };
@@ -270,6 +273,7 @@ export default function IDDetailsScreen() {
               await contextRemoveID(id as string);
               router.back();
             } catch (err) {
+              if (__DEV__) console.error("Failed to delete ID document:", err);
               setError("Failed to delete ID document.");
             }
           }

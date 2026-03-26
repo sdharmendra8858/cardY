@@ -7,6 +7,7 @@
  */
 
 import { Platform } from "react-native";
+import * as LocalAuthentication from "expo-local-authentication";
 import { clearCards } from "../secureStorage";
 
 // Try to import native modules if available
@@ -245,12 +246,10 @@ export async function handleCompromisedDevice(): Promise<boolean> {
  */
 export async function hasDeviceLockOrBiometric(): Promise<boolean> {
   try {
-    // This would require native implementation
-    // For now, return true (assume device has security)
-    // In production, implement native checks
-    return true;
+    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+    return isEnrolled;
   } catch (error) {
-    console.error("Error checking device lock:", error);
+    if (__DEV__) console.error("Error checking device lock:", error);
     return false;
   }
 }
