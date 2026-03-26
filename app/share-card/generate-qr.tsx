@@ -1,4 +1,3 @@
-import AdBanner from "@/components/AdBanner";
 import Hero from "@/components/Hero";
 import QRDisplaySection from "@/components/QRDisplaySection";
 import SessionTimerBar from "@/components/SessionTimerBar";
@@ -424,7 +423,6 @@ export default function GenerateQRScreen() {
                     />
                 </View>
 
-                <AdBanner />
             </SafeAreaView>
 
             <UnifiedModal
