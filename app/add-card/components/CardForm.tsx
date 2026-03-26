@@ -540,12 +540,18 @@ export default function CardForm({
             setValue={setCardUser}
             items={CARD_USER_OPTIONS}
             placeholder="Select card user"
-            disabled={fromShare}
-            style={{
-              borderColor: theme.border,
-              backgroundColor: theme.card,
-              minHeight: 50,
-            }}
+            disabled={fromShare || isEditMode}
+            style={[
+              {
+                borderColor: theme.border,
+                backgroundColor: theme.card,
+                minHeight: 50,
+              },
+              (fromShare || isEditMode) && {
+                opacity: 0.6,
+                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'
+              }
+            ]}
             dropDownContainerStyle={{
               borderColor: theme.border,
               backgroundColor: theme.card,
@@ -601,7 +607,9 @@ export default function CardForm({
               {
                 borderColor:
                   focused === "cardNumber" ? theme.primary : theme.border,
-                backgroundColor: theme.card,
+                backgroundColor: isEditMode
+                  ? (colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)')
+                  : theme.card,
               },
               !cardNumberValid && cardNumberDigits.length >= 13
                 ? styles.inputError
