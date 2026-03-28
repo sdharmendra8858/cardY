@@ -11,7 +11,6 @@ import { processIDImage } from "@/utils/imageProcessor";
 import { saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import ImageCropPicker from 'react-native-image-crop-picker';
 import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
@@ -141,36 +140,28 @@ export default function AddIDScreen() {
         AsyncStorage.setItem("active_flow", "add-id"),
       ]).catch(() => {});
 
-      const pickerOptions = {
-        cropping: true,
-        width: 1200,
-        height: 800,
-        freeStyleCropEnabled: true,
-        mediaType: 'photo' as const,
-        includeBase64: false,
-        compressImageQuality: 0.8,
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        allowsEditing: true,
+        aspect: [3, 2], // Standard ID card aspect ratio
+        quality: 0.8,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       };
 
-      let image;
+      let result;
       if (useCamera) {
-        image = await ImageCropPicker.openCamera(pickerOptions);
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
       } else {
-        image = await ImageCropPicker.openPicker(pickerOptions);
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
       }
 
-      if (image && image.path) {
-        // Ensure the path has the file:// prefix for Expo libraries
-        const uri = image.path.startsWith('file://') ? image.path : `file://${image.path}`;
-        setImages(prev => ({ ...prev, [slot]: uri }));
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setImages(prev => ({ ...prev, [slot]: result.assets[0].uri }));
         setActiveSlot(null);
       }
       
       // Clear flow marker since we returned normally
       AsyncStorage.removeItem("active_flow").catch(() => {});
     } catch (err) {
-      if (err instanceof Error && err.message.includes("User cancelled")) {
-        return;
-      }
       console.error("Failed to pick image:", err);
       setError("Failed to capture image. Please try again.");
     }

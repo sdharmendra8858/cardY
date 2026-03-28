@@ -23,7 +23,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import RNFS from "react-native-fs";
+import * as FileSystem from "expo-file-system";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
@@ -213,7 +213,7 @@ export default function ReceiveCardScreen() {
       if (lastTempFileRef.current) {
         try {
           console.log("🗑️ Cleaning up old temporary QR file:", lastTempFileRef.current);
-          await RNFS.unlink(lastTempFileRef.current);
+          await FileSystem.deleteAsync(lastTempFileRef.current, { idempotent: true });
           console.log("✅ Old temporary file deleted");
           lastTempFileRef.current = null;
         } catch (cleanupError) {

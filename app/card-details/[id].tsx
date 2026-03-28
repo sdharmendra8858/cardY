@@ -7,7 +7,6 @@ import Maestro from "@/assets/icons/cards/maestro.svg";
 import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
-import NativeAd from "@/components/AdNative";
 import { showInterstitialAd } from "@/components/AdInterstitial";
 import CardNotFound from "@/components/CardNotFound";
 import AppButton from "@/components/AppButton";
@@ -939,7 +938,6 @@ export default function CardDetailsScreen() {
             </View>
           </View>
           <ThemedText style={styles.note}>Unique ID: {id}</ThemedText>
-          <NativeAd />
         </ScrollView>
       </View>
 

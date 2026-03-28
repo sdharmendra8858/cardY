@@ -160,24 +160,46 @@ function AppShell() {
     cleanup();
   }, []);
 
-  // Check Terms on mount using versioning
+  // 1. Centralized Initialization Flow (Migration + Terms + Security)
   useEffect(() => {
-    const checkTerms = async () => {
+    const initializeApp = async () => {
       try {
+        // (A) Check Terms
         const accepted = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED);
         const version = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_VERSION);
-        const isAccepted = accepted === "true" && version === LEGAL_CONFIG.TERMS_VERSION;
-        
-        setTermsAccepted(isAccepted);
-        if (!isAccepted) {
+        const isTermsAccepted = accepted === "true" && version === LEGAL_CONFIG.TERMS_VERSION;
+        setTermsAccepted(isTermsAccepted);
+        if (!isTermsAccepted) {
           tncShownInSessionRef.current = true;
         }
+
+        // (B) Check Security Settings
+        const settingsRaw = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
+        const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+        const isAppLockEnabled = settings.appLock ?? false;
+
+        // Note: authenticated starts as false. If no lock, we authenticate immediately.
+        if (!isAppLockEnabled) {
+          setAuthenticated(true);
+        }
+
+        // (C) Pre-load ad only if terms were previously accepted
+        if (isTermsAccepted) {
+          try {
+            appOpenAd.load();
+          } catch (e) {}
+        }
       } catch (error) {
-        setTermsAccepted(false);
+        console.error("Initialization error:", error);
+      } finally {
+        setChecked(true);
       }
     };
-    checkTerms();
+    initializeApp();
   }, []);
+
+  // 2. Hide Splash Screen ONLY when BOTH migration (isReady) and system checks (checked) are done
+  // Note: Migration check is handled by MigrationProvider's useMigration hook
 
   // Android Process Death recovery check
   useEffect(() => {
@@ -279,35 +301,23 @@ function AppShell() {
     }
   }, [termsAccepted]);
 
-  // 🔒 Biometric authentication
+  // 🔒 Biometric authentication (Handled on app foreground/startup if lock is enabled)
   useEffect(() => {
-    if (checked) return; // already handled
+    if (!checked) return; // Wait for initial settings check
     if (!appIsActive) return;
 
     (async () => {
       try {
-        // 1. Preload ad in background if terms were previously accepted
-        const termsVal = await AsyncStorage.getItem("terms_accepted");
-        if (termsVal === "true") {
-          appOpenAd.load();
-        }
-
-        // 2. Check if App Lock is enabled
         const settingsRaw = await AsyncStorage.getItem(SECURITY_SETTINGS_KEY);
         const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
         const isAppLockEnabled = settings.appLock ?? false;
 
-        if (isAppLockEnabled) {
+        if (isAppLockEnabled && !authenticated) {
           const ok = await authenticateUser();
           setAuthenticated(ok);
-        } else {
-          setAuthenticated(true);
         }
       } catch (err) {
         setAuthenticated(true);
-      } finally {
-        setChecked(true);
-        await SplashScreen.hideAsync();
       }
     })();
   }, [appIsActive, checked]);
@@ -385,8 +395,13 @@ function AppShell() {
           <SecurityProvider>
             <MigrationProvider>
               <MigrationAwareContent 
+                checked={checked}
                 termsAccepted={termsAccepted}
-                onTermsAccepted={() => setTermsAccepted(true)} 
+                onTermsAccepted={async () => {
+                  await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED, "true");
+                  await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_VERSION, LEGAL_CONFIG.TERMS_VERSION);
+                  setTermsAccepted(true);
+                }} 
               />
             </MigrationProvider>
           </SecurityProvider>
@@ -398,9 +413,11 @@ function AppShell() {
 
 // Separate component to access migration context
 function MigrationAwareContent({ 
+  checked,
   termsAccepted, 
   onTermsAccepted 
 }: { 
+  checked: boolean;
   termsAccepted: boolean | null;
   onTermsAccepted: () => void;
 }) {
@@ -409,6 +426,13 @@ function MigrationAwareContent({
   const barStyle = colorScheme === "dark" ? "light" : "dark";
   const barBg =
     colorScheme === "dark" ? Colors.dark.background : Colors.light.background;
+
+  // 3. Hide Splash Screen when system is checked AND migration is either ready or showing screen
+  useEffect(() => {
+    if (checked && (isReady || needsMigration)) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [checked, isReady, needsMigration]);
 
   // Show migration screen if needed
   if (needsMigration) {
@@ -426,7 +450,10 @@ function MigrationAwareContent({
           onFreshSetup={handleFreshSetup}
           onComplete={handleComplete}
         />
-        <TermsPopup onAccept={onTermsAccepted} />
+        <TermsPopup 
+          visible={termsAccepted === false} 
+          onAccept={onTermsAccepted} 
+        />
       </>
     );
   }
@@ -454,7 +481,10 @@ function MigrationAwareContent({
           <TimerProvider>
             <CompromisedDeviceModal />
             <Stack screenOptions={{ headerShown: false }} />
-            <TermsPopup onAccept={onTermsAccepted} />
+            <TermsPopup 
+              visible={termsAccepted === false} 
+              onAccept={onTermsAccepted} 
+            />
             <StatusBar
               style={barStyle}
               backgroundColor={barBg}

@@ -1,5 +1,4 @@
 import { showInterstitialAd } from "@/components/AdInterstitial";
-import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
@@ -504,7 +503,6 @@ export default function IDDetailsScreen() {
           </View>
 
           <ThemedText style={styles.note}>Unique Document ID: {id}</ThemedText>
-          <NativeAd />
         </ScrollView>
       </View>
 

@@ -7,7 +7,7 @@ export const LEGAL_CONFIG = {
    * Updating this will force all users to accept the new terms on next launch.
    * Format: YYYY-MM-DD
    */
-  TERMS_VERSION: "2026-03-24",
+  TERMS_VERSION: "2026-03-28",
   
   /**
    * AsyncStorage keys for legal compliance

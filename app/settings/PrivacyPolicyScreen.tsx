@@ -14,7 +14,7 @@ export default function PrivacyPolicyScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.surface }]}
     >
-      <Hero title="Privacy Policy" subtitle="Your privacy matters" showBackButton={true} />
+      <Hero title="Privacy Policy" subtitle="Last Updated: March 28, 2026" showBackButton={true} />
       <View style={[styles.container, { backgroundColor: palette.surface }]}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -74,17 +74,18 @@ export default function PrivacyPolicyScreen() {
               4. Device Permissions
             </ThemedText>
             <ThemedText style={styles.paragraph}>
-              To provide certain features, Cardy Wall may request limited
+              To provide certain local features, Cardy Wall may request limited
               device permissions:{"\n"}
-              • <ThemedText style={styles.bold}>Camera access:</ThemedText> used only for scanning card
-              details; images are processed locally and never uploaded.{"\n"}
-              • <ThemedText style={styles.bold}>Biometric or PIN access:</ThemedText> used to lock and unlock the App;
-              biometric data is handled by your device’s secure system and never
-              accessed by Cardy Wall.{"\n"}
-              • <ThemedText style={styles.bold}>App Tracking Transparency:</ThemedText> used to deliver more
-              relevant and personalized ads for a better user experience.{"\n"}
-              • <ThemedText style={styles.bold}>File access:</ThemedText> used only to temporarily process scanned
-              images; files are cleared after card creation.
+              • <ThemedText style={styles.bold}>Camera access:</ThemedText> Used only for scanning card
+              details or ID documents; images are processed locally and never uploaded.{"\n"}
+              • <ThemedText style={styles.bold}>NFC access:</ThemedText> Used for quick scanning of payment cards; 
+              data is ephemeral and only saved to your local vault.{"\n"}
+              • <ThemedText style={styles.bold}>Biometric or PIN access:</ThemedText> Used to secure the 
+              Hardware-Locked Vault; biometric data is handled by your device’s 
+              secure system and never accessed by Cardy Wall.{"\n"}
+              • <ThemedText style={styles.bold}>Media Library access:</ThemedText> Used for "File Upload" 
+              (to scan QR codes or IDs from existing images) and "Download ID" 
+              (to save processed ID documents back to your phone).
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -92,15 +93,14 @@ export default function PrivacyPolicyScreen() {
             </ThemedText>
             <ThemedText style={styles.paragraph}>
               Cardy Wall follows a <ThemedText style={styles.bold}>Zero-Cloud (Ultra Private)</ThemedText> architecture:{"\n"}
-              • All data is <ThemedText style={styles.bold}>Device-Isolated (Local)</ThemedText> and encrypted on your storage.{"\n"}
-              • Sensitive items are <ThemedText style={styles.bold}>Hardware-Locked</ThemedText> through your system’s biometric 
-              security.{"\n"}
+              • All data is <ThemedText style={styles.bold}>Device-Isolated (Local)</ThemedText> and encrypted 
+              on your storage.{"\n"}
+              • Sensitive items are <ThemedText style={styles.bold}>Hardware-Locked</ThemedText> through your 
+              system’s biometric security.{"\n"}
               • <ThemedText style={styles.bold}>End-to-End Encrypted Sharing</ThemedText> ensures only the intended 
-              recipient can view shared card details.{"\n"}
-              • NFC scanning data remains ephemeral until stored in your local 
-              encrypted database.{"\n"}
-              • No personal data is stored outside your device or transmitted 
-              via the internet.
+              recipient can view shared card details via user-initiated QR codes.{"\n"}
+              • NFC scanning and File uploads are processed <ThemedText style={styles.bold}>ephemerally</ThemedText> 
+              on-device for maximum privacy.
             </ThemedText>
 
             <ThemedText type="defaultSemiBold" style={styles.heading}>
