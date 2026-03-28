@@ -5,6 +5,7 @@ import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useIDs } from "@/context/IDContext";
@@ -245,7 +246,9 @@ export default function IDDetailsScreen() {
     // Show Interstitial Ad before download
     await showInterstitialAd(
       () => proceedWithDownload(),
-      () => proceedWithDownload() // Also proceed if ad fails/timeouts to not block user
+      () => proceedWithDownload(), // Also proceed if ad fails/timeouts to not block user
+      1500,
+      ADMOB_CONFIG.downloadIdInterstitialUnitId
     );
   };
 

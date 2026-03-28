@@ -7,31 +7,38 @@ export const ADMOB_CONFIG = {
   androidAppId: "ca-app-pub-4699580064236799~8493755965",
   iosAppId: "ca-app-pub-4699580064236799~6045744843",
 
-  // Banner Ad Unit IDs
-  bannerAdUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/9812552975",
-    ios: "ca-app-pub-4699580064236799/9798990316",
-  })!,
-
   // App Open Ad Unit IDs
   appOpenAdUnitId: Platform.select({
-    android: 'ca-app-pub-4699580064236799/2056345179',
-    ios: 'ca-app-pub-4699580064236799/6829762118',
+    android: 'ca-app-pub-4699580064236799/6524123549',
+    ios: 'ca-app-pub-4699580064236799/2640718857',
   })!,
   interstitialAdUnitId: Platform.select({
-    android: 'ca-app-pub-4699580064236799/4462102146',
-    ios: 'ca-app-pub-4699580064236799/1941656209',
+    android: 'ca-app-pub-4699580064236799/3624585311',
+    ios: 'ca-app-pub-4699580064236799/1438877856',
   })!,
   receiveCardInterstitialUnitId: Platform.select({
-    android: 'ca-app-pub-4699580064236799/3474942899',
-    ios: 'ca-app-pub-4699580064236799/6841540511',
+    android: 'ca-app-pub-4699580064236799/6851414266',
+    ios: 'ca-app-pub-4699580064236799/8164495930',
   })!,
   selectCardInterstitialUnitId: Platform.select({
-    android: 'ca-app-pub-4699580064236799/5729304904',
-    ios: 'ca-app-pub-4699580064236799/5729304904', // Using same ID for now as per user request if both same
+    android: 'ca-app-pub-4699580064236799/5538332598',
+    ios: 'ca-app-pub-4699580064236799/1221853060',
   })!,
   nativeAdUnitId: Platform.select({
-    android: 'ca-app-pub-4699580064236799/3685369677',
-    ios: 'ca-app-pub-4699580064236799/8488836551',
+    android: 'ca-app-pub-4699580064236799/2204035009',
+    ios: 'ca-app-pub-4699580064236799/6752321859',
+  })!,
+  // Separate units for specific flows (Update these once new IDs are created in AdMob)
+  addIdInterstitialUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/4120881510',
+    ios: 'ca-app-pub-4699580064236799/9477577608', 
+  })!,
+  addCardInterstitialUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/9998421974',
+    ios: 'ca-app-pub-4699580064236799/2311503644', 
+  })!,
+  downloadIdInterstitialUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/8717199704',
+    ios: 'ca-app-pub-4699580064236799/2720597561', 
   })!,
 };

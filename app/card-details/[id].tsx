@@ -7,7 +7,6 @@ import Maestro from "@/assets/icons/cards/maestro.svg";
 import MasterCard from "@/assets/icons/cards/mastercard.svg";
 import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
-import AdBanner from "@/components/AdBanner";
 import NativeAd from "@/components/AdNative";
 import { showInterstitialAd } from "@/components/AdInterstitial";
 import CardNotFound from "@/components/CardNotFound";
@@ -981,7 +980,6 @@ export default function CardDetailsScreen() {
         onRequestClose={() => setAlertVisible(false)}
       />
 
-      <AdBanner />
 
       {/* Quota Exceeded Modal */}
       <Modal

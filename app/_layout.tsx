@@ -12,7 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
 import "react-native-reanimated";
 import Toast from "react-native-toast-message";
-import { AppOpenAd, AdEventType, TestIds } from "react-native-google-mobile-ads";
+import mobileAds, { AppOpenAd, AdEventType, TestIds } from "react-native-google-mobile-ads";
 import { ADMOB_CONFIG } from "@/constants/admob";
 import * as ImagePicker from "expo-image-picker";
 import * as ScreenCapture from 'expo-screen-capture';
@@ -52,7 +52,12 @@ export const unstable_settings = {
 const appOpenAdUnitId = __DEV__ ? TestIds.APP_OPEN : (ADMOB_CONFIG.appOpenAdUnitId || TestIds.APP_OPEN);
 
 const appOpenAd = AppOpenAd.createForAdRequest(appOpenAdUnitId, {
-  requestNonPersonalizedAdsOnly: true,
+  keywords: [
+    "finance", "cards", "security", "digital wallet", "fintech", 
+    "credit card", "id scanner", "secure vault", "banking", 
+    "money manager", "loyalty cards", "identity protection", 
+    "privacy", "encryption", "payment", "visa", "mastercard"
+  ],
 });
 
 function AppShell() {
@@ -81,6 +86,17 @@ function AppShell() {
       setAppIsActive(state === "active");
     });
     setAppIsActive(AppState.currentState === "active");
+
+    // Initialize AdMob SDK (Mandatory for production)
+    mobileAds()
+      .initialize()
+      .then(adapterStatuses => {
+        if (__DEV__) console.log("✅ AdMob Initialized:", adapterStatuses);
+      })
+      .catch(err => {
+        if (__DEV__) console.warn("❌ AdMob Initialization failed:", err);
+      });
+
     return () => sub.remove();
   }, []);
 

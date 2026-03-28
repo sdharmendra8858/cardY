@@ -881,7 +881,6 @@ const styles = StyleSheet.create({
   },
   stickyButtonContainer: {
     position: "absolute",
-    // Removed AdBanner
     left: 0,
     right: 0,
     backgroundColor: "transparent",

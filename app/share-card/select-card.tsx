@@ -3,6 +3,8 @@ import Hero from "@/components/Hero";
 import SessionTimerBar from "@/components/SessionTimerBar";
 import { ThemedText } from "@/components/themed-text";
 import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
+import { ADMOB_CONFIG } from "@/constants/admob";
+import { Colors } from "../../constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
 import { formatCardNumber } from "@/utils/formatCardNumber";
@@ -23,7 +25,6 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Colors } from "../../constants/theme";
 import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
 
 export default function SelectCardScreen() {
@@ -215,14 +216,10 @@ export default function SelectCardScreen() {
         if (__DEV__) console.log("📺 Attempting to show interstitial ad for QR generation...");
 
         await showInterstitialAd(
-            () => { 
-                if (__DEV__) console.log("🚪 Ad closed");
-            },
-            () => {
-                if (__DEV__) console.log("❌ Ad failed to load/show");
-                // Fallback for failed ad load
-                console.warn("⚠️ Interstitial ad failed to load. Proceeding with fallback.");
-            }
+            () => {},
+            () => {},
+            1500,
+            ADMOB_CONFIG.selectCardInterstitialUnitId
         );
 
         // Navigate to generate QR screen

@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { ID_TYPES } from "@/types/id";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { processIDImage } from "@/utils/imageProcessor";
@@ -239,7 +240,8 @@ export default function AddIDScreen() {
         showInterstitialAd(
           () => {},
           () => {},
-          2000
+          1500,
+          ADMOB_CONFIG.addIdInterstitialUnitId
         ).catch(() => {});
       }, 300);
     } catch (err) {
