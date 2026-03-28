@@ -1,4 +1,3 @@
-import AdBanner from "@/components/AdBanner";
 import { showInterstitialAd } from "@/components/AdInterstitial";
 import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
@@ -27,10 +26,11 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const { redirectToTab, viewMode: paramViewMode } = useLocalSearchParams<{
     redirectToTab: "self" | "other",
     viewMode: "cards" | "ids"
@@ -638,7 +638,7 @@ export default function HomeScreen() {
           columnWrapperStyle={viewMode === "ids" ? { justifyContent: "flex-start" } : undefined}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: 100 }
+            { paddingBottom: 80 + insets.bottom }
           ]}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={ListEmptyComponent}
@@ -648,7 +648,7 @@ export default function HomeScreen() {
 
       {/* Floating Action Button - Only show if list is not empty */}
       {(viewMode === "cards" ? cards.length > 0 : ids.length > 0) && (
-        <View style={styles.stickyButtonContainer}>
+        <View style={[styles.stickyButtonContainer, { bottom: 16 + insets.bottom }]}>
           <AppButton
             title={viewMode === "cards" ? "Add New Card" : "Add New ID"}
             onPress={() => router.push(viewMode === "cards" ? "/add-card" : "/add-id")}
@@ -657,8 +657,6 @@ export default function HomeScreen() {
           />
         </View>
       )}
-
-      <AdBanner />
 
       <Modal
         visible={showQuotaModal}
@@ -883,7 +881,7 @@ const styles = StyleSheet.create({
   },
   stickyButtonContainer: {
     position: "absolute",
-    bottom: 60, // Adjust to be above AdBanner
+    // Removed AdBanner
     left: 0,
     right: 0,
     backgroundColor: "transparent",

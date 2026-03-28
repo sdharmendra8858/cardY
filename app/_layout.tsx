@@ -15,6 +15,7 @@ import Toast from "react-native-toast-message";
 import { AppOpenAd, AdEventType, TestIds } from "react-native-google-mobile-ads";
 import { ADMOB_CONFIG } from "@/constants/admob";
 import * as ImagePicker from "expo-image-picker";
+import * as ScreenCapture from 'expo-screen-capture';
 import { Platform } from "react-native";
 
 import AuthRequired from "@/components/AuthRequired";
@@ -40,6 +41,7 @@ import MigrationScreen from "./migration-screen";
 import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
 import { cleanupOrphanedAssets } from "@/utils/idStorage";
 import { LEGAL_CONFIG } from "@/constants/legalConfig";
+import { useATT } from "@/hooks/useATT";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -54,6 +56,7 @@ const appOpenAd = AppOpenAd.createForAdRequest(appOpenAdUnitId, {
 });
 
 function AppShell() {
+  useATT();
   // ✅ ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL RETURNS
   const colorScheme = useColorScheme();
   const router = useRouter();
@@ -79,6 +82,25 @@ function AppShell() {
     });
     setAppIsActive(AppState.currentState === "active");
     return () => sub.remove();
+  }, []);
+
+  // Global Screenshot Protection - Only block in release build
+  useEffect(() => {
+    if (__DEV__) {
+      // In development, explicitly allow screenshots in case they were blocked by another screen
+      ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+      return;
+    }
+
+    // In release, block screenshots globally
+    ScreenCapture.preventScreenCaptureAsync().catch((err) => {
+      if (__DEV__) console.warn("Failed to enable global screen protection:", err);
+    });
+
+    return () => {
+      // Cleanup (though root layout usually stays mounted)
+      ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+    };
   }, []);
 
   useEffect(() => {

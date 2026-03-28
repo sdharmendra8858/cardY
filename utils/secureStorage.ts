@@ -8,6 +8,7 @@ import { formatCardNumber } from "@/utils/formatCardNumber";
 import { maskAndFormatCardNumber, maskExpiry } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { normalizeBankName } from "./normalizeBankName";
+import Toast from "react-native-toast-message";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -208,6 +209,12 @@ export async function toggleCardPin(cardId: string, shouldPin: boolean): Promise
       if (lastPinnedIndex !== -1) {
         // Unpin it
         categoryCards[lastPinnedIndex] = { ...categoryCards[lastPinnedIndex], isPinned: false };
+        
+        Toast.show({
+          type: "info",
+          text1: "Pinned Limit Reached",
+          text2: `Oldest ${isSelf ? "Personal" : "Shared"} card unpinned to maintain limit.`,
+        });
       }
     }
     

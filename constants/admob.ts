@@ -11,34 +11,27 @@ export const ADMOB_CONFIG = {
   bannerAdUnitId: Platform.select({
     android: "ca-app-pub-4699580064236799/9812552975",
     ios: "ca-app-pub-4699580064236799/9798990316",
-  }),
+  })!,
 
-  // Interstitial Ad Unit IDs
-  interstitialAdUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/5729304904",
-    ios: "ca-app-pub-4699580064236799/5364921287",
-  }),
-
-  receiveCardInterstitialUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/3474942899",
-    ios: "ca-app-pub-4699580064236799/6841540511",
-  }),
-
-  // Native Ad Unit IDs
-  nativeAdUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/2204035009",
-    ios: "ca-app-pub-4699580064236799/6752321859",
-  }),
-
-  // App Open Ad Unit IDs (Using test IDs for now)
+  // App Open Ad Unit IDs
   appOpenAdUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/6524123549",
-    ios: "ca-app-pub-4699580064236799/2640718857",
-  }),
-
-  // Rewarded Ad Unit IDs (Using test IDs for now)
-  rewardedAdUnitId: Platform.select({
-    android: "ca-app-pub-4699580064236799/3355034726",
-    ios: "ca-app-pub-4699580064236799/3897960205",
-  }),
+    android: 'ca-app-pub-4699580064236799/2056345179',
+    ios: 'ca-app-pub-4699580064236799/6829762118',
+  })!,
+  interstitialAdUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/4462102146',
+    ios: 'ca-app-pub-4699580064236799/1941656209',
+  })!,
+  receiveCardInterstitialUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/3474942899',
+    ios: 'ca-app-pub-4699580064236799/6841540511',
+  })!,
+  selectCardInterstitialUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/5729304904',
+    ios: 'ca-app-pub-4699580064236799/5729304904', // Using same ID for now as per user request if both same
+  })!,
+  nativeAdUnitId: Platform.select({
+    android: 'ca-app-pub-4699580064236799/3685369677',
+    ios: 'ca-app-pub-4699580064236799/8488836551',
+  })!,
 };

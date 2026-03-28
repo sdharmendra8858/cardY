@@ -142,10 +142,10 @@ export default function CardDetailsScreen() {
   };
 
   const openPip = useCallback(async () => {
-    console.log('🎬 [PiP] Button clicked - showNumber:', showNumber, 'flipped:', flipped, 'cardId:', id);
+    if (__DEV__) console.log('🎬 [PiP] Button clicked - showNumber:', showNumber, 'flipped:', flipped, 'cardId:', id);
 
     if (!showNumber) {
-      console.log('⚠️ [PiP] Card not revealed, triggering shake animation');
+      if (__DEV__) console.log('⚠️ [PiP] Card not revealed, triggering shake animation');
       // Trigger shake animation on reveal button
       revealButtonShake.value = withSpring(1, { damping: 8, stiffness: 100 });
       setTimeout(() => {
@@ -160,12 +160,12 @@ export default function CardDetailsScreen() {
     }
 
     if (flipped) {
-      console.log('⚠️ [PiP] Card is flipped, cannot capture');
+      if (__DEV__) console.log('⚠️ [PiP] Card is flipped, cannot capture');
       return;
     }
 
     try {
-      console.log('📸 [PiP] Starting capture process...');
+      if (__DEV__) console.log('📸 [PiP] Starting capture process...');
 
       // Validate ref
       if (!visibleCardRef.current) {
@@ -177,12 +177,12 @@ export default function CardDetailsScreen() {
         });
         return;
       }
-      console.log('✅ [PiP] Visible card ref is available');
+      if (__DEV__) console.log('✅ [PiP] Visible card ref is available');
 
       // Import and capture
       console.log('📦 [PiP] Importing react-native-view-shot...');
       const { captureRef } = await import("react-native-view-shot");
-      console.log('✅ [PiP] react-native-view-shot imported successfully');
+      if (__DEV__) console.log('✅ [PiP] react-native-view-shot imported successfully');
 
       console.log('📸 [PiP] Capturing card image from visible component...');
       const frameUri = await captureRef(visibleCardRef.current as any, {
@@ -196,7 +196,7 @@ export default function CardDetailsScreen() {
       if (PipModule && PipModule.enterPipMode) {
         console.log('📱 [PiP] Calling native module - enterPipMode with URI:', frameUri, 'cardId:', id);
         PipModule.enterPipMode(frameUri, id);
-        console.log('✅ [PiP] Native module called successfully');
+        if (__DEV__) console.log('✅ [PiP] Native module called successfully');
       } else {
         console.error('❌ [PiP] Native PipModule not available');
         Toast.show({
@@ -209,7 +209,7 @@ export default function CardDetailsScreen() {
 
       // Schedule file cleanup
       if (cleanupTimeoutRef.current) {
-        console.log('🧹 [PiP] Clearing previous cleanup timeout');
+        if (__DEV__) console.log('🧹 [PiP] Clearing previous cleanup timeout');
         clearTimeout(cleanupTimeoutRef.current);
       }
 
@@ -227,11 +227,13 @@ export default function CardDetailsScreen() {
 
       console.log('✅ [PiP] PiP capture flow completed successfully');
     } catch (err) {
-      console.error('❌ [PiP] Error during capture:', err);
-      console.error('❌ [PiP] Error details:', {
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-      });
+      if (__DEV__) {
+        console.error('❌ [PiP] Error during capture:', err);
+        console.error('❌ [PiP] Error details:', {
+          message: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+      }
     }
   }, [card, id, showNumber, flipped, revealButtonShake]);
 
@@ -416,7 +418,7 @@ export default function CardDetailsScreen() {
   useEffect(() => {
     if (cardIsExpired && !expiryModalShownRef.current) {
       expiryModalShownRef.current = true;
-      console.log("🔔 Card expired, hiding details and showing alert");
+      if (__DEV__) console.log("🔔 Card expired, hiding details and showing alert");
 
       // Hide card if it's in reveal state (same as hide/reveal button functionality)
       if (showNumber) {
@@ -497,14 +499,14 @@ export default function CardDetailsScreen() {
     }
 
     if (showNumber) {
-      console.log('🔒 [PiP] Hiding card numbers - cardId:', id);
+      if (__DEV__) console.log('🔒 [PiP] Hiding card numbers - cardId:', id);
       setShowNumber(false);
       setCanUsePip(false);
 
       // Revert to masked card from context
       const maskedCard = cards.find((c) => c.id === id);
       if (maskedCard) {
-        console.log('✅ [PiP] Card hidden and reverted to masked version');
+        if (__DEV__) console.log('✅ [PiP] Card hidden and reverted to masked version');
         setCard(maskedCard);
         setIsRevealed(false);
       }
@@ -514,7 +516,7 @@ export default function CardDetailsScreen() {
     if (quotaLoading) return;
 
     // 1. Quota Check
-    console.log(`📊 [Quota] Card view count: ${viewsCount}, isQuotaExceeded: ${isQuotaExceeded}, isAdWatched: ${isAdWatched}, ignoreQuota: ${ignoreQuota}`);
+    if (__DEV__) console.log(`📊 [Quota] Card view count: ${viewsCount}, isQuotaExceeded: ${isQuotaExceeded}, isAdWatched: ${isAdWatched}, ignoreQuota: ${ignoreQuota}`);
     
     if (isQuotaExceeded && !isAdWatched && !ignoreQuota) {
       setShowQuotaModal(true);
@@ -556,11 +558,11 @@ export default function CardDetailsScreen() {
   };
 
   const performRevealAndShow = async () => {
-    console.log('🔓 [PiP] Performing reveal and show - cardId:', id);
+    if (__DEV__) console.log('🔓 [PiP] Performing reveal and show - cardId:', id);
 
     // If card is not revealed yet, reveal it first
     if (!isRevealed) {
-      console.log('🔓 [PiP] Card not yet revealed, fetching unmasked data...');
+      if (__DEV__) console.log('🔓 [PiP] Card not yet revealed, fetching unmasked data...');
       try {
         const revealedCard = await revealCard(id);
         if (revealedCard) {
@@ -590,12 +592,12 @@ export default function CardDetailsScreen() {
     }
 
     // Show the card numbers
-    console.log('👁️ [PiP] Showing card numbers - canUsePip will be set to true');
+    if (__DEV__) console.log('👁️ [PiP] Showing card numbers - canUsePip will be set to true');
     setShowNumber(true);
     setCanUsePip(true);
     await incrementViews();
     setIsAdWatched(false);
-    console.log('✅ [PiP] Card revealed and ready for PiP');
+    if (__DEV__) console.log('✅ [PiP] Card revealed and ready for PiP');
   };
 
   const handleWatchAd = async () => {

@@ -74,7 +74,7 @@ export class InterstitialAdManager {
       });
 
       const unsubscribeFailed = this.adRef.addAdEventListener(AdEventType.ERROR, (error) => {
-        console.error('❌ Interstitial ad failed to load:', error);
+        if (__DEV__) console.error('❌ Interstitial ad failed to load:', error);
         this.isLoaded = false;
         this.adRef = null;
         this.currentAdUnitId = null;
@@ -92,7 +92,7 @@ export class InterstitialAdManager {
 
   async showAd(onClosed?: () => void, onFailed?: () => void): Promise<void> {
     if (!this.adRef || !this.isLoaded) {
-      console.warn('⚠️ Cannot show interstitial: Not loaded or adRef is null');
+      if (__DEV__) console.warn('⚠️ Cannot show interstitial: Not loaded or adRef is null');
       onFailed?.();
       return;
     }
@@ -171,7 +171,7 @@ export const showInterstitialAd = async (
     if (__DEV__) console.log('✅ Ad loaded after race, showing now...');
     await manager.showAd(onClosed, onFailed);
   } catch (error) {
-    console.warn('❌ Failed to show interstitial ad after attempt:', error);
+    if (__DEV__) console.warn('❌ Failed to show interstitial ad after attempt:', error);
     onFailed?.();
   }
 };
@@ -191,7 +191,7 @@ export default function InterstitialAd({ onAdClosed, onAdFailedToLoad, adUnitId 
     // Preload ad on component mount
     const manager = InterstitialAdManager.getInstance();
     manager.loadAd(adUnitId).catch((error) => {
-      console.warn('Failed to preload interstitial ad:', error);
+      if (__DEV__) console.warn('Failed to preload interstitial ad:', error);
       onAdFailedToLoad?.();
     });
   }, [onAdFailedToLoad, adUnitId]);
