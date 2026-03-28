@@ -186,10 +186,18 @@ export default function HomeScreen() {
   };
 
   // Lazy load IDs only when the tab is active
+  const retryTimeoutRef = useRef<any>(null);
   useEffect(() => {
     if (viewMode === 'ids' && !idsHasLoaded && !isIdsLoading) {
-      refreshIDs();
+      // Small safeguard: ensure we don't spam refresh calls
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => {
+        refreshIDs();
+      }, 500);
     }
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
   }, [viewMode, idsHasLoaded, isIdsLoading, refreshIDs]);
 
   // Load profile and settings
@@ -225,14 +233,6 @@ export default function HomeScreen() {
       ],
     };
   }, [viewMode, containerWidth]);
-
-  const cardsTabContentStyle = useAnimatedStyle(() => ({
-    opacity: withSpring(viewMode === "cards" ? 1 : 0.4, { damping: 20 }),
-  }));
-
-  const idsTabContentStyle = useAnimatedStyle(() => ({
-    opacity: withSpring(viewMode === "ids" ? 1 : 0.4, { damping: 20 }),
-  }));
 
   const animatedContentStyle = useAnimatedStyle(() => {
     return {
@@ -395,7 +395,7 @@ export default function HomeScreen() {
             onPress={() => handleTabSwitch("cards")}
             hitSlop={5}
           >
-            <Animated.View style={[styles.tabContent, cardsTabContentStyle]}>
+            <Animated.View style={[styles.tabContent]}>
               <Ionicons
                 name={viewMode === "cards" ? "card" : "card-outline"}
                 size={22}
@@ -419,7 +419,7 @@ export default function HomeScreen() {
             onPress={() => handleTabSwitch("ids")}
             hitSlop={5}
           >
-            <Animated.View style={[styles.tabContent, idsTabContentStyle]}>
+            <Animated.View style={[styles.tabContent]}>
               <Ionicons
                 name={viewMode === "ids" ? "document-text" : "document-text-outline"}
                 size={22}
@@ -928,6 +928,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 18,
     paddingHorizontal: 4,
+    minHeight: 40, // Stabilize height to prevent text shift when switch is hidden
   },
   subHeaderTitleRow: {
     flexDirection: "row",

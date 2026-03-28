@@ -2,9 +2,9 @@ import { gcm } from "@noble/ciphers/aes.js";
 import { randomBytes } from "@noble/ciphers/utils.js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-    base64ToBytes,
-    bytesToBase64,
-    getMasterKey,
+  base64ToBytes,
+  bytesToBase64,
+  getMasterKey,
 } from "./masterKeyManager";
 
 /* -------------------------------------------------------------------------- */

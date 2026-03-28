@@ -39,7 +39,7 @@ function IDGridItem({ item, onPress }: IDGridItemProps) {
           source={{ uri: thumbnailUri }}
           style={styles.image}
           contentFit="cover"
-          cachePolicy="none"
+          cachePolicy="disk"
           transition={200}
           onError={() => {
             setImageLoadFailed(true);

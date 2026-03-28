@@ -446,7 +446,7 @@ export default function SettingsScreen() {
                   ignoreNextAppOpenAd();
                   await Share.share({
                     message:
-                      "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://play.google.com/store/apps/details?id=com.redonelabs.cardywall",
+                      "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://redonelabs.in/products/cardywall/#download",
                   });
                 } catch (error) {
                   console.error("Error sharing app:", error);

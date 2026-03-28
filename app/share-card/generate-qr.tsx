@@ -1,4 +1,3 @@
-import AdBanner from "@/components/AdBanner";
 import Hero from "@/components/Hero";
 import QRDisplaySection from "@/components/QRDisplaySection";
 import SessionTimerBar from "@/components/SessionTimerBar";
@@ -329,7 +328,7 @@ export default function GenerateQRScreen() {
             await Share.open({
                 url: uri,
                 title: "Share My Card",
-                message: "Scan this QR code with CardyWall to securely receive my card details",
+                message: "Scan this QR code with Cardy Wall to securely receive my card details. Download the app: https://redonelabs.in/products/cardywall/#download",
                 failOnCancel: false,
             });
 
@@ -424,7 +423,6 @@ export default function GenerateQRScreen() {
                     />
                 </View>
 
-                <AdBanner />
             </SafeAreaView>
 
             <UnifiedModal

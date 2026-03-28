@@ -1,5 +1,5 @@
-import NativeAd from "@/components/AdNative";
 import { showInterstitialAd } from "@/components/AdInterstitial";
+import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
@@ -9,16 +9,16 @@ import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useIDs } from "@/context/IDContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
 import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
+import { ignoreNextAppOpenAd } from "@/utils/adControl";
 import { formatDate } from "@/utils/date";
 import { decryptImageToTemp } from "@/utils/idStorage";
-import { ignoreNextAppOpenAd } from "@/utils/adControl";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "expo-image";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from 'expo-media-library';
 import * as Notifications from 'expo-notifications';
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -104,11 +104,13 @@ export default function IDDetailsScreen() {
         const tempPath = await decryptImageToTemp(asset.uri);
         if (tempPath) {
           newDecryptedUris.push(tempPath);
-          
+
           // Background: Check if thumbnail exists, if not recreate it
           const thumbPath = asset.thumbnailUri;
           if (thumbPath) {
             // Use .then() to make this non-blocking for the main decryption flow
+            const { ensureDir } = await import("@/utils/idStorage");
+            await ensureDir();
             FileSystem.getInfoAsync(thumbPath).then(async (info) => {
               if (!info.exists) {
                 try {
@@ -162,8 +164,8 @@ export default function IDDetailsScreen() {
     if (!decryptedUris.length) return;
     try {
       ignoreNextAppOpenAd();
-      const playStoreLink = "https://play.google.com/store/apps/details?id=com.redonelabs.cardywall";
-      const message = `Securely shared via Cardy Wall. Get the app to store your IDs safely!\nDownload here: ${playStoreLink}`;
+      const appDownloadLink = "https://redonelabs.in/products/cardywall/#download";
+      const message = `Securely shared via Cardy Wall. Get the app to store your IDs safely!\nDownload here: ${appDownloadLink}`;
       await Share.open({
         url: decryptedUris[activeIndex],
         message: message,
@@ -186,7 +188,7 @@ export default function IDDetailsScreen() {
         const sourceUri = decryptedUris[activeIndex];
         const idLabel = idDoc?.label || idDoc?.type || "ID";
         const sideFormatted = activeIndex === 0 ? "Front" : activeIndex === 1 ? "Back" : "Image";
-        
+
         const cleanLabel = idLabel.replace(/[^a-z0-9]/gi, '_');
         const prettyName = `${cleanLabel}_${sideFormatted}_${Date.now()}.jpg`;
         const prettyUri = `${FileSystem.cacheDirectory}${prettyName}`;
@@ -230,7 +232,7 @@ export default function IDDetailsScreen() {
 
           try {
             await FileSystem.deleteAsync(prettyUri, { idempotent: true });
-          } catch (e) {}
+          } catch (e) { }
         }
       } catch (err) {
         Alert.alert("Download Error", err instanceof Error ? err.message : "An unexpected error occurred while saving.");
@@ -414,7 +416,7 @@ export default function IDDetailsScreen() {
                         <ActivityIndicator size="large" color={palette.primary} />
                       )}
                       <View style={styles.zoomIconOverlay}>
-                         <ActivityIndicator size="small" color="white" />
+                        <ActivityIndicator size="small" color="white" />
                       </View>
                     </View>
                   </View>

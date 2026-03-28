@@ -25,8 +25,9 @@ export function IDProvider({ children }: { children: ReactNode }) {
       setIds(fetchedIDs);
       setHasLoaded(true);
     } catch (error) {
-      console.error("❌ IDContext: Failed to fetch IDs:", error);
+      console.warn("⚠️ IDContext: Failed to fetch IDs:", error);
     } finally {
+      setHasLoaded(true);
       setIsLoading(false);
     }
   }, []);

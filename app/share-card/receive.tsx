@@ -1,3 +1,5 @@
+import { ADMOB_CONFIG } from "@/constants/admob";
+import AdInterstitial, { showInterstitialAd } from "@/components/AdInterstitial";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import ShareQRTemplate from "@/components/ShareQrTemplate";
@@ -5,6 +7,7 @@ import { ThemedText } from "@/components/themed-text";
 import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
+import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
 import { sessionPayloadToQRString } from "@/utils/qr";
 import {
   createSession,
@@ -24,10 +27,8 @@ import RNFS from "react-native-fs";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
-import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
-import AdRewarded, { showRewardedAd } from "@/components/AdRewarded";
 
 export default function ReceiveCardScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -96,22 +97,22 @@ export default function ReceiveCardScreen() {
           }
         }
 
-        // Show rewarded ad BEFORE creating new session
-        let adRewardEarned = false;
-        await showRewardedAd(
-          () => { adRewardEarned = true; },
-          () => {
-            if (!adRewardEarned) {
-              setGenerationError("You need to watch the ad to generate a receive code.");
-            }
+        // Show interstitial ad BEFORE creating new session
+        if (__DEV__) console.log("📺 Attempting to show interstitial ad for session generation...");
+        
+        await showInterstitialAd(
+          () => { 
+            if (__DEV__) console.log("🚪 Ad closed");
           },
           () => {
-            // Fallback for failed ad load - allow for now but ideally require ad
-            adRewardEarned = true; 
-          }
+            if (__DEV__) console.log("❌ Ad failed to load/show");
+            // Fallback for failed ad load - allow for now
+            console.warn("⚠️ Interstitial ad failed to load. Proceeding with fallback.");
+          },
+          10000,
+          ADMOB_CONFIG.receiveCardInterstitialUnitId
         );
 
-        if (!adRewardEarned) return;
 
         // Create new session
         const newSession = await createSession();
@@ -177,13 +178,13 @@ export default function ReceiveCardScreen() {
       lastTempFileRef.current = uri;
 
       console.log("🔗 Sharing file:", uri);
-      
+
       ignoreNextAppOpenAd();
 
       await Share.open({
         url: uri,
         title: "Receive My Card",
-        message: "Share this QR code so I can securely receive your card details",
+        message: "Share this QR code so I can securely receive your card details via Cardy Wall. Download the app: https://redonelabs.in/products/cardywall/#download",
         failOnCancel: false,
       });
 
@@ -484,7 +485,7 @@ export default function ReceiveCardScreen() {
         type={alertConfig.type}
         onRequestClose={() => setAlertVisible(false)}
       />
-      <AdRewarded />
+      <AdInterstitial adUnitId={ADMOB_CONFIG.receiveCardInterstitialUnitId} />
     </SafeAreaView>
   );
 }

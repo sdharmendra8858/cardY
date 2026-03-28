@@ -7,7 +7,7 @@ import { decodeQRFromImage } from "@/utils/qrDecoder";
 import { isSessionValid } from "@/utils/session";
 import { setGlobalAdSuppression } from "@/utils/adControl";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Camera } from "expo-camera";
+import { Camera, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
 import { useNavigation, useRouter } from "expo-router";
@@ -81,38 +81,43 @@ export default function ShareScreen() {
         return unsubscribe;
     }, [navigation, isScanning, scanLineAnimation]);
 
+    const [permission, requestPermission] = useCameraPermissions();
+
     const handleScanQR = useCallback(async () => {
         try {
-        if (status !== "granted") {
-            if (permissionDeniedRef.current) {
-                    setAlertConfig({
-                        title: "Camera permission denied",
-                        message: "Camera permission is required to scan QR codes. Please enable it in settings.",
-                        buttons: [
-                            {
-                                text: "Open Settings",
-                                style: "default",
-                                onPress: () => {
-                                    setAlertVisible(false);
-                                    if (Platform.OS === 'ios') {
-                                        Linking.openURL('app-settings:');
-                                    } else {
-                                        Linking.openSettings();
+            if (!permission || permission.status !== "granted") {
+                const newPermission = await requestPermission();
+                if (newPermission.status !== "granted") {
+                    if (permissionDeniedRef.current) {
+                        setAlertConfig({
+                            title: "Camera permission denied",
+                            message: "Camera permission is required to scan QR codes. Please enable it in settings.",
+                            buttons: [
+                                {
+                                    text: "Open Settings",
+                                    style: "default",
+                                    onPress: () => {
+                                        setAlertVisible(false);
+                                        if (Platform.OS === 'ios') {
+                                            Linking.openURL('app-settings:');
+                                        } else {
+                                            Linking.openSettings();
+                                        }
                                     }
+                                },
+                                {
+                                    text: "Cancel",
+                                    style: "cancel",
+                                    onPress: () => setAlertVisible(false)
                                 }
-                            },
-                            {
-                                text: "Cancel",
-                                style: "cancel",
-                                onPress: () => setAlertVisible(false)
-                            }
-                        ]
-                    });
-                    setAlertVisible(true);
-                } else {
-                    permissionDeniedRef.current = true;
+                            ]
+                        });
+                        setAlertVisible(true);
+                    } else {
+                        permissionDeniedRef.current = true;
+                    }
+                    return;
                 }
-                return;
             }
 
             // Permission granted - reset the ref and start scanning
@@ -132,7 +137,7 @@ export default function ShareScreen() {
         } catch (error) {
             console.error('Error in handleScanQR:', error);
         }
-    }, [scanLineAnimation]);
+    }, [permission, requestPermission, scanLineAnimation]);
 
     const handleUploadImage = useCallback(async () => {
         try {
