@@ -20,6 +20,7 @@ import React, { useState, useEffect } from "react";
 import { 
   ActivityIndicator, 
   Image, 
+  Platform,
   Pressable, 
   ScrollView, 
   StyleSheet, 
@@ -118,13 +119,17 @@ export default function AddIDScreen() {
 
   const pickImage = async (useCamera: boolean, slot: 'front' | 'back') => {
     try {
-      const permissionResult = useCamera 
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        setError(`Permission to access ${useCamera ? "camera" : "gallery"} is required.`);
-        return;
+      // Standard Android System Photo Picker (API 33+) does not require READ_MEDIA_IMAGES 
+      // if called directly. Permission is still needed for Camera and for iOS Gallery.
+      if (useCamera || Platform.OS === 'ios') {
+        const permissionResult = useCamera 
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+        if (!permissionResult.granted) {
+          setError(`Permission to access ${useCamera ? "camera" : "gallery"} is required.`);
+          return;
+        }
       }
 
       // Suppress App Open Ad when returning from system picker/camera

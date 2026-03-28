@@ -28,12 +28,13 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
-  ViewToken
+  ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
@@ -195,10 +196,14 @@ export default function IDDetailsScreen() {
 
         await FileSystem.copyAsync({ from: sourceUri, to: prettyUri });
 
-        const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-        if (mediaStatus !== 'granted') {
-          Alert.alert("Permission Required", "Gallery access is required to save the image.");
-          return;
+        // On Android 10+ (API 29+), createAssetAsync works without broad media permissions 
+        // using Scoped Storage. Broad permissions are only needed for reading.
+        if (Platform.OS === 'ios') {
+          const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
+          if (mediaStatus !== 'granted') {
+            Alert.alert("Permission Required", "Gallery access is required to save the image.");
+            return;
+          }
         }
 
         const { status: notifyStatus } = await Notifications.requestPermissionsAsync();

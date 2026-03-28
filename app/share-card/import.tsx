@@ -339,10 +339,10 @@ export default function ImportCardScreen() {
   }, [router, scanLineAnimation, addCard]);
 
   const handleUploadImage = useCallback(async () => {
-    try {
-      console.log('Requesting media library permissions...');
+    // Standard Android System Photo Picker (API 33+) does not require READ_MEDIA_IMAGES 
+    // if called directly. Permission is still needed for iOS gallery access.
+    if (Platform.OS === 'ios') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
       if (status !== "granted") {
         setAlertConfig({
           title: "Permission Denied",
@@ -352,7 +352,9 @@ export default function ImportCardScreen() {
         setAlertVisible(true);
         return;
       }
+    }
 
+    try {
       console.log('Opening image picker...');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -401,7 +403,7 @@ export default function ImportCardScreen() {
       });
       setAlertVisible(true);
     }
-  }, [decodeQRFromImage]);
+  }, [decodeQRFromImage, handleBarCodeScanned]);
 
 
 
