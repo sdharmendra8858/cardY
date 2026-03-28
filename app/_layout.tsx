@@ -42,6 +42,7 @@ import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
 import { cleanupOrphanedAssets } from "@/utils/idStorage";
 import { LEGAL_CONFIG } from "@/constants/legalConfig";
 import { useATT } from "@/hooks/useATT";
+import { requestNotificationPermissions, setupNotificationListeners } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -97,7 +98,14 @@ function AppShell() {
         if (__DEV__) console.warn("❌ AdMob Initialization failed:", err);
       });
 
-    return () => sub.remove();
+    // Request notification permissions and setup listeners
+    requestNotificationPermissions();
+    const cleanupNotifs = setupNotificationListeners();
+
+    return () => {
+      sub.remove();
+      cleanupNotifs();
+    };
   }, []);
 
   // Global Screenshot Protection - Only block in release build

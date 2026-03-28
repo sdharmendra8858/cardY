@@ -356,32 +356,6 @@ export default function CardDetailsScreen() {
     }, [loadCard])
   );
 
-  // Check if card has expired and auto-delete
-  useEffect(() => {
-    if (!card || !card.cardExpiresAt || card.cardUser !== "other") return;
-
-    const now = Math.floor(Date.now() / 1000);
-    if (now > card.cardExpiresAt) {
-      // Card has expired, delete it
-      console.log("🗑️ Card has expired, auto-deleting:", card.id);
-      removeCard(card.id).then(() => {
-        showAlert({
-          title: "Card Expired",
-          message: "This imported card has expired and has been automatically removed.",
-          buttons: [{ text: "OK", onPress: () => router.back() }],
-        });
-      }).catch(err => console.error("Failed to delete expired card:", err));
-      return;
-    }
-
-    // Set up timer to check again when card expires
-    const timeUntilExpiry = card.cardExpiresAt - now;
-    const timer = setTimeout(() => {
-      loadCard(); // Reload to trigger expiry check
-    }, (timeUntilExpiry + 1) * 1000);
-
-    return () => clearTimeout(timer);
-  }, [card, loadCard, router, showAlert]);
 
   const handleDelete = async () => {
     await showAlert({
@@ -424,17 +398,14 @@ export default function CardDetailsScreen() {
         setShowNumber(false);
         setCanUsePip(false);
         setIsRevealed(false);
-
-        // Revert to masked card from context
-        const maskedCard = cards.find((c) => c.id === id);
-        if (maskedCard) {
-          setCard(maskedCard);
-        }
       }
+
+      const last4 = card?.cardNumber ? card.cardNumber.slice(-4) : '****';
+      const bankInfo = card?.bank ? `from ${card.bank} ` : '';
 
       const newAlertConfig = {
         title: "Card Expired",
-        message: "This card has expired and is no longer available",
+        message: `The shared card ${bankInfo}ending in ${last4} has expired and is no longer available.`,
         type: "error" as const,
         dismissible: false,
         buttons: [
@@ -473,9 +444,11 @@ export default function CardDetailsScreen() {
     // Check if card is expired
     if (cardIsExpired) {
       console.log("⏰ [PiP] Card is expired, showing expiry alert");
+      const last4 = card?.cardNumber ? card.cardNumber.slice(-4) : '****';
+      const bankInfo = card?.bank ? `from ${card.bank} ` : '';
       const newAlertConfig = {
         title: "Card Expired",
-        message: "This card has expired and is no longer available",
+        message: `The shared card ${bankInfo}ending in ${last4} has expired and is no longer available.`,
         type: "error" as const,
         dismissible: false,
         buttons: [
