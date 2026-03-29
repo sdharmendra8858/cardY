@@ -2,7 +2,7 @@
   "expo": {
     "name": "Cardy Wall",
     "slug": "cardy-wall",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/cc-round.png",
     "scheme": "cardywall",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.redonelabs.cardywall",
-      "buildNumber": "7",
+      "buildNumber": "9",
       "infoPlist": {
         "UIBackgroundModes": [],
         "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards",
@@ -30,7 +30,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.redonelabs.cardywall",
-      "versionCode": 7,
+      "versionCode": 9,
       "permissions": [
         "android.permission.CAMERA"
       ],
