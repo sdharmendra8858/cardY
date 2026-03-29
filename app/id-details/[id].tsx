@@ -1,10 +1,10 @@
 import { showInterstitialAd } from "@/components/AdInterstitial";
-import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
 import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { Colors } from "@/constants/theme";
 import { useAlert } from "@/context/AlertContext";
 import { useIDs } from "@/context/IDContext";
@@ -28,12 +28,13 @@ import {
   Alert,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
-  ViewToken
+  ViewToken,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Share from "react-native-share";
@@ -195,10 +196,14 @@ export default function IDDetailsScreen() {
 
         await FileSystem.copyAsync({ from: sourceUri, to: prettyUri });
 
-        const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-        if (mediaStatus !== 'granted') {
-          Alert.alert("Permission Required", "Gallery access is required to save the image.");
-          return;
+        // On Android 10+ (API 29+), createAssetAsync works without broad media permissions 
+        // using Scoped Storage. Broad permissions are only needed for reading.
+        if (Platform.OS === 'ios') {
+          const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
+          if (mediaStatus !== 'granted') {
+            Alert.alert("Permission Required", "Gallery access is required to save the image.");
+            return;
+          }
         }
 
         const { status: notifyStatus } = await Notifications.requestPermissionsAsync();
@@ -245,7 +250,9 @@ export default function IDDetailsScreen() {
     // Show Interstitial Ad before download
     await showInterstitialAd(
       () => proceedWithDownload(),
-      () => proceedWithDownload() // Also proceed if ad fails/timeouts to not block user
+      () => proceedWithDownload(), // Also proceed if ad fails/timeouts to not block user
+      1500,
+      ADMOB_CONFIG.downloadIdInterstitialUnitId
     );
   };
 
@@ -501,7 +508,6 @@ export default function IDDetailsScreen() {
           </View>
 
           <ThemedText style={styles.note}>Unique Document ID: {id}</ThemedText>
-          <NativeAd />
         </ScrollView>
       </View>
 

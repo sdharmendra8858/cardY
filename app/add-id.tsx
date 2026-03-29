@@ -4,13 +4,13 @@ import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
 import { ID_TYPES } from "@/types/id";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { processIDImage } from "@/utils/imageProcessor";
 import { saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import ImageCropPicker from 'react-native-image-crop-picker';
 import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { ignoreNextAppOpenAd, setGlobalAdSuppression } from "@/utils/adControl";
@@ -20,6 +20,7 @@ import React, { useState, useEffect } from "react";
 import { 
   ActivityIndicator, 
   Image, 
+  Platform,
   Pressable, 
   ScrollView, 
   StyleSheet, 
@@ -118,13 +119,17 @@ export default function AddIDScreen() {
 
   const pickImage = async (useCamera: boolean, slot: 'front' | 'back') => {
     try {
-      const permissionResult = useCamera 
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        setError(`Permission to access ${useCamera ? "camera" : "gallery"} is required.`);
-        return;
+      // Standard Android System Photo Picker (API 33+) does not require READ_MEDIA_IMAGES 
+      // if called directly. Permission is still needed for Camera and for iOS Gallery.
+      if (useCamera || Platform.OS === 'ios') {
+        const permissionResult = useCamera 
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  
+        if (!permissionResult.granted) {
+          setError(`Permission to access ${useCamera ? "camera" : "gallery"} is required.`);
+          return;
+        }
       }
 
       // Suppress App Open Ad when returning from system picker/camera
@@ -140,36 +145,28 @@ export default function AddIDScreen() {
         AsyncStorage.setItem("active_flow", "add-id"),
       ]).catch(() => {});
 
-      const pickerOptions = {
-        cropping: true,
-        width: 1200,
-        height: 800,
-        freeStyleCropEnabled: true,
-        mediaType: 'photo' as const,
-        includeBase64: false,
-        compressImageQuality: 0.8,
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        allowsEditing: true,
+        aspect: [3, 2], // Standard ID card aspect ratio
+        quality: 0.8,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       };
 
-      let image;
+      let result;
       if (useCamera) {
-        image = await ImageCropPicker.openCamera(pickerOptions);
+        result = await ImagePicker.launchCameraAsync(pickerOptions);
       } else {
-        image = await ImageCropPicker.openPicker(pickerOptions);
+        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
       }
 
-      if (image && image.path) {
-        // Ensure the path has the file:// prefix for Expo libraries
-        const uri = image.path.startsWith('file://') ? image.path : `file://${image.path}`;
-        setImages(prev => ({ ...prev, [slot]: uri }));
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setImages(prev => ({ ...prev, [slot]: result.assets[0].uri }));
         setActiveSlot(null);
       }
       
       // Clear flow marker since we returned normally
       AsyncStorage.removeItem("active_flow").catch(() => {});
     } catch (err) {
-      if (err instanceof Error && err.message.includes("User cancelled")) {
-        return;
-      }
       console.error("Failed to pick image:", err);
       setError("Failed to capture image. Please try again.");
     }
@@ -239,7 +236,8 @@ export default function AddIDScreen() {
         showInterstitialAd(
           () => {},
           () => {},
-          2000
+          1500,
+          ADMOB_CONFIG.addIdInterstitialUnitId
         ).catch(() => {});
       }, 300);
     } catch (err) {

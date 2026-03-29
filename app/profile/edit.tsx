@@ -1,4 +1,3 @@
-import AdBanner from "@/components/AdBanner";
 import InterstitialAd, { showInterstitialAd } from "@/components/AdInterstitial";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -215,7 +214,6 @@ export default function EditProfileScreen() {
             }}
           />
 
-          <AdBanner />
 
           <View style={styles.footer}>
             <AppButton

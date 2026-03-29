@@ -18,6 +18,10 @@ import {
 } from "../utils/secureStorageWithFallback";
 import { useMigration } from "./MigrationContext";
 import { useSecurity } from "./SecurityContext";
+import { 
+    scheduleCardExpirationNotification, 
+    cancelCardExpirationNotification 
+} from "../utils/notifications";
 
 // Export Card type for use in other modules
 export type { Card };
@@ -69,6 +73,9 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
                     !expiredCards.some(expired => expired.id === card.id)
                 );
 
+                // Note: We don't cancel notifications here because they are likely already firing or expired.
+                // Manual removal via removeCard() still cancels them.
+
                 // Persist the filtered UNMASKED cards to storage
                 await persistCards(activeUnmaskedCards);
 
@@ -100,6 +107,10 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
     const addCard = async (card: Card) => {
         try {
             await secureAddCard(card);
+            // Schedule notification if it's an imported card with expiry
+            if (card.cardUser === 'other' && card.cardExpiresAt) {
+                await scheduleCardExpirationNotification(card);
+            }
             await refreshCards();
         } catch (error) {
             console.error("Failed to add card:", error);
@@ -110,6 +121,10 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
     const updateCard = async (id: string, card: Card) => {
         try {
             await secureUpdateCard(id, card);
+            // Re-schedule notification if it's an imported card
+            if (card.cardUser === 'other' && card.cardExpiresAt) {
+                await scheduleCardExpirationNotification(card);
+            }
             await refreshCards();
         } catch (error) {
             console.error("Failed to update card:", error);
@@ -119,6 +134,8 @@ export const CardProviderWithMigration = ({ children }: { children: ReactNode })
 
     const removeCard = async (id: string) => {
         try {
+            // Cancel notification before removing
+            await cancelCardExpirationNotification(id);
             await secureRemoveCard(id);
             await refreshCards();
         } catch (error) {

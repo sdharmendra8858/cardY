@@ -20,6 +20,7 @@ import Share from "react-native-share";
 import ViewShot from "react-native-view-shot";
 import { Colors } from "../../constants/theme";
 import { useCardsWithMigration as useCards } from "../../context/CardContextWithMigration";
+import * as ScreenCapture from "expo-screen-capture";
 
 export default function GenerateQRScreen() {
     const scheme = useColorScheme() ?? "light";
@@ -111,6 +112,11 @@ export default function GenerateQRScreen() {
             dismissible: alertConfig.dismissible ?? true
         };
     }, [alertVisible, alertConfig.dismissible]);
+
+    // Allow screenshots on QR display screen (to facilitate sharing/testing)
+    useEffect(() => {
+        ScreenCapture.allowScreenCaptureAsync();
+    }, []);
 
     // Track mount/unmount
     useEffect(() => {

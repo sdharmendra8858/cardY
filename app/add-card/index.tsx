@@ -18,6 +18,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Keyboard, Platform, StyleSheet, View } from "react-native";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import NfcManager from "react-native-nfc-manager";
@@ -398,7 +399,8 @@ export default function AddCardScreen() {
         showInterstitialAd(
           () => {},
           () => {},
-          2000 // 2 second timeout for faster UX
+          1500,
+          ADMOB_CONFIG.addCardInterstitialUnitId
         ).catch(() => {});
       }, 300); // Small delay to ensure navigation completes
 

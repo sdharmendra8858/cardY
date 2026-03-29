@@ -22,11 +22,11 @@ export default function TermsContent() {
         </ThemedText>
         <ThemedText style={styles.paragraph}>
           Cardy Wall is a personal, secure digital wallet designed to help you
-          store and manage your <ThemedText style={styles.bold}>physical cards and ID documents</ThemedText> directly on 
-          your device. The App provides features like <ThemedText style={styles.bold}>NFC scanning</ThemedText> for quick 
-          entry and encrypted storage. The App is intended for offline-first 
-          personal use. While your personal data remains strictly local to your 
-          device, the App may require an internet connection for third-party 
+          store and manage your <ThemedText style={styles.bold}>physical cards and ID documents</ThemedText> directly on
+          your device. The App provides features like <ThemedText style={styles.bold}>NFC scanning</ThemedText> for quick
+          entry and encrypted storage. The App is intended for offline-first
+          personal use. While your personal data remains strictly local to your
+          device, the App may require an internet connection for third-party
           services such as advertising.
         </ThemedText>
 
@@ -34,17 +34,16 @@ export default function TermsContent() {
           2. Data Storage & Security
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          • All details (cards, ID documents, and <ThemedText style={styles.bold}>local user profile</ThemedText>) are 
-          securely stored <ThemedText style={styles.bold}> locally on your device</ThemedText> using system-provided 
-          encrypted storage or SecureStore mechanisms.{"\n"}
-          • Scanned ID images are encrypted and stored within the App's private 
-          data directory.{"\n"}
-          • Cardy Wall does <ThemedText style={styles.bold}>not</ThemedText> sync, back up, or transmit any stored data to
-          online services.{"\n"}
-          • Users are encouraged to protect their devices using screen locks,
-          biometric authentication, or passcodes.{"\n"}
-          • Biometric verification (Face ID / Fingerprint) is required for 
-          viewing sensitive details for your protection.
+          • All data (cards, ID documents, and profile settings) is stored
+          strictly <ThemedText style={styles.bold}>locally on your device</ThemedText> using a
+          <ThemedText style={styles.bold}> Zero-Cloud (Ultra Private)</ThemedText> architecture.{"\n"}
+          • Sensitive documents are stored in a <ThemedText style={styles.bold}>Hardware-Locked Vault</ThemedText>,
+          secured by your device's biometric authentication (Face ID / Fingerprint)
+          or PIN.{"\n"}
+          • Cardy Wall does <ThemedText style={styles.bold}>not</ThemedText> transmit, sync, or back up any of your
+          stored cards or images to online servers.{"\n"}
+          • Your data is <ThemedText style={styles.bold}>Device-Isolated</ThemedText>, meaning it is inaccessible
+          to other apps or external services.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -67,14 +66,22 @@ export default function TermsContent() {
           4. Privacy, Permissions & Sharing
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          Cardy Wall requests limited permissions for features like <ThemedText style={styles.bold}>NFC</ThemedText> for 
-          scanning payment cards and <ThemedText style={styles.bold}>camera access</ThemedText> for scanning IDs. 
-          These are used <ThemedText style={styles.bold}>only</ThemedText> locally.{"\n\n"}
-          The <ThemedText style={styles.bold}>Secure Sharing</ThemedText> feature allows you to share card details 
-          via encrypted QR codes. This process is <ThemedText style={styles.bold}>entirely user-initiated</ThemedText> and uses 
-          end-to-end encryption (ECDH/AES) so that only the intended recipient 
-          can decrypt the data. Cardy Wall never sees or stores this shared data 
-          on any server.
+          Cardy Wall requests limited permissions to enable local features:{"\n"}
+          • <ThemedText style={styles.bold}>NFC:</ThemedText> Used for quick scanning of payment card details on <ThemedText style={styles.bold}>supported devices</ThemedText>. 
+          The data read is ephemeral and only stored when you explicitly save the card. 
+          <ThemedText style={styles.bold}>Safety Note:</ThemedText> To prevent potential unauthorized scanning by 
+          malicious actors, ensure NFC is disabled in your device settings when not 
+          actively using this feature.{"\n"}
+          • <ThemedText style={styles.bold}>Camera & Gallery:</ThemedText> Used for scanning ID documents
+          or uploading QR codes/images for secure sharing. These files are processed
+          <ThemedText style={styles.bold}> locally</ThemedText> and never leaves your phone.{"\n"}
+          • <ThemedText style={styles.bold}>Storage/Download:</ThemedText> The "Download ID" feature allows
+          you to save a copy of your processed ID document to your device's local
+          gallery or file system for your convenience.{"\n\n"}
+          The <ThemedText style={styles.bold}>Secure Sharing</ThemedText> feature allows you to share card details
+          via encrypted QR codes. This process is <ThemedText style={styles.bold}>entirely user-initiated</ThemedText> and uses
+          end-to-end encryption (ECDH/AES) so that only the intended recipient
+          can decrypt the data.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>
@@ -129,9 +136,10 @@ export default function TermsContent() {
           9. Data Migration
         </ThemedText>
         <ThemedText style={styles.paragraph}>
-          We may include automated migration tools to upgrade your storage
-          security as the App evolves. This process happens entirely on your
-          device and ensuring the continued protection of your data.
+          Cardy Wall includes an <ThemedText style={styles.bold}>automated migration system</ThemedText> designed to
+          seamlessly upgrade your storage security as the App evolves (e.g., v1.0 to v2.0).
+          This process happens <ThemedText style={styles.bold}>entirely on your device</ThemedText> and
+          never transmits your cards or documents to any server.
         </ThemedText>
 
         <ThemedText type="defaultSemiBold" style={styles.heading}>

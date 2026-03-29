@@ -17,35 +17,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
-export default function TermsPopup({ onAccept }: { onAccept?: () => void }) {
-  const [visible, setVisible] = useState(false);
+export default function TermsPopup({ 
+  visible, 
+  onAccept 
+}: { 
+  visible: boolean; 
+  onAccept: () => void;
+}) {
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
 
-  useEffect(() => {
-    const checkTerms = async () => {
-      try {
-        const accepted = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED);
-        const version = await AsyncStorage.getItem(LEGAL_CONFIG.KEYS.TERMS_VERSION);
-        
-        // Show popup if never accepted or version mismatch
-        if (!accepted || version !== LEGAL_CONFIG.TERMS_VERSION) {
-          setVisible(true);
-        }
-      } catch (error) {
-        console.error("Error checking terms version:", error);
-        setVisible(true); // Default to showing if error
-      }
-    };
-    checkTerms();
-  }, []);
-
   const handleAccept = async () => {
     try {
-      await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_ACCEPTED, "true");
-      await AsyncStorage.setItem(LEGAL_CONFIG.KEYS.TERMS_VERSION, LEGAL_CONFIG.TERMS_VERSION);
-      
-      setVisible(false);
       if (onAccept) onAccept();
     } catch (error) {
       console.error("Error accepting terms:", error);
