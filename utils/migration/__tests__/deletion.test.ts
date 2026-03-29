@@ -20,7 +20,7 @@ describe("Old Card Deletion", () => {
     it("should delete all old storage keys", async () => {
       // Setup: Mock keys exist
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(
-        JSON.stringify([{ id: "1", cardName: "Test" }])
+        JSON.stringify([{ id: "1", bank: "Test" }])
       );
       (SecureStore.deleteItemAsync as jest.Mock).mockResolvedValue(undefined);
 
@@ -28,7 +28,7 @@ describe("Old Card Deletion", () => {
 
       // Verify all keys were deleted
       const keyCount = Object.values(OLD_STORAGE_KEYS).length;
-      expect(SecureStore.deleteItemAsync).toHaveBeenCalledTimes(keyCount);
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledTimes(keyCount * 2);
     });
 
     it("should log found keys before deletion", async () => {
@@ -122,7 +122,7 @@ describe("Old Card Deletion", () => {
   describe("hasOldCards()", () => {
     it("should return true when old cards exist", async () => {
       (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(
-        JSON.stringify([{ id: "1", cardName: "Test" }])
+        JSON.stringify([{ id: "1", bank: "Test" }])
       );
 
       const result = await hasOldCards();

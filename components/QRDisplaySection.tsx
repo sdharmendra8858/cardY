@@ -37,7 +37,7 @@ export default function QRDisplaySection({
                         <View style={styles.cardInfo}>
                             <MaterialIcons name="credit-card" size={24} color={palette.tint} />
                             <View style={styles.cardDetails}>
-                                <ThemedText style={styles.cardName}>{card.bank || 'Bank'}</ThemedText>
+                                <ThemedText style={styles.bankName}>{card.bank || 'Bank'}</ThemedText>
                                 <ThemedText style={styles.cardNumber}>
                                     {card.cardNumber}
                                 </ThemedText>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
         marginLeft: 12,
         flex: 1,
     },
-    cardName: {
+    bankName: {
         fontSize: 16,
         fontWeight: "600",
         marginBottom: 4,

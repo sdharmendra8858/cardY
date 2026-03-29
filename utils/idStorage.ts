@@ -167,17 +167,8 @@ export async function decryptImageToTemp(encryptedPath: string): Promise<string 
     const fileInfo = await FileSystem.getInfoAsync(absolutePath);
     if (!fileInfo.exists) return null;
 
-    // Proactive Cleanup: Delete any existing temp files in cache before creating a new one
-    // This prevents "piling up" of decrypted images during a session
-    try {
-      const cacheFiles = await FileSystem.readDirectoryAsync(FileSystem.cacheDirectory!);
-      const tempFiles = cacheFiles.filter(f => f.startsWith('temp_') && f.endsWith('.jpg'));
-      for (const f of tempFiles) {
-        await FileSystem.deleteAsync(FileSystem.cacheDirectory + f, { idempotent: true });
-      }
-    } catch (e) {
-      // Non-critical cleanup failure
-    }
+    // NOTE: Blind cleanup of temp files removed to prevent race conditions during multi-asset loads.
+    // Cleanup of old temp files is now handled on a per-session or app-start basis where safe.
 
     const raw = await FileSystem.readAsStringAsync(absolutePath);
     const encrypted = JSON.parse(raw);

@@ -564,7 +564,7 @@ export default function HomeScreen() {
       <View style={{ paddingHorizontal: 8 }}>
         <CardItem
           id={item.id}
-          cardName={item.bank || item.cardName || `Unknown Bank`}
+          bankName={item.bank || "Bank"}
           cardNumber={item.cardNumber}
           cardHolder={item.cardHolder}
           cardKind={item.cardKind}

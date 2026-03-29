@@ -91,7 +91,7 @@ export async function scheduleCardExpirationNotification(card: Card) {
     });
 
     if (__DEV__) {
-        console.log(`🔔 Scheduled expiration notification for "${card.cardName}" at ${expirationDate.toLocaleString()} (UNIX: ${card.cardExpiresAt})`);
+        console.log(`🔔 Scheduled expiration notification for "${card.bank || 'Card'}" at ${expirationDate.toLocaleString()} (UNIX: ${card.cardExpiresAt})`);
         console.log(`🆔 Notification ID: ${identifier}`);
     }
     

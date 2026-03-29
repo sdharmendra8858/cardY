@@ -45,4 +45,8 @@
 -keep class com.facebook.hermes.unicode.** { *; }
 -keep class com.facebook.jni.** { *; }
 
+# react-native-google-mobile-ads
+-keep class com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.** { *; }
+
 # Add any project specific keep options here:

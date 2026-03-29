@@ -20,7 +20,6 @@ export type Card = {
   cardHolder: string;
   expiry?: string;
   cvv?: string;
-  cardName?: string;
   cardKind?: "credit" | "debit";
   cobrandName?: string;
   cardUser?: "self" | "other";
