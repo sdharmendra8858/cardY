@@ -354,24 +354,26 @@ export default function IDDetailsScreen() {
             <View style={{ flexDirection: 'row', gap: 12 }}>
               <Pressable
                 onPress={handleDownload}
+                disabled={!decryptedUris[activeIndex]}
                 style={({ pressed }) => [
                   styles.iconButton,
                   { backgroundColor: palette.card, borderColor: palette.border },
-                  pressed && { opacity: 0.7 }
+                  (pressed || !decryptedUris[activeIndex]) && { opacity: 0.5 }
                 ]}
               >
-                <MaterialIcons name="download" size={20} color={palette.primary} />
+                <MaterialIcons name="download" size={20} color={decryptedUris[activeIndex] ? palette.primary : palette.icon} />
               </Pressable>
 
               <Pressable
                 onPress={handleShare}
+                disabled={!decryptedUris[activeIndex]}
                 style={({ pressed }) => [
                   styles.iconButton,
                   { backgroundColor: palette.card, borderColor: palette.border },
-                  pressed && { opacity: 0.7 }
+                  (pressed || !decryptedUris[activeIndex]) && { opacity: 0.5 }
                 ]}
               >
-                <MaterialIcons name="share" size={20} color={palette.primary} />
+                <MaterialIcons name="share" size={20} color={decryptedUris[activeIndex] ? palette.primary : palette.icon} />
               </Pressable>
             </View>
           </View>

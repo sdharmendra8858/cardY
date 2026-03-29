@@ -5,6 +5,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { formatCardNumber } from "../utils/formatCardNumber";
 import ExpiryBadge from "./ExpiryBadge";
 import PinIcon from "./PinIcon";
+import CardNetworkLogo from "./CardNetworkLogo";
 
 type CardItemProps = {
   id: string;
@@ -93,8 +94,15 @@ export default function CardItem({
       >
         {/* Top Section - Bank name and badges */}
         <View style={styles.cardHeader}>
-          <Text style={styles.cardName}>{cardName}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.cardName} numberOfLines={1}>{cardName}</Text>
+          </View>
           <View style={styles.badges}>
+            <CardNetworkLogo
+              cardNumber={cardNumber}
+              color="#FFFFFF"
+              style={styles.networkLogo}
+            />
             {cardKind && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
@@ -176,6 +184,15 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 10,
     fontWeight: "bold",
+  },
+  networkLogo: {
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 36,
   },
   cardMiddle: {
     flex: 1,

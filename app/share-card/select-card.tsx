@@ -1,4 +1,5 @@
 import AdInterstitial, { showInterstitialAd } from "@/components/AdInterstitial";
+import CardNetworkLogo from "@/components/CardNetworkLogo";
 import Hero from "@/components/Hero";
 import SessionTimerBar from "@/components/SessionTimerBar";
 import { ThemedText } from "@/components/themed-text";
@@ -391,7 +392,14 @@ export default function SelectCardScreen() {
                                                             {card.cardName || 'Card'}
                                                         </ThemedText>
                                                     </View>
-                                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                        <CardNetworkLogo
+                                                            cardNumber={card.cardNumber}
+                                                            width={24}
+                                                            height={14}
+                                                            color="#FFFFFF"
+                                                            showTextFallback={false}
+                                                        />
                                                         <ThemedText style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
                                                             {card.cardKind === "credit" ? "💳" : "💵"} {card.cardKind?.toUpperCase() || 'DEBIT'}
                                                         </ThemedText>

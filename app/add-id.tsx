@@ -1,4 +1,4 @@
-import { showInterstitialAd } from "@/components/AdInterstitial";
+import { InterstitialAdManager, showInterstitialAd } from "@/components/AdInterstitial";
 import AppButton from "@/components/AppButton";
 import Hero from "@/components/Hero";
 import UnifiedModal from "@/components/UnifiedModal";
@@ -10,6 +10,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { processIDImage } from "@/utils/imageProcessor";
 import { saveEncryptedImage, saveThumbnail } from "@/utils/idStorage";
 import { MaterialIcons } from "@expo/vector-icons";
+import ImageCropPicker from "react-native-image-crop-picker";
 import * as ImagePicker from "expo-image-picker";
 import { useIDs } from "@/context/IDContext";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
@@ -53,6 +54,9 @@ export default function AddIDScreen() {
   // Suppress App Open Ads while in this flow
   useEffect(() => {
     setGlobalAdSuppression(true);
+    // Preload the specific interstitial for this flow
+    InterstitialAdManager.getInstance().loadAd(ADMOB_CONFIG.addIdInterstitialUnitId).catch(() => {});
+
     return () => {
       setGlobalAdSuppression(false);
       // Also clear active_flow if we unmount normally (e.g. back button)
@@ -119,8 +123,7 @@ export default function AddIDScreen() {
 
   const pickImage = async (useCamera: boolean, slot: 'front' | 'back') => {
     try {
-      // Standard Android System Photo Picker (API 33+) does not require READ_MEDIA_IMAGES 
-      // if called directly. Permission is still needed for Camera and for iOS Gallery.
+      // Permission Handling
       if (useCamera || Platform.OS === 'ios') {
         const permissionResult = useCamera 
           ? await ImagePicker.requestCameraPermissionsAsync()
@@ -135,7 +138,7 @@ export default function AddIDScreen() {
       // Suppress App Open Ad when returning from system picker/camera
       ignoreNextAppOpenAd();
 
-      // Save current state to survive process death (mostly for Android)
+      // Save current state to survive process death
       await Promise.all([
         AsyncStorage.setItem("add_id_type", selectedType || ""),
         AsyncStorage.setItem("add_id_name", customName),
@@ -145,28 +148,37 @@ export default function AddIDScreen() {
         AsyncStorage.setItem("active_flow", "add-id"),
       ]).catch(() => {});
 
-      const pickerOptions: ImagePicker.ImagePickerOptions = {
-        allowsEditing: true,
-        aspect: [3, 2], // Standard ID card aspect ratio
-        quality: 0.8,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const pickerOptions = {
+        cropping: true,
+        freeStyleCropEnabled: true,
+        avoidEmptySpaceAroundImage: true,
+        mediaType: 'photo' as const,
+        includeBase64: false,
+        compressImageQuality: 0.8,
       };
 
       let result;
       if (useCamera) {
-        result = await ImagePicker.launchCameraAsync(pickerOptions);
+        result = await ImageCropPicker.openCamera(pickerOptions);
       } else {
-        result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
+        result = await ImageCropPicker.openPicker(pickerOptions);
       }
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        setImages(prev => ({ ...prev, [slot]: result.assets[0].uri }));
+      if (result && result.path) {
+        // Ensure the path has the file:// prefix
+        const uri = result.path.startsWith('file://') ? result.path : `file://${result.path}`;
+        setImages(prev => ({ ...prev, [slot]: uri }));
         setActiveSlot(null);
       }
       
       // Clear flow marker since we returned normally
       AsyncStorage.removeItem("active_flow").catch(() => {});
     } catch (err) {
+      // Handle "User cancelled" error from ImageCropPicker
+      if (err instanceof Error && err.message.includes("User cancelled")) {
+         AsyncStorage.removeItem("active_flow").catch(() => {});
+         return;
+      }
       console.error("Failed to pick image:", err);
       setError("Failed to capture image. Please try again.");
     }
@@ -234,11 +246,11 @@ export default function AddIDScreen() {
       // Show interstitial ad after a short delay
       setTimeout(() => {
         showInterstitialAd(
-          () => {},
-          () => {},
-          1500,
+          () => { },
+          () => { },
+          5000,
           ADMOB_CONFIG.addIdInterstitialUnitId
-        ).catch(() => {});
+        ).catch(() => { });
       }, 300);
     } catch (err) {
       console.error("Failed to save ID:", err);

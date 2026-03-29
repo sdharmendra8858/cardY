@@ -2,7 +2,6 @@ import AppButton from "@/components/AppButton";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getCardType } from "@/utils/CardType";
 import { generateRandomString } from "@/utils/random";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
@@ -17,15 +16,8 @@ import {
 import DropDownPicker from "react-native-dropdown-picker";
 import { BANK_OPTIONS } from "../../../constants/banks";
 
-import Amex from "@/assets/icons/cards/amex.svg";
-import Diners from "@/assets/icons/cards/dinersclub.svg";
-import Discover from "@/assets/icons/cards/discover.svg";
-import JCB from "@/assets/icons/cards/jcb.svg";
-import Maestro from "@/assets/icons/cards/maestro.svg";
-import MasterCard from "@/assets/icons/cards/mastercard.svg";
-import RuPay from "@/assets/icons/cards/rupay.svg";
-import Visa from "@/assets/icons/cards/visa.svg";
 import { CARD_TYPES } from "@/constants/cardTypes";
+import CardNetworkLogo from "@/components/CardNetworkLogo";
 import { SUPPORTED_CARD_LENGTHS } from "@/constants/cardConfig";
 import { formatCardNumber } from "@/utils/formatCardNumber";
 import { luhnCheck } from "@/utils/cardValidation";
@@ -164,7 +156,6 @@ export default function CardForm({
   const [bankOpen, setBankOpen] = useState(false);
   const [focused, setFocused] = useState<string | null>(null);
   const [showCvv, setShowCvv] = useState(false);
-  const [cardType, setCardType] = useState<string | null>(() => getCardType(defaultCardNumber.replace(/\D/g, "")));
 
   // New fields for enhanced categorization
   const [cardKind, setCardKind] = useState<"credit" | "debit">(defaultCardKind || "credit"); // Credit or Debit
@@ -263,9 +254,7 @@ export default function CardForm({
   // Sync with NFC/Scan results
   useEffect(() => {
     if (defaultCardNumber) {
-      const clean = defaultCardNumber.replace(/\D/g, "");
       setCardNumber(defaultCardNumber);
-      setCardType(getCardType(clean));
     }
 
     if (defaultCardHolder) setCardHolder(defaultCardHolder);
@@ -316,28 +305,6 @@ export default function CardForm({
 
 
 
-  function getCardIcon(type: string | null) {
-    switch (type) {
-      case CARD_TYPES.VISA:
-        return Visa;
-      case CARD_TYPES.MASTERCARD:
-        return MasterCard;
-      case CARD_TYPES.AMEX:
-        return Amex;
-      case CARD_TYPES.RUPAY:
-        return RuPay;
-      case CARD_TYPES.DISCOVER:
-        return Discover;
-      case CARD_TYPES.MAESTRO:
-        return Maestro;
-      case CARD_TYPES.JCB:
-        return JCB;
-      case CARD_TYPES.DINERS:
-        return Diners;
-      default:
-        return null;
-    }
-  }
 
   function validateExpiry(raw: string): { valid: boolean; message?: string } {
     const d = (raw || "").replace(/[^0-9]/g, "");
@@ -630,8 +597,6 @@ export default function CardForm({
               onChangeText={(text) => {
                 const digitsOnly = text.replace(/[^0-9]/g, "").slice(0, 19);
                 setCardNumber(digitsOnly);
-                const detectedType = getCardType(digitsOnly);
-                setCardType(detectedType);
 
                 // BIN identification removed per user request.
                 // Categorization is now strictly via NFC/Scan or manual entry.
@@ -641,29 +606,14 @@ export default function CardForm({
               editable={!isEditMode}
             />
 
-            {(() => {
-              const CardIcon = getCardIcon(cardType);
-              if (CardIcon) {
-                return (
-                  <View style={styles.iconHolder}>
-                    <CardIcon
-                      width={32}
-                      height={22}
-                      fill={theme.text}
-                      color={theme.text}
-                    />
-                  </View>
-                );
-              }
-              if (cardType) {
-                return (
-                  <View style={styles.iconHolder}>
-                    <ThemedText style={styles.cardTypeText}>{cardType}</ThemedText>
-                  </View>
-                );
-              }
-              return null;
-            })()}
+            <CardNetworkLogo
+              cardNumber={cardNumber}
+              width={32}
+              height={22}
+              color={theme.text}
+              showTextFallback={true}
+              style={styles.iconHolder}
+            />
           </View>
 
           {cardNumberDigits.length > 0 && !cardNumberValid && (

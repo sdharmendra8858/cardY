@@ -1,13 +1,5 @@
-// app/card-details/[id].tsx
-import Amex from "@/assets/icons/cards/amex.svg";
-import Diners from "@/assets/icons/cards/dinersclub.svg";
-import Discover from "@/assets/icons/cards/discover.svg";
-import JCB from "@/assets/icons/cards/jcb.svg";
-import Maestro from "@/assets/icons/cards/maestro.svg";
-import MasterCard from "@/assets/icons/cards/mastercard.svg";
-import RuPay from "@/assets/icons/cards/rupay.svg";
-import Visa from "@/assets/icons/cards/visa.svg";
 import { showInterstitialAd } from "@/components/AdInterstitial";
+import CardNetworkLogo from "@/components/CardNetworkLogo";
 import CardNotFound from "@/components/CardNotFound";
 import AppButton from "@/components/AppButton";
 import DecryptLoader from "@/components/DecryptLoader";
@@ -730,45 +722,13 @@ export default function CardDetailsScreen() {
                     {card.bank}
                   </ThemedText>
                   <View style={styles.cardTypeIcon}>
-                    {(() => {
-                      const cardType = card.cardType;
-                      const iconProps = {
-                        width: 38,
-                        height: 24,
-                        fill: contentColor,
-                        color: contentColor,
-                      };
-
-                      if (cardType === CARD_TYPES.VISA) {
-                        return <Visa {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.MASTERCARD) {
-                        return <MasterCard {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.AMEX) {
-                        return <Amex {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.DISCOVER) {
-                        return <Discover {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.RUPAY) {
-                        return <RuPay {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.MAESTRO) {
-                        return <Maestro {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.JCB) {
-                        return <JCB {...iconProps} />;
-                      }
-                      if (cardType === CARD_TYPES.DINERS) {
-                        return <Diners {...iconProps} />;
-                      }
-                      return cardType ? (
-                        <ThemedText style={[styles.cardTypeLabel, { color: contentColor, opacity: 0.7, fontSize: 10, fontWeight: 'bold' }]}>
-                          {(cardType as string).toUpperCase()}
-                        </ThemedText>
-                      ) : null;
-                    })()}
+                    <CardNetworkLogo
+                      cardNumber={card.cardNumber}
+                      width={38}
+                      height={24}
+                      color="#FFFFFF"
+                      showTextFallback={true}
+                    />
                   </View>
                 </View>
                 <View style={styles.cardNumberRow}>
