@@ -14,7 +14,7 @@ import RuPay from "@/assets/icons/cards/rupay.svg";
 import Visa from "@/assets/icons/cards/visa.svg";
 
 interface CardNetworkLogoProps {
-  cardType?: string | null;
+  cardNetwork?: string | null;
   cardNumber?: string | null;
   width?: number;
   height?: number;
@@ -24,7 +24,7 @@ interface CardNetworkLogoProps {
 }
 
 export default function CardNetworkLogo({
-  cardType: providedCardType,
+  cardNetwork: providedCardNetwork,
   cardNumber,
   width = 32,
   height = 20,
@@ -37,10 +37,10 @@ export default function CardNetworkLogo({
   
   // Use provided color, or fallback to theme text color
   const color = providedColor || theme.text;
-  // Use provided cardType or detect it from cardNumber
-  const cardType = providedCardType || (cardNumber ? detectCardType(cardNumber) : null);
+  // Use provided cardNetwork or detect it from cardNumber
+  const cardNetwork = providedCardNetwork || (cardNumber ? detectCardType(cardNumber) : null);
   
-  if (!cardType) return null;
+  if (!cardNetwork) return null;
 
   const iconProps = {
     width,
@@ -50,7 +50,7 @@ export default function CardNetworkLogo({
   };
 
   const getIcon = () => {
-    switch (cardType) {
+    switch (cardNetwork) {
       case CARD_TYPES.VISA: return <Visa {...iconProps} />;
       case CARD_TYPES.MASTERCARD: return <MasterCard {...iconProps} />;
       case CARD_TYPES.AMEX: return <Amex {...iconProps} />;
@@ -73,7 +73,7 @@ export default function CardNetworkLogo({
     return (
       <View style={[styles.container, styles.textFallback, style]}>
         <Text style={[styles.fallbackText, { color }]}>
-          {cardType.toUpperCase()}
+          {cardNetwork.toUpperCase()}
         </Text>
       </View>
     );

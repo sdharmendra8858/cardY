@@ -16,12 +16,12 @@ import {
 import DropDownPicker from "react-native-dropdown-picker";
 import { BANK_OPTIONS } from "../../../constants/banks";
 
-import { CARD_TYPES } from "@/constants/cardTypes";
 import CardNetworkLogo from "@/components/CardNetworkLogo";
 import { SUPPORTED_CARD_LENGTHS } from "@/constants/cardConfig";
-import { formatCardNumber } from "@/utils/formatCardNumber";
 import { luhnCheck } from "@/utils/cardValidation";
+import { formatCardNumber } from "@/utils/formatCardNumber";
 import { containsProfanity } from "@/utils/profanityFilter";
+import { getCardType } from "@/utils/CardType";
 
 // Constants for new dropdown options
 const CARD_KIND_OPTIONS = [
@@ -62,6 +62,7 @@ interface CardFormProps {
     cobrandName?: string;
     cardUser?: "self" | "other";
     dominantColor?: string;
+    cardNetwork?: string;
   }) => void;
   defaultCardNumber?: string;
   defaultCardHolder?: string;
@@ -212,6 +213,7 @@ export default function CardForm({
   const handleSubmit = () => {
     const bankToSave =
       bank === "OTHER" ? customBank.trim() || undefined : bank || undefined;
+    const cardNetwork = getCardType(cardNumber);
     onSubmit({
       id,
       cardNumber,
@@ -224,6 +226,7 @@ export default function CardForm({
       cobrandName: cobrandName.trim() || undefined,
       cardUser,
       dominantColor,
+      cardNetwork: cardNetwork || undefined,
     });
   };
 

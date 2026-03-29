@@ -4,24 +4,24 @@ import Hero from "@/components/Hero";
 import InfoBox from "@/components/InfoBox";
 import UnifiedModal, { UnifiedModalButton } from "@/components/UnifiedModal";
 import { ThemedText } from "@/components/themed-text";
+import { ADMOB_CONFIG } from "@/constants/admob";
 import { Colors } from "@/constants/theme";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useCountdown } from "@/hooks/use-countdown";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { getCardType } from "@/utils/CardType";
-import { getUnmaskedCards, getMaskedCards as secureGetCards } from "@/utils/secureStorage";
 import { setGlobalAdSuppression } from "@/utils/adControl";
+import { getUnmaskedCards, getMaskedCards as secureGetCards } from "@/utils/secureStorage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Keyboard, Platform, StyleSheet, View } from "react-native";
-import { ADMOB_CONFIG } from "@/constants/admob";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { SafeAreaView } from "react-native-safe-area-context";
 import NfcManager from "react-native-nfc-manager";
+import { SafeAreaView } from "react-native-safe-area-context";
 import CardForm from "./components/CardForm";
 import NfcScanButton from "./components/NfcScanButton";
 import ScanButton from "./components/ScanButton";
@@ -270,16 +270,17 @@ export default function AddCardScreen() {
     cobrandName?: string;
     cardUser?: "self" | "other";
     dominantColor?: string;
+    cardNetwork?: string;
   }) => {
     try {
       if (__DEV__) console.log("💾 saveCardLocally - Card number received:", card.cardNumber, "(Length:", card.cardNumber.length, ")");
       // Ensure cardUser defaults to "self" if not specified and detect card type
-      const detectedCardType = getCardType(card.cardNumber);
+      const detectedCardNetwork = getCardType(card.cardNumber);
 
       const cardWithDefaults = {
         ...card,
         cardUser: card.cardUser || "self",
-        cardType: detectedCardType || undefined // Auto-detect card type
+        cardNetwork: card.cardNetwork || detectedCardNetwork || undefined // Auto-detect card network
       };
 
       // Check for duplicate card numbers (excluding current card in edit mode)
@@ -339,6 +340,7 @@ export default function AddCardScreen() {
     cobrandName?: string;
     cardUser?: "self" | "other";
     dominantColor?: string;
+    cardNetwork?: string;
   }) => {
     if (__DEV__) console.log("📝 handleManualAdd - Card number from form:", card.cardNumber, "(Length:", card.cardNumber.length, ")");
     if (isSaving) return; // Prevent double submission
@@ -397,11 +399,11 @@ export default function AddCardScreen() {
       // This allows the navigation to complete first
       setTimeout(() => {
         showInterstitialAd(
-          () => {},
-          () => {},
+          () => { },
+          () => { },
           1500,
           ADMOB_CONFIG.addCardInterstitialUnitId
-        ).catch(() => {});
+        ).catch(() => { });
       }, 300); // Small delay to ensure navigation completes
 
     } catch (err) {

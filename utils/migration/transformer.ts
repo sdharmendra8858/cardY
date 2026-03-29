@@ -108,8 +108,8 @@ export function transformCard(oldCard: OldCard): NewCard {
     // Preserve pinning info (default to false if not present)
     isPinned: oldCard.isPinned ?? false,
 
-    // Add new field: card type
-    cardType,
+    // Add new field: card network
+    cardNetwork: cardType,
   };
 
   if (__DEV__) {
@@ -117,7 +117,7 @@ export function transformCard(oldCard: OldCard): NewCard {
       (option) => option.value.toUpperCase() === matchedBank?.toUpperCase()
     );
     console.log(`🔄 Transformed card ${oldCard.id}:`, {
-      cardType,
+      cardNetwork: cardType,
       bank: newCard.bank,
       bankMatched: isMatched ? "yes" : "custom",
       hasExpiry: !!oldCard.expiry,

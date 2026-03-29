@@ -17,6 +17,7 @@ type CardItemProps = {
   cobrandName?: string;
   cardUser?: "self" | "other";
   dominantColor?: string;
+  cardNetwork?: string;
   cardExpiresAt?: number;
   expiry?: string;
   isExpiring?: boolean;
@@ -34,6 +35,7 @@ export default function CardItem({
   cobrandName,
   cardUser = "self",
   dominantColor = "#4b7bec",
+  cardNetwork,
   cardExpiresAt,
   expiry,
   isExpiring = false,
@@ -98,11 +100,6 @@ export default function CardItem({
             <Text style={styles.bankName} numberOfLines={1}>{bankName}</Text>
           </View>
           <View style={styles.badges}>
-            <CardNetworkLogo
-              cardNumber={cardNumber}
-              color="#FFFFFF"
-              style={styles.networkLogo}
-            />
             {cardKind && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>

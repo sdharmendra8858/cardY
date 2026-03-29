@@ -1,14 +1,14 @@
 import {
-    decryptCards,
-    encryptCards,
-    EncryptionResult,
+  decryptCards,
+  encryptCards,
+  EncryptionResult,
 } from "@/utils/encryption/cardEncryption";
 import { deleteMasterKey } from "@/utils/encryption/masterKeyManager";
 import { formatCardNumber } from "@/utils/formatCardNumber";
 import { maskAndFormatCardNumber, maskExpiry } from "@/utils/mask";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { normalizeBankName } from "./normalizeBankName";
 import Toast from "react-native-toast-message";
+import { normalizeBankName } from "./normalizeBankName";
 
 /* -------------------------------------------------------------------------- */
 /*                                   TYPES                                    */
@@ -27,6 +27,7 @@ export type Card = {
   bank?: string;
   cardExpiresAt?: number;
   isPinned?: boolean;
+  cardNetwork?: string;
 };
 
 /* -------------------------------------------------------------------------- */

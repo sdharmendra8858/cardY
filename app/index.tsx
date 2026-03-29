@@ -568,6 +568,7 @@ export default function HomeScreen() {
           cardNumber={item.cardNumber}
           cardHolder={item.cardHolder}
           cardKind={item.cardKind}
+          cardNetwork={item.cardNetwork}
           cobrandName={item.cobrandName}
           cardUser={item.cardUser}
           dominantColor={item.dominantColor}

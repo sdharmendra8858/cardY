@@ -394,14 +394,7 @@ export default function SelectCardScreen() {
                                                             </ThemedText>
                                                         )}
                                                     </View>
-                                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                                        <CardNetworkLogo
-                                                            cardNumber={card.cardNumber}
-                                                            width={24}
-                                                            height={14}
-                                                            color="#FFFFFF"
-                                                            showTextFallback={false}
-                                                        />
+                                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                                                         <ThemedText style={{ color: '#fff', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
                                                             {card.cardKind === "credit" ? "💳" : "💵"} {card.cardKind?.toUpperCase() || 'DEBIT'}
                                                         </ThemedText>

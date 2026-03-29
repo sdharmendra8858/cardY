@@ -724,6 +724,7 @@ export default function CardDetailsScreen() {
                   <View style={styles.cardTypeIcon}>
                     <CardNetworkLogo
                       cardNumber={card.cardNumber}
+                      cardNetwork={card.cardNetwork}
                       width={38}
                       height={24}
                       color="#FFFFFF"

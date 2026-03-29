@@ -53,7 +53,7 @@ export type NewCard = {
   expiry?: string; // Made optional
   cvv?: string;
   cardKind?: "credit" | "debit";
-  cardType?: string; // NEW: Auto-detected card network (visa, mastercard, etc.)
+  cardNetwork?: string; // NEW: Auto-detected card network
   cobrandName?: string;
   cardUser?: "self" | "other";
   dominantColor?: string;
