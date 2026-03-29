@@ -18,7 +18,6 @@ export type OldCard = {
   cardHolder: string;
   expiry: string;
   cvv?: string;
-  cardName?: string;
   cardKind?: "credit" | "debit";
   cobrandName?: string;
   cardUser?: "self" | "other";
@@ -53,7 +52,6 @@ export type NewCard = {
   cardHolder: string;
   expiry?: string; // Made optional
   cvv?: string;
-  cardName?: string;
   cardKind?: "credit" | "debit";
   cardType?: string; // NEW: Auto-detected card network (visa, mastercard, etc.)
   cobrandName?: string;

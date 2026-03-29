@@ -388,9 +388,11 @@ export default function SelectCardScreen() {
                                                         <ThemedText style={{ color: '#fff', fontSize: 16, fontWeight: '700', opacity: 0.9 }}>
                                                             {card.bank || 'Bank'}
                                                         </ThemedText>
-                                                        <ThemedText style={{ color: '#fff', fontSize: 12, opacity: 0.7, marginTop: 2 }}>
-                                                            {card.cardName || 'Card'}
-                                                        </ThemedText>
+                                                        {card.cobrandName && (
+                                                            <ThemedText style={{ color: '#fff', fontSize: 12, opacity: 0.7, marginTop: 2, fontStyle: 'italic' }}>
+                                                                {card.cobrandName}
+                                                            </ThemedText>
+                                                        )}
                                                     </View>
                                                     <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                         <CardNetworkLogo

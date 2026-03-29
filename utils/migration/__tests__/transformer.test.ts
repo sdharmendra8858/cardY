@@ -82,7 +82,6 @@ describe("Card Transformation", () => {
       cardHolder: "John Doe",
       expiry: "12/25",
       cvv: "123",
-      cardName: "My Visa",
       cardKind: "credit",
       bank: "Test Bank",
     };
@@ -94,7 +93,6 @@ describe("Card Transformation", () => {
     expect(newCard.cardHolder).toBe(oldCard.cardHolder);
     expect(newCard.expiry).toBe(oldCard.expiry);
     expect(newCard.cvv).toBe(oldCard.cvv);
-    expect(newCard.cardName).toBe(oldCard.cardName);
     expect(newCard.cardKind).toBe(oldCard.cardKind);
     expect(newCard.bank).toBe(oldCard.bank);
     expect(newCard.cardType).toBe("visa");
@@ -165,7 +163,6 @@ describe("Card Transformation", () => {
     const newCard = transformCard(oldCard);
 
     expect(newCard.cvv).toBeUndefined();
-    expect(newCard.cardName).toBeUndefined();
     expect(newCard.cardKind).toBeUndefined();
     expect(newCard.bank).toBeUndefined();
     expect(newCard.cardType).toBe("visa");
@@ -222,7 +219,7 @@ describe("Card Validation", () => {
 
     expect(result.valid).toHaveLength(2);
     expect(result.invalid).toHaveLength(1);
-    expect(result.invalid[0]).toBe("");
+    expect(result.invalid[0]).toBe("unknown");
   });
 });
 

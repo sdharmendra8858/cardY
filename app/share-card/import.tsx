@@ -242,7 +242,6 @@ export default function ImportCardScreen() {
               cardHolder: cardData.cardholderName,
               expiry: `${cardData.expiryMonth}/${cardData.expiryYear}`,
               cvv: "",
-              cardName: `${cardData.brand} Card`,
               cardKind: cardData.cardKind || "credit" as "credit" | "debit",
               cobrandName: cardData.cobrandName || "",
               cardUser: "other" as "self" | "other",
@@ -260,7 +259,7 @@ export default function ImportCardScreen() {
             setIsProcessing(false);
             setAlertConfig({
               title: "Card Added Successfully",
-              message: `Imported ${cardToImport.bank || cardToImport.cardName}.\n\nThis card is stored securely on your device only.`,
+              message: `Imported ${cardToImport.bank || 'Card'}.\n\nThis card is stored securely on your device only.`,
               buttons: [
                 {
                   text: "View Card Details",

@@ -77,7 +77,7 @@ export async function debugMigrationState() {
     if (oldCards.length > 0) {
       console.log("   Cards:", oldCards.map(c => ({
         id: c.id,
-        name: c.cardName,
+        name: c.bank || "Unknown",
         number: c.cardNumber?.slice(-4),
       })));
     }
@@ -94,7 +94,7 @@ export async function debugMigrationState() {
     if (newCards.length > 0) {
       console.log("   Cards:", newCards.map(c => ({
         id: c.id,
-        name: c.cardName,
+        name: c.bank || "Unknown",
         number: c.cardNumber?.slice(-4),
       })));
     }

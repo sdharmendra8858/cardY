@@ -3,13 +3,13 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { formatCardNumber } from "../utils/formatCardNumber";
+import CardNetworkLogo from "./CardNetworkLogo";
 import ExpiryBadge from "./ExpiryBadge";
 import PinIcon from "./PinIcon";
-import CardNetworkLogo from "./CardNetworkLogo";
 
 type CardItemProps = {
   id: string;
-  cardName: string;
+  bankName: string;
   cardNumber: string;
   cardHolder: string;
   onReveal?: (id: string) => void;
@@ -27,7 +27,7 @@ type CardItemProps = {
 export default function CardItem({
   id,
   cardNumber,
-  cardName,
+  bankName,
   cardHolder,
   onReveal,
   cardKind,
@@ -95,7 +95,7 @@ export default function CardItem({
         {/* Top Section - Bank name and badges */}
         <View style={styles.cardHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardName} numberOfLines={1}>{cardName}</Text>
+            <Text style={styles.bankName} numberOfLines={1}>{bankName}</Text>
           </View>
           <View style={styles.badges}>
             <CardNetworkLogo
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cardName: { color: "white", fontSize: 18, fontWeight: "bold" },
+  bankName: { color: "white", fontSize: 18, fontWeight: "bold" },
   badges: {
     flexDirection: "row",
     gap: 6,

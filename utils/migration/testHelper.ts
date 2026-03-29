@@ -95,8 +95,6 @@ export const MigrationTestHelper = {
         expiry: "12/25",
         cvv: "123",
         isPinned: true,
-        cardName: "My Visa Card",
-        cardKind: "credit" as const,
         bank: "Test Bank",
       },
       {
@@ -106,7 +104,6 @@ export const MigrationTestHelper = {
         expiry: "06/26",
         cvv: "456",
         isPinned: false,
-        cardName: "My Mastercard",
         cardKind: "debit" as const,
       },
     ];
@@ -267,8 +264,6 @@ export const MigrationTestHelper = {
         expiry: "12/25",
         cvv: "123",
         isPinned: true,
-        cardName: "Personal Visa",
-        cardKind: "credit" as const,
         bank: "Chase Bank",
       },
       {
@@ -278,8 +273,6 @@ export const MigrationTestHelper = {
         expiry: "06/26",
         cvv: "456",
         isPinned: false,
-        cardName: "Business Mastercard",
-        cardKind: "debit" as const,
         bank: "Bank of America",
       },
       {
@@ -289,7 +282,6 @@ export const MigrationTestHelper = {
         expiry: "09/27",
         cvv: "789",
         isPinned: false,
-        cardName: "Amex Gold",
         cardKind: "credit" as const,
       },
     ];
