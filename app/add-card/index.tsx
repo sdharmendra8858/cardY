@@ -65,7 +65,8 @@ export default function AddCardScreen() {
     defaultCobrandName,
     defaultCardUser,
     defaultDominantColor,
-    cardExpiresAt
+    cardExpiresAt,
+    defaultCardNetwork
   } = useLocalSearchParams<{
     from?: string;
     redirectTo?: string;
@@ -85,6 +86,7 @@ export default function AddCardScreen() {
     defaultCardUser?: "self" | "other";
     defaultDominantColor?: string;
     cardExpiresAt?: string;
+    defaultCardNetwork?: string;
   }>();
 
   // Countdown timer for imported cards (other's cards) that are about to expire
@@ -499,6 +501,7 @@ export default function AddCardScreen() {
           defaultCobrandName={defaultCobrandName}
           defaultCardUser={defaultCardUser}
           defaultDominantColor={defaultDominantColor}
+          defaultCardNetwork={defaultCardNetwork}
           disabled={isSaving}
           isEditMode={isEditMode}
           fromShare={from === "share"}

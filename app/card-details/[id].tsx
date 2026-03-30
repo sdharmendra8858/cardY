@@ -247,7 +247,7 @@ export default function CardDetailsScreen() {
         defaultExpiry: card.expiry,
         defaultCvv: card.cvv,
         defaultBank: card.bank,
-        defaultCardType: card.cardType,
+        defaultCardNetwork: card.cardNetwork,
         defaultCardKind: card.cardKind,
         defaultCobrandName: card.cobrandName,
         defaultCardUser: card.cardUser,

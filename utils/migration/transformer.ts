@@ -7,6 +7,7 @@
 
 import { BANK_OPTIONS } from "@/constants/banks";
 import { normalizeBankName } from "@/utils/normalizeBankName";
+import { getCardType } from "@/utils/CardType";
 import { NewCard, OldCard } from "./types";
 
 /* -------------------------------------------------------------------------- */
@@ -41,31 +42,6 @@ function matchBankName(oldBankName?: string): string | undefined {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                          CARD TYPE DETECTION                                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Detect card network type from card number
- * Uses industry-standard BIN (Bank Identification Number) patterns
- */
-export function detectCardType(cardNumber: string): string {
-  // Remove all non-digit characters
-  const cleaned = cardNumber.replace(/\D/g, "");
-
-  // Check patterns (order matters for some overlapping ranges)
-  if (/^4/.test(cleaned)) return "visa";
-  if (/^5[1-5]/.test(cleaned)) return "mastercard";
-  if (/^3[47]/.test(cleaned)) return "amex";
-  if (/^(?:6521|6522)/.test(cleaned)) return "rupay";
-  if (/^6(?:011|5)/.test(cleaned)) return "discover";
-  if (/^35/.test(cleaned)) return "jcb";
-  if (/^3(?:0[0-5]|[68])/.test(cleaned)) return "dinersclub";
-  if (/^(?:5[06789]|6)/.test(cleaned)) return "maestro";
-
-  return "unknown";
-}
-
-/* -------------------------------------------------------------------------- */
 /*                          CARD TRANSFORMATION                                */
 /* -------------------------------------------------------------------------- */
 
@@ -78,7 +54,7 @@ export function detectCardType(cardNumber: string): string {
  */
 export function transformCard(oldCard: OldCard): NewCard {
   // Auto-detect card type if not present
-  const cardType = detectCardType(oldCard.cardNumber);
+  const cardType = getCardType(oldCard.cardNumber) || "unknown";
 
   // Match bank name to new bank list (or keep original if no match)
   const matchedBank = matchBankName(oldCard.bank);

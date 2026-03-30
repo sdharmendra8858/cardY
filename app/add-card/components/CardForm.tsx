@@ -73,6 +73,7 @@ interface CardFormProps {
   defaultCobrandName?: string;
   defaultCardUser?: "self" | "other";
   defaultDominantColor?: string;
+  defaultCardNetwork?: string;
   infoText?: string;
   onCvvFocus?: () => void;
   setCvvRef?: (ref: TextInput | null) => void;
@@ -113,6 +114,7 @@ export default function CardForm({
   defaultCobrandName = "",
   defaultCardUser,
   defaultDominantColor,
+  defaultCardNetwork,
   infoText,
   onCvvFocus,
   setCvvRef,

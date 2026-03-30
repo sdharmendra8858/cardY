@@ -247,7 +247,7 @@ export default function ImportCardScreen() {
               cardUser: "other" as "self" | "other",
               dominantColor: cardData.dominantColor || "#1E90FF",
               bank: cardData.bank || "",
-              cardType: detectedCardType || undefined,
+              cardNetwork: detectedCardType || undefined,
               cardExpiresAt: cardData.cardExpiresAt,
               isPinned: false,
             };
