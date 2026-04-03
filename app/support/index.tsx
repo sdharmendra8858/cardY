@@ -1,4 +1,3 @@
-import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -110,10 +109,6 @@ export default function SupportScreen() {
             </ThemedText>
           </View>
 
-          {/* Native Ad Section - Below Version Info */}
-          <View style={styles.adSection}>
-            <NativeAd />
-          </View>
         </ScrollView>
       </View>
     </SafeAreaView>

@@ -64,7 +64,9 @@
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UIBackgroundModes</key>
-    <array/>
+    <array>
+      <string>audio</string>
+    </array>
     <key>NSUserTrackingUsageDescription</key>
     <string>Allow Cardy Wall to track your activity to show more relevant and personalized ads for a better experience</string>
     <key>UILaunchStoryboardName</key>

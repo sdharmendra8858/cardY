@@ -1,4 +1,3 @@
-import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
 import { useAlert } from "@/context/AlertContext";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
@@ -395,11 +394,6 @@ export default function SettingsScreen() {
                 </View>
               )}
             </Animated.View>
-          </View>
-
-          {/* Native Ad Section - Moved to more prominent position */}
-          <View style={styles.adSection}>
-            <NativeAd />
           </View>
 
           {/* Section: Data Management */}

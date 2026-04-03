@@ -1,5 +1,4 @@
 import { showInterstitialAd } from "@/components/AdInterstitial";
-import NativeAd from "@/components/AdNative";
 import AppButton from "@/components/AppButton";
 import CardItem from "@/components/CardItem";
 import IDGridItem from "@/components/IDGridItem";
@@ -525,41 +524,19 @@ export default function HomeScreen() {
   const ListHeader = DynamicHeader;
 
   const filteredCards = React.useMemo(() => {
-    const base = cards.filter((card) => {
+    return cards.filter((card) => {
       if (activeTab === "self") {
         return !card.cardUser || card.cardUser === "self";
       }
       return card.cardUser === "other";
     });
-
-    // Inject ads
-    const withAds: any[] = [];
-    base.forEach((item, index) => {
-      if (index > 0 && index % 5 === 0) {
-        withAds.push({ id: `ad-${index}`, isAd: true });
-      }
-      withAds.push(item);
-    });
-    return withAds;
   }, [cards, activeTab]);
 
   const filteredIDs = React.useMemo(() => {
-    const withAds: any[] = [];
-    ids.forEach((item, index) => {
-      // For 2-column IDs, we inject ad every 6 items (3 rows)
-      if (index > 0 && index % 6 === 0) {
-        withAds.push({ id: `ad-id-${index}`, isAd: true });
-      }
-      withAds.push(item);
-    });
-    return withAds;
+    return ids;
   }, [ids]);
 
   const renderCardItem = React.useCallback(({ item }: { item: any }) => {
-    if (item.isAd) {
-      return <NativeAd />;
-    }
-
     return (
       <View style={{ paddingHorizontal: 8 }}>
         <CardItem
@@ -583,14 +560,6 @@ export default function HomeScreen() {
   }, [handlePinChange]);
 
   const renderIDItem = React.useCallback(({ item }: { item: any }) => {
-    if (item.isAd) {
-      return (
-        <View style={{ width: (windowWidth - 16) / 2 - 16, margin: 8 }}>
-          <NativeAd />
-        </View>
-      );
-    }
-
     return (
       <View style={{ width: (windowWidth - 16) / 2 }}>
         <IDGridItem item={item} onPress={handleIDPress} />
