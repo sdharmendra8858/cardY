@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.redonelabs.cardywall",
-      "buildNumber": "12",
+      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [],
         "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards",

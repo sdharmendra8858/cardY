@@ -18,6 +18,8 @@
 		956C19C05AC5B91A86DBEC90 /* RNLockModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB29DACC31AC1B1BE535E80A /* RNLockModule.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F11748472D0722830044C1D9 /* RNCacheModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748452D0722830044C1D9 /* RNCacheModule.swift */; };
+		F11748482D0722830044C1D9 /* RNCacheModuleBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F11748462D0722830044C1D9 /* RNCacheModuleBridge.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +39,8 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CardyWall/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* CardyWall-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CardyWall-Bridging-Header.h"; path = "CardyWall/CardyWall-Bridging-Header.h"; sourceTree = "<group>"; };
+		F11748452D0722830044C1D9 /* RNCacheModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RNCacheModule.swift; sourceTree = "<group>"; };
+		F11748462D0722830044C1D9 /* RNCacheModuleBridge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = RNCacheModuleBridge.m; sourceTree = "<group>"; };
 		F9FD51D7F0FBC6EC023F4AFF /* libPods-CardyWall.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-CardyWall.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -148,6 +152,8 @@
 				A693906DB48C3B2A9606C8CC /* RNPipModuleBridge.m */,
 				CB29DACC31AC1B1BE535E80A /* RNLockModule.swift */,
 				6BBAEE1112BBFB3A932C3BA5 /* RNLockModuleBridge.m */,
+				F11748452D0722830044C1D9 /* RNCacheModule.swift */,
+				F11748462D0722830044C1D9 /* RNCacheModuleBridge.m */,
 			);
 			name = Modules;
 			path = CardyWall/Modules;
@@ -414,6 +420,8 @@
 				8A3A353EFEE8DCB2D7A4D552 /* RNPipModuleBridge.m in Sources */,
 				956C19C05AC5B91A86DBEC90 /* RNLockModule.swift in Sources */,
 				6C014F24EFD84C978BA6B503 /* RNLockModuleBridge.m in Sources */,
+				F11748472D0722830044C1D9 /* RNCacheModule.swift in Sources */,
+				F11748482D0722830044C1D9 /* RNCacheModuleBridge.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,7 +437,7 @@
 				CODE_SIGN_ENTITLEMENTS = CardyWall/CardyWall.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = 743LUN242B;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -442,7 +450,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -468,7 +476,7 @@
 				CODE_SIGN_ENTITLEMENTS = CardyWall/CardyWall.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = 743LUN242B;
 				INFOPLIST_FILE = CardyWall/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -476,7 +484,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

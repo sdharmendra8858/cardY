@@ -10,7 +10,7 @@ class RNCacheModule: NSObject {
 
   // Delete file at given path (relative to app's sandbox) - resolve with true/false
   @objc
-  func deleteFile(_ path: String, resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
+  func deleteFile(_ path: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     let fm = FileManager.default
     // Allow both absolute and relative paths; if relative, assume caches directory
     var fileURL: URL
@@ -31,7 +31,7 @@ class RNCacheModule: NSObject {
 
   // Get size of caches folder (bytes)
   @objc
-  func getCacheSize(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
+  func getCacheSize(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.global(qos: .background).async {
       let fm = FileManager.default
       let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask).first!

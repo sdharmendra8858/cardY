@@ -1,4 +1,3 @@
-import NativeAd from "@/components/AdNative";
 import Hero from "@/components/Hero";
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
@@ -63,10 +62,6 @@ export default function WebsiteComingSoonScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Native Ad Section */}
-          <View style={styles.adSection}>
-            <NativeAd />
-          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
