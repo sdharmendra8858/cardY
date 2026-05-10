@@ -792,7 +792,11 @@ export default function CardDetailsScreen() {
               </View>
               <ThemedText style={styles.actionLabel}>Copy</ThemedText>
             </Pressable>
-            <Pressable style={[styles.actionButton, (!showNumber || flipped || !canUsePip) && { opacity: 0.5 }]} onPress={openPip} disabled={!showNumber || flipped || !canUsePip}>
+            <Pressable 
+              style={[styles.actionButton, (!showNumber || flipped || !canUsePip) && { opacity: 0.5 }]} 
+              onPress={Platform.OS === 'ios' ? () => router.push('/pip-coming-soon') : openPip} 
+              disabled={!showNumber || flipped || !canUsePip}
+            >
               <View style={[styles.actionIconWrapper, { backgroundColor: palette.primary }]}>
                 <Ionicons name="contract" size={24} color="white" />
               </View>

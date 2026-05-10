@@ -18,6 +18,7 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   NativeModules,
+  Platform,
   ScrollView,
   Share,
   StyleSheet,
@@ -438,9 +439,10 @@ export default function SettingsScreen() {
               onPress={async () => {
                 try {
                   ignoreNextAppOpenAd();
+                  const pipMessage = Platform.OS === 'android' ? " and view them in PiP" : "";
                   await Share.share({
                     message:
-                      "Check out Cardy Wall! Securely manage your cards and view them in PiP. Download now: https://redonelabs.in/products/cardywall/#download",
+                      `Check out Cardy Wall! Securely manage your cards${pipMessage}. Download now: https://redonelabs.in/products/cardywall/#download`,
                   });
                 } catch (error) {
                   console.error("Error sharing app:", error);
