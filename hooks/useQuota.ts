@@ -8,12 +8,16 @@ interface QuotaData {
   lastDate: string; // ISO date YYYY-MM-DD
 }
 
+import { MAX_FREE_VIEWS } from "../constants/quota";
+
+import { useBilling } from "../context/BillingContext";
+
 export const useQuota = (type: QuotaType) => {
+  const { isPremium } = useBilling();
   const [quotaData, setQuotaData] = useState<QuotaData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const QUOTA_STORAGE_KEY = `@cardy_view_quota_${type}`;
-  const MAX_FREE_VIEWS = 5;
 
   const getTodayString = () => new Date().toISOString().split("T")[0];
 
@@ -48,6 +52,11 @@ export const useQuota = (type: QuotaType) => {
     loadQuota();
   }, [loadQuota]);
 
+  useEffect(() => {
+    // Whenever isPremium status changes, reload the quota from AsyncStorage (guarantees local sync with global resets)
+    loadQuota();
+  }, [isPremium, loadQuota]);
+
   const incrementViews = useCallback(async () => {
     setQuotaData(prev => {
       if (!prev) return prev;
@@ -67,7 +76,8 @@ export const useQuota = (type: QuotaType) => {
     });
   }, [QUOTA_STORAGE_KEY, type]);
 
-  const isQuotaExceededValue = quotaData ? quotaData.count >= MAX_FREE_VIEWS : false;
+  // If premium, quota is never exceeded
+  const isQuotaExceededValue = isPremium ? false : (quotaData ? quotaData.count >= MAX_FREE_VIEWS : false);
 
   return {
     viewsCount: quotaData?.count ?? 0,

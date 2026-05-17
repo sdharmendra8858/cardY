@@ -73,7 +73,7 @@ export default function CardDetailsScreen() {
   const { cards, revealCard, removeCard } = useCards();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { timerTick } = useTimer(); // Force re-renders for validity timer
-  const { isQuotaExceeded, incrementViews, loading: quotaLoading, viewsCount } = useQuota('card');
+  const { isQuotaExceeded, incrementViews, loading: quotaLoading, viewsCount, maxFreeViews } = useQuota('card');
   useScreenProtection();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
@@ -939,7 +939,7 @@ export default function CardDetailsScreen() {
             <ThemedText type="subtitle" style={styles.quotaTitle}>Daily Limit Reached</ThemedText>
             
             <ThemedText style={styles.quotaDescription}>
-              You've used your 5 free card reveals for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
+              You've used your {maxFreeViews} free card reveals for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
             </ThemedText>
 
             <View style={styles.quotaInfoBox}>
@@ -960,15 +960,12 @@ export default function CardDetailsScreen() {
               <Pressable 
                 style={styles.premiumButton}
                 onPress={() => {
-                  Toast.show({
-                    type: "info",
-                    text1: "Coming Soon!",
-                    text2: "Premium for unlimited access is in development.",
-                  });
+                  setShowQuotaModal(false);
+                  router.push('/profile/subscription');
                 }}
               >
                 <ThemedText style={[styles.premiumText, { color: palette.primary }]}>
-                  Go Premium (Coming Soon)
+                  Go Premium & Remove Ads
                 </ThemedText>
               </Pressable>
 

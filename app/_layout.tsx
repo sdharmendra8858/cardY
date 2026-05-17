@@ -44,6 +44,8 @@ import { LEGAL_CONFIG } from "@/constants/legalConfig";
 import { waitForATTResolved } from "@/hooks/useATT";
 // ATT dialog is triggered natively in ios/CardyWall/AppDelegate.swift
 import { requestNotificationPermissions, setupNotificationListeners } from "@/utils/notifications";
+import { BillingProvider } from "@/context/BillingContext";
+import { BILLING_STORAGE_KEY } from "@/constants/billing";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -196,11 +198,14 @@ function AppShell() {
           setAuthenticated(true);
         }
 
-        // (C) Pre-load ad only if terms were previously accepted
+        // (C) Pre-load ad only if terms were previously accepted and user is not premium
         if (isTermsAccepted) {
-          try {
-            appOpenAd.load();
-          } catch (e) {}
+          const premiumStatus = await AsyncStorage.getItem(BILLING_STORAGE_KEY);
+          if (premiumStatus !== "true") {
+            try {
+              appOpenAd.load();
+            } catch (e) {}
+          }
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -279,6 +284,10 @@ function AppShell() {
     // 2. Skip if ad already shown recently, terms not accepted, or TnC was shown this session
     if (tncShownInSessionRef.current || termsAccepted !== true) return;
     
+    // 3. Skip if premium
+    const premiumStatus = await AsyncStorage.getItem(BILLING_STORAGE_KEY);
+    if (premiumStatus === "true") return;
+
     // Cooldown: 15 seconds to avoid spamming
     const now = Date.now();
     if (now - lastAdShowTimeRef.current < 15000) return;
@@ -516,7 +525,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeOverrideProvider>
-        <AppShell />
+        <BillingProvider>
+          <AppShell />
+        </BillingProvider>
       </ThemeOverrideProvider>
     </GestureHandlerRootView>
   );

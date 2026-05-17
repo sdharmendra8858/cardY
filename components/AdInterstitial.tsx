@@ -144,6 +144,21 @@ export const showInterstitialAd = async (
   timeoutMs: number = 10000,
   adUnitId?: string
 ): Promise<void> => {
+  // --- Bypass all interstitial ads for Premium users ---
+  try {
+    const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+    const { BILLING_STORAGE_KEY } = await import('@/constants/billing');
+    const isPremium = await AsyncStorage.getItem(BILLING_STORAGE_KEY);
+    if (isPremium === "true") {
+      if (__DEV__) console.log("🚀 Bypassing Interstitial Ad (Premium User)");
+      onClosed?.();
+      return;
+    }
+  } catch (e) {
+    console.error("Error checking premium status in InterstitialAd", e);
+  }
+  // ----------------------------------------------------
+
   const manager = InterstitialAdManager.getInstance();
   const targetUnitId = adUnitId || ADMOB_CONFIG.interstitialAdUnitId || '';
 

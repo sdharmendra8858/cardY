@@ -14,6 +14,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useQuota } from "@/hooks/useQuota";
 import { useScreenProtection } from "@/hooks/useScreenProtection";
 import { DEFAULT_PROFILE, getProfile } from "@/utils/profileStorage";
+import { useBilling } from "@/context/BillingContext";
+import ProBadge from "@/components/ProBadge";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
@@ -43,6 +45,7 @@ export default function HomeScreen() {
   const { cards: contextCards, togglePin, refreshCards } = useCards();
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
+  const { isPremium } = useBilling();
 
   // Only subscribe to timer if there are "other" cards with non-infinity expiry
   const hasExpiringOtherCards = React.useMemo(() => {
@@ -323,13 +326,14 @@ export default function HomeScreen() {
       <>
         {/* Profile Section */}
         <View style={styles.profileContainer}>
-          <Pressable onPress={handleProfilePress}>
+          <Pressable onPress={handleProfilePress} style={{ position: 'relative' }}>
             <Image
               source={avatarSource}
               style={styles.avatar}
               contentFit="cover"
               cachePolicy="memory"
             />
+            {isPremium && <ProBadge showText={false} size={10} />}
           </Pressable>
           <View style={styles.profileTextWrapper}>
             <View>
@@ -375,7 +379,7 @@ export default function HomeScreen() {
         )}
       </>
     ),
-    [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, isIDLockEnabled, router, handleProfilePress]
+    [avatarSource, profileName, isAppLockEnabled, isCardLockEnabled, isIDLockEnabled, isPremium, router, handleProfilePress]
   );
 
   // Dynamic tabs + content header: Unified as a "Wrapper" unit
@@ -649,7 +653,7 @@ export default function HomeScreen() {
             <ThemedText type="subtitle" style={styles.quotaTitle}>Daily Limit Reached</ThemedText>
 
             <ThemedText style={styles.quotaDescription}>
-              You've used your 5 free ID views for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
+              You've used your {maxFreeViews} free ID views for today. To keep Cardy Wall free and secure for everyone, please watch a short video to unlock this view.
             </ThemedText>
 
             <View style={styles.quotaInfoBox}>
@@ -667,18 +671,15 @@ export default function HomeScreen() {
                 icon="play-circle-outline"
               />
 
-              <Pressable
+              <Pressable 
                 style={styles.premiumButton}
                 onPress={() => {
-                  Toast.show({
-                    type: "info",
-                    text1: "Coming Soon!",
-                    text2: "Premium for unlimited access is in development.",
-                  });
+                  setShowQuotaModal(false);
+                  router.push('/profile/subscription');
                 }}
               >
                 <ThemedText style={[styles.premiumText, { color: palette.primary }]}>
-                  Go Premium (Coming Soon)
+                  Go Premium & Remove Ads
                 </ThemedText>
               </Pressable>
 

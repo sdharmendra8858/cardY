@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { getAvatarById } from "../../constants/avatars";
 import { Colors } from "../../constants/theme";
 import { DEFAULT_PROFILE, getProfile } from "../../utils/profileStorage";
+import { useBilling } from "@/context/BillingContext";
 
 export default function ProfileScreen() {
   const scheme = useColorScheme() ?? "light";
@@ -24,6 +25,7 @@ export default function ProfileScreen() {
   );
   const [showSharingInfo, setShowSharingInfo] = useState(false);
   const [sharingTab, setSharingTab] = useState<'receive' | 'share'>('receive');
+  const { isPremium } = useBilling();
 
   const navigation = useNavigation();
   const router = useRouter();
@@ -104,9 +106,53 @@ export default function ProfileScreen() {
           <ThemedText type="title" style={styles.name}>
             {name}
           </ThemedText>
+          {isPremium && (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#1A1A1A',
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+              borderRadius: 12,
+              marginTop: 8,
+              borderWidth: 1,
+              borderColor: '#FFB000',
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowOffset: { width: 0, height: 2 },
+              shadowRadius: 3,
+              elevation: 2,
+            }}>
+              <MaterialIcons name="workspace-premium" size={14} color="#FFB000" />
+              <ThemedText style={{
+                color: '#FFB000',
+                fontSize: 10,
+                fontWeight: '900',
+                letterSpacing: 1,
+                marginLeft: 4,
+              }}>PREMIUM MEMBER</ThemedText>
+            </View>
+          )}
         </View>
 
         <View style={[styles.menuCard, { backgroundColor: palette.card }]}>
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => router.push("/profile/subscription")}
+          >
+            <View style={styles.menuLeft}>
+              <MaterialIcons name="workspace-premium" size={22} color={palette.tint} />
+              <ThemedText style={styles.menuText}>Subscription & Billing</ThemedText>
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={22}
+              color={scheme === "dark" ? "#666" : "#bbb"}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
+
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => router.push("/settings")}
