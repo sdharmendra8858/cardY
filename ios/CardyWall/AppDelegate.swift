@@ -1,6 +1,11 @@
+import AppTrackingTransparency
 import Expo
 import React
 import ReactAppDependencyProvider
+
+/// Key used to record that the native ATT request has already been presented.
+/// This prevents re-asking on every cold launch after the user has decided.
+private let kATTRequestedKey = "com.cardywall.att_requested"
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -8,6 +13,10 @@ public class AppDelegate: ExpoAppDelegate {
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
+
+  // Tracks whether we triggered ATT this session to avoid duplicate requests
+  // when the app enters the foreground multiple times.
+  private var attRequested = false
 
   public override func application(
     _ application: UIApplication,
@@ -32,7 +41,57 @@ public class AppDelegate: ExpoAppDelegate {
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Linking API
+  // MARK: - ATT — App Tracking Transparency
+  //
+  // We request ATT here, at the earliest possible native lifecycle point,
+  // so that the system dialog appears BEFORE the JS bridge and AdMob SDK
+  // initialise. Apple's policy silently defers the dialog if any ad SDK
+  // touches the advertising identifier first — triggering it natively here
+  // guarantees it is the very first system popup on a fresh install.
+
+  public override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    requestATTIfNeeded()
+  }
+
+  private func requestATTIfNeeded() {
+    // Only iOS 14+ has ATT; skip on older versions.
+    guard #available(iOS 14, *) else { return }
+
+    // Skip if we've already asked during this process lifetime.
+    guard !attRequested else { return }
+
+    // Skip if the user has already made a choice in a previous session.
+    let alreadyRequested = UserDefaults.standard.bool(forKey: kATTRequestedKey)
+    guard !alreadyRequested else { return }
+
+    // Mark as requested for this session immediately to prevent duplicate calls.
+    attRequested = true
+
+    // Small delay (0.5 s) so the splash screen is fully visible before the
+    // system dialog slides in — keeps the UX clean without blocking anything.
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+      ATTrackingManager.requestTrackingAuthorization { status in
+        // Persist that we have asked so we never prompt again.
+        UserDefaults.standard.set(true, forKey: kATTRequestedKey)
+
+        #if DEBUG
+        let statusStr: String
+        switch status {
+        case .authorized:   statusStr = "authorized"
+        case .denied:       statusStr = "denied"
+        case .restricted:   statusStr = "restricted"
+        case .notDetermined: statusStr = "notDetermined"
+        @unknown default:   statusStr = "unknown"
+        }
+        print("[ATT Native] Tracking authorization status: \(statusStr)")
+        #endif
+      }
+    }
+  }
+
+  // MARK: - Linking
+
   public override func application(
     _ app: UIApplication,
     open url: URL,
@@ -68,3 +127,4 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
 #endif
   }
 }
+

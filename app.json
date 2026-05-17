@@ -13,7 +13,6 @@
       "bundleIdentifier": "com.redonelabs.cardywall",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": [],
         "NSFaceIDUsageDescription": "Allow Cardy Wall to use Face ID for securing your cards",
         "NSCameraUsageDescription": "Allow Cardy Wall to use your camera to scan cards, ID documents, and QR codes for secure sharing",
         "NSPhotoLibraryUsageDescription": "Allow Cardy Wall to access your photo library to upload ID documents and share QR codes",

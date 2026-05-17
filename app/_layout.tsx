@@ -41,7 +41,8 @@ import MigrationScreen from "./migration-screen";
 import { checkAndResetIgnoreAd, ignoreNextAppOpenAd } from "@/utils/adControl";
 import { cleanupOrphanedAssets } from "@/utils/idStorage";
 import { LEGAL_CONFIG } from "@/constants/legalConfig";
-import { useATT } from "@/hooks/useATT";
+import { waitForATTResolved } from "@/hooks/useATT";
+// ATT dialog is triggered natively in ios/CardyWall/AppDelegate.swift
 import { requestNotificationPermissions, setupNotificationListeners } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
@@ -62,7 +63,6 @@ const appOpenAd = AppOpenAd.createForAdRequest(appOpenAdUnitId, {
 });
 
 function AppShell() {
-  useATT();
   // ✅ ALL HOOKS MUST BE CALLED FIRST, BEFORE ANY CONDITIONAL RETURNS
   const colorScheme = useColorScheme();
   const router = useRouter();
@@ -88,7 +88,9 @@ function AppShell() {
     });
     setAppIsActive(AppState.currentState === "active");
 
-    // Initialize AdMob SDK (Mandatory for production)
+    // ATT permission is handled natively in AppDelegate.swift before the JS
+    // bridge starts — so by the time we reach here, iOS has already resolved
+    // the tracking authorization. We can initialize AdMob directly.
     mobileAds()
       .initialize()
       .then(adapterStatuses => {
@@ -98,8 +100,19 @@ function AppShell() {
         if (__DEV__) console.warn("❌ AdMob Initialization failed:", err);
       });
 
-    // Request notification permissions and setup listeners
-    requestNotificationPermissions();
+    // On iOS: wait until the native ATT dialog (AppDelegate.swift) is fully
+    // resolved before requesting notification permission. This guarantees the
+    // dialogs appear in order: ATT first → Notifications second.
+    // waitForATTResolved polls every 300 ms and resolves as soon as the user
+    // taps Allow or Don't Allow (max 15 s safety timeout).
+    // On Android: no ATT, so request notifications immediately.
+    if (Platform.OS === "ios") {
+      waitForATTResolved().then(() => {
+        requestNotificationPermissions();
+      });
+    } else {
+      requestNotificationPermissions();
+    }
     const cleanupNotifs = setupNotificationListeners();
 
     return () => {
