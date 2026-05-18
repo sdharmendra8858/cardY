@@ -7,7 +7,7 @@ import { BILLING_STORAGE_KEY, SUBSCRIPTION_SKUS } from "../constants/billing";
 
 interface BillingContextProps {
   isPremium: boolean;
-  subscriptions: RNIap.Subscription[];
+  subscriptions: RNIap.ProductSubscription[];
   loading: boolean;
   requestPurchase: (sku: string) => Promise<void>;
   restorePurchases: () => Promise<void>;
@@ -16,9 +16,9 @@ interface BillingContextProps {
 const BillingContext = createContext<BillingContextProps | null>(null);
 
 export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isPremium, setIsPremium] = useState<boolean>(false); // HARDCODED FOR TESTING
-  const [subscriptions, setSubscriptions] = useState<RNIap.Subscription[]>([]);
-  const [loading, setLoading] = useState(false); // HARDCODED FOR TESTING
+  const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [subscriptions, setSubscriptions] = useState<RNIap.ProductSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Sync isPremium to AsyncStorage so it can be read instantly on cold start
   const syncPremiumState = async (status: boolean) => {
@@ -63,10 +63,10 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } catch (e) { }
       }
 
-      // await checkCurrentPurchases(); // DISABLED FOR TESTING
+      await checkCurrentPurchases();
 
-      const products = await (RNIap as any).getSubscriptions({ skus: SUBSCRIPTION_SKUS } as any);
-      setSubscriptions(products);
+      const products = await RNIap.fetchProducts({ skus: SUBSCRIPTION_SKUS, type: "subs" });
+      setSubscriptions(products as RNIap.ProductSubscription[]);
     } catch (err) {
       console.warn("IAP Initialization error", err);
     } finally {
@@ -77,9 +77,12 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     // 1. Instantly load cached status on mount
     const loadCache = async () => {
-      // FORCE CACHE TO FALSE FOR TESTING
-      await AsyncStorage.setItem(BILLING_STORAGE_KEY, "false");
-      setIsPremium(false);
+      try {
+        const cached = await AsyncStorage.getItem(BILLING_STORAGE_KEY);
+        if (cached === "true") {
+          setIsPremium(true);
+        }
+      } catch (e) {}
     };
     loadCache();
 
@@ -148,10 +151,32 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const requestPurchase = async (sku: string) => {
     try {
-      await (RNIap as any).requestSubscription({ sku });
+      if (Platform.OS === "ios") {
+        await RNIap.requestPurchase({
+          request: {
+            apple: { sku }
+          },
+          type: "subs"
+        });
+      } else {
+        const sub = subscriptions.find(s => s.id === sku);
+        const offerToken = (sub as any)?.subscriptionOffers?.[0]?.offerTokenAndroid;
+        if (!offerToken) {
+          throw new Error("Subscription plan or offer token is currently unavailable on Google Play.");
+        }
+        await RNIap.requestPurchase({
+          request: {
+            google: {
+              skus: [sku],
+              subscriptionOffers: [{ sku, offerToken }]
+            }
+          },
+          type: "subs"
+        });
+      }
     } catch (err: any) {
       console.warn(err.code, err.message);
-      if (err.code !== "E_USER_CANCELLED") {
+      if (String(err.code) !== "E_USER_CANCELLED" && String(err.code) !== "E_USER_CANCEL") {
         Toast.show({ type: "error", text1: "Failed to initiate purchase", text2: err.message });
       }
     }

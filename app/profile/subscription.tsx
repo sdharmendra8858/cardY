@@ -72,8 +72,8 @@ export default function SubscriptionScreen() {
               
               {subscriptions.length > 0 ? (subscriptions as any[]).map((sub: any, index: number) => (
                 <TouchableOpacity
-                  key={sub.productId}
-                  onPress={() => requestPurchase(sub.productId)}
+                  key={sub.id}
+                  onPress={() => requestPurchase(sub.id)}
                   style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
@@ -87,11 +87,11 @@ export default function SubscriptionScreen() {
                   }}
                 >
                   <View style={{ flex: 1, paddingRight: 16 }}>
-                    <ThemedText style={{ fontWeight: '700', fontSize: 16 }}>{sub.title.replace(/\([^()]*\)/g, '') || (sub.productId.includes('monthly') ? 'Monthly Plan' : 'Half-Yearly Plan')}</ThemedText>
+                    <ThemedText style={{ fontWeight: '700', fontSize: 16 }}>{sub.title.replace(/\([^()]*\)/g, '') || (sub.id.includes('monthly') ? 'Monthly Plan' : 'Half-Yearly Plan')}</ThemedText>
                     <ThemedText style={{ fontSize: 13, opacity: 0.6, marginTop: 4 }}>{sub.description || 'Unlimited ad-free access'}</ThemedText>
                   </View>
                   <ThemedText style={{ fontWeight: '900', fontSize: 18, color: palette.primary }}>
-                    {sub.localizedPrice}
+                    {sub.displayPrice}
                   </ThemedText>
                 </TouchableOpacity>
               )) : (
