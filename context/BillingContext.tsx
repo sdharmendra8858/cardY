@@ -11,6 +11,7 @@ interface BillingContextProps {
   loading: boolean;
   requestPurchase: (sku: string) => Promise<void>;
   restorePurchases: () => Promise<void>;
+  togglePremium: () => Promise<void>;
 }
 
 const BillingContext = createContext<BillingContextProps | null>(null);
@@ -196,8 +197,18 @@ export const BillingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const togglePremium = async () => {
+    const nextStatus = !isPremium;
+    await syncPremiumState(nextStatus);
+    Toast.show({
+      type: "success",
+      text1: nextStatus ? "Demo Mode: Premium Activated" : "Demo Mode: Premium Deactivated",
+      text2: nextStatus ? "All limitations and ads bypassed" : "Standard limitations active",
+    });
+  };
+
   return (
-    <BillingContext.Provider value={{ isPremium, subscriptions, loading, requestPurchase, restorePurchases }}>
+    <BillingContext.Provider value={{ isPremium, subscriptions, loading, requestPurchase, restorePurchases, togglePremium }}>
       {children}
     </BillingContext.Provider>
   );
