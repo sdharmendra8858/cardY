@@ -1,6 +1,5 @@
 import Hero from "@/components/Hero";
 import { useAlert } from "@/context/AlertContext";
-import { useBilling } from "@/context/BillingContext";
 import { useCardsWithMigration as useCards } from "@/context/CardContextWithMigration";
 import { clearAllIDs } from "@/utils/idStorage";
 import { clearCards } from "@/utils/secureStorage";
@@ -36,21 +35,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { showAlert } = useAlert();
   const { refreshCards } = useCards();
-  const { togglePremium } = useBilling();
-  const [tapCount, setTapCount] = useState(0);
   const scheme = useColorScheme() ?? "light";
   const palette = Colors[scheme];
-
-  const handleVersionTap = () => {
-    setTapCount((prev) => {
-      const nextCount = prev + 1;
-      if (nextCount >= 5) {
-        togglePremium();
-        return 0;
-      }
-      return nextCount;
-    });
-  };
 
 
   // persistent state
@@ -469,11 +455,11 @@ export default function SettingsScreen() {
           </View>
 
           {/* Footer */}
-          <TouchableOpacity activeOpacity={0.8} onPress={handleVersionTap} style={styles.footer}>
+          <View style={styles.footer}>
             <ThemedText style={styles.version}>
-              Version {Constants.expoConfig?.version ?? "1.0.0"} (Tap for Demo Mode)
+              Version {Constants.expoConfig?.version ?? "1.0.0"}
             </ThemedText>
-          </TouchableOpacity>
+          </View>
 
           {/* Future Ad Section */}
           {/* 
