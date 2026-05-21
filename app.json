@@ -4,7 +4,7 @@
     "slug": "cardy-wall",
     "version": "2.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/cc-round.png",
+    "icon": "./assets/images/cc.png",
     "scheme": "cardywall",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -139,7 +139,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/cc-round.png",
+          "icon": "./assets/images/cc.png",
           "color": "#ffffff"
         }
       ],
